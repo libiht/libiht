@@ -8,7 +8,19 @@
 #define HAVE_PROC_OPS
 #endif
 
+/*
+ * The CPU hard-coded LBR stack capacity / entries
+ * 
+ * PS: might need change to variable to make it CPU dependent
+ */
 #define LBR_ENTRIES 16
+
+/*
+ * Total number of lbr stack record this kernel module maintains
+ * 
+ * PS: might need change to variable for ioctl
+ */
+#define LBR_CACHE_SIZE 32
 
 /* Bit Field        Bit Offset  Access  Description
  *

@@ -13,6 +13,16 @@ MODULE_AUTHOR("Thomason Zhao");
 MODULE_DESCRIPTION("Intel Hardware Trace Library");
 
 
+struct lbr_t lbr_cache[LBR_CACHE_SIZE];
+
+/*
+ * LBR helper functions
+ */
+static void flush_lbr(int enable)
+{
+    wrmsrl(MSR_LBR_TOS, 0);
+}
+
 
 static int device_open(struct inode *inode, struct file *filp)
 {
