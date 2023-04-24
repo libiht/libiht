@@ -54,6 +54,8 @@ struct lbr_t {
 /*
  * Static function prototypes
  */
+static void get_lbr(void);
+static void dump_lbr(void);
 static int device_open(struct inode *, struct file *);
 static int device_release(struct inode *, struct file *);
 static ssize_t device_read(struct file *, char *, size_t, loff_t *);
