@@ -1,0 +1,11 @@
+# Kernel module compiling files
+*.cmd
+*.o
+*.d
+*.ko
+*.mod
+*.mod.c
+*.symvers
+*.order
+
+*.swp
