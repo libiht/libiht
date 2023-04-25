@@ -40,8 +40,6 @@
  */
  #define LBR_SELECT 0x1
 
-struct proc_dir_entry *proc_entry = NULL;
-
 struct lbr_t {
     uint64_t debug;   // contents of IA32_DEBUGCTL MSR
     uint64_t select;  // contents of LBR_SELECT
