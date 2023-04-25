@@ -19,7 +19,7 @@
                 "/usr/src/linux-headers-5.15.0-70-generic/ubuntu/include"
             ],
             "defines": [
-                "KBUILD_MODNAME=\"hello_module\"",
+                "KBUILD_MODNAME=\"libiht\"",
                 "__GNUC__",
                 "__KERNEL__",
                 "MODULE"
