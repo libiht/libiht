@@ -1,5 +1,5 @@
 # Kernel module compile process
-obj-m = libiht.o
+obj-m = libiht.o kthread_demo.o
 KVERSION = $(shell uname -r)
 
 all:

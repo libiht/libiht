@@ -1,10 +1,13 @@
 #include <linux/cpumask.h>
 #include <linux/kernel.h>
+#include <linux/kthread.h>
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/uaccess.h>
 #include <linux/fs.h>
 #include <linux/ioctl.h>
+#include <linux/slab.h>
+#include <linux/delay.h>
 #include <asm/msr.h>
 
 #include "libiht.h"
@@ -13,8 +16,10 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Thomason Zhao");
 MODULE_DESCRIPTION("Intel Hardware Trace Library");
 
-struct lbr_t lbr_cache;
-struct proc_dir_entry *proc_entry;
+static struct lbr_t lbr_cache;
+static struct proc_dir_entry *proc_entry;
+static struct task_struct *kth_arr;
+static int num_cpus;
 
 /************************************************
  * LBR helper functions
@@ -49,6 +54,78 @@ static void dump_lbr()
     }
 }
 
+static int init_lbr_thread(void *cpuid)
+{
+    int i;
+
+    printk(KERN_ALERT "LIBIHT: Sleep for a while\n");
+    msleep(1000);
+
+    /* Enable lbr */
+    // TODO: Fix BUG: unable to handle page fault for address: ffffffffc153628d
+    wrmsrl(MSR_IA32_DEBUGCTLMSR, DEBUGCTLMSR_LBR);
+
+    /* Apply filter */
+    wrmsrl(MSR_LBR_SELECT, LBR_SELECT);
+
+    /* Flush lbr entries */
+    wrmsrl(MSR_LBR_TOS, 0);
+    for (i = 0; i < LBR_ENTRIES; i++)
+    {
+        wrmsrl(MSR_LBR_NHM_FROM + i, 0);
+        wrmsrl(MSR_LBR_NHM_TO + i, 0);
+    }
+
+    printk(KERN_ALERT "Enable LBR on CPU: %d", *(int *)cpuid);
+    do_exit(0);
+}
+
+static int init_lbr(struct task_struct *kth, int cpuid)
+{
+    // TODO: need to init lbr link to one process or globally to trace all branches
+    char kth_name[20];
+
+    sprintf(kth_name, "init_lbr_%d", cpuid);
+    kth = kthread_create(init_lbr_thread, &cpuid, kth_name);
+    if (kth == NULL)
+        return -1;
+
+    kthread_bind(kth, cpuid);
+    wake_up_process(kth);
+    
+    return 0;
+}
+
+static int exit_lbr_thread(void *cpuid)
+{
+    printk(KERN_ALERT "LIBIHT: Sleep for a while\n");
+    msleep(1000);
+    /* Disable lbr */
+    wrmsrl(MSR_IA32_DEBUGCTLMSR, 0);
+
+    printk(KERN_ALERT "Exit LBR on CPU: %d", *(int *)cpuid);
+    do_exit(0);
+}
+
+static int exit_lbr(struct task_struct *kth, int cpuid)
+{
+    char kth_name[20];
+
+    sprintf(kth_name, "exit_lbr_%d", cpuid);
+    kth = kthread_create(exit_lbr_thread, &cpuid, kth_name);
+
+    if (kth == NULL)
+        return -1;
+
+    kthread_bind(kth, cpuid);
+    wake_up_process(kth);
+    
+    return 0;
+}
+
+/*
+ * Device related functions
+ */
 static int device_open(struct inode *inode, struct file *filp)
 {
     printk(KERN_ALERT "LIBIHT: Device opened.\n");
@@ -87,46 +164,43 @@ static long device_ioctl(struct file *filp, unsigned int ioctl_num, unsigned lon
     return 0;
 }
 
-static void lbr_init(void)
+static int __init libiht_init(void)
 {
     int i;
 
-    /* Apply filter */
-    wrmsrl(MSR_LBR_SELECT, LBR_SELECT);
+    num_cpus = num_online_cpus();
+    printk(KERN_INFO "LIBIHT: Initialize for all %d cpus\n", num_cpus);
 
-    // TODO: need to init lbr link to one process or globally to trace all branches
-    /* Flush lbr entries */
-    wrmsrl(MSR_LBR_TOS, 0);
-    for (i = 0; i < LBR_ENTRIES; i++)
+    kth_arr = kmalloc(sizeof(struct task_struct) * num_cpus, GFP_KERNEL);
+    if (kth_arr == NULL)
+        return -1;
+    
+    for (i = 0; i < num_cpus; i++)
     {
-        wrmsrl(MSR_LBR_NHM_FROM + i, 0);
-        wrmsrl(MSR_LBR_NHM_TO + i, 0);
+        if (init_lbr(&kth_arr[i], i) < 0)
+            return -1;
     }
+    
 
-    /* Enable lbr */
-    wrmsrl(MSR_IA32_DEBUGCTLMSR, DEBUGCTLMSR_LBR);
-}
-
-static void lbr_exit(void)
-{
-    /* Disable lbr */
-    wrmsrl(MSR_IA32_DEBUGCTLMSR, 0);
-}
-
-static int __init libiht_init(void)
-{
-    printk(KERN_INFO "LIBIHT: Initialize for all %d cpus\n", num_online_cpus());
-    // TODO: do lbr_init in all cores by using kthread and kthread_bind
-    // lbr_init();
     proc_entry = proc_create("libiht-info", 0666, NULL, &libiht_ops);
+    if (proc_entry)
+        return -1;
+    
     return 0;
 }
 
 static void __exit libiht_exit(void)
 {
-    // lbr_exit();
+    int i;
+    
     if (proc_entry)
         proc_remove(proc_entry);
+
+    for (i = 0; i < num_cpus; i++)
+        exit_lbr(&kth_arr[i], i);
+    kfree(kth_arr);
+
+    msleep(5000);
     printk(KERN_INFO "LIBIHT: Exiting\n");
 }
 
