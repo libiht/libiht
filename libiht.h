@@ -63,15 +63,17 @@ struct lbr_t {
 /*
  * Static function prototypes
  */
+static void flush_lbr(bool);
 static void get_lbr(void);
 static void dump_lbr(void);
+static void enable_lbr(void *);
+static void disable_lbr(void *);
+
 static int device_open(struct inode *, struct file *);
 static int device_release(struct inode *, struct file *);
 static ssize_t device_read(struct file *, char *, size_t, loff_t *);
 static ssize_t device_write(struct file *, const char *, size_t, loff_t *);
 static long device_ioctl(struct file *, unsigned int, unsigned long);
-static int init_lbr(struct task_struct *kth, int cpuid);
-static int exit_lbr(struct task_struct *kth, int cpuid);
 
 /*
  * Due to differnt kernel version, determine which struct going to use

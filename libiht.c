@@ -84,7 +84,8 @@ static void dump_lbr()
  * Enable the LBR feature for the current CPU. *info may be NULL (it is required
  * by on_each_cpu()).
  */
-static void enable_lbr(void *info) {
+static void enable_lbr(void *info)
+{
 
     get_cpu();
 
@@ -92,7 +93,7 @@ static void enable_lbr(void *info) {
 
     /* Apply the filter (what kind of branches do we want to track?) */
     wrmsrl(MSR_LBR_SELECT, LBR_SELECT);
-    
+
     /* Flush the LBR and enable it */
     flush_lbr(true);
 
@@ -103,7 +104,8 @@ static void enable_lbr(void *info) {
  * Disable the LBR feature for the current CPU. *info may be NULL (it is required
  * by on_each_cpu()).
  */
-static void disable_lbr(void *info) {
+static void disable_lbr(void *info)
+{
 
     get_cpu();
 
@@ -111,7 +113,7 @@ static void disable_lbr(void *info) {
 
     /* Apply the filter (what kind of branches do we want to track?) */
     wrmsrl(MSR_LBR_SELECT, 0);
-    
+
     /* Flush the LBR and disable it */
     flush_lbr(false);
 
