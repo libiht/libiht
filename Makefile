@@ -1,5 +1,5 @@
 # Kernel module compile process
-obj-m = libiht.o kthread_demo.o
+obj-m = libiht.o
 KVERSION = $(shell uname -r)
 
 all:
@@ -32,3 +32,6 @@ demo: $(TARGET).c
 
 clean_demo:
 	rm -f $(TARGET)
+
+dump_demo:
+	objdump -M intel -d demo > demo.asm
