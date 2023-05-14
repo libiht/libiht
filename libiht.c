@@ -18,7 +18,7 @@ MODULE_DESCRIPTION("Intel Hardware Trace Library");
 
 static struct lbr_t lbr_cache;
 static struct proc_dir_entry *proc_entry;
-static struct task_struct *kth_arr;
+static struct task_struct **kth_arr;
 static int num_cpus;
 
 /************************************************
@@ -54,11 +54,11 @@ static void dump_lbr()
     }
 }
 
-static int init_lbr_thread(void *cpuid)
+static int init_lbr_thread(void *)
 {
     int i;
 
-    printk(KERN_ALERT "LIBIHT: Sleep for a while\n");
+    printk(KERN_ALERT "LIBIHT: Sleep for a while, cpuid: %d\n", smp_processor_id());
     msleep(1000);
 
     /* Enable lbr */
@@ -76,7 +76,14 @@ static int init_lbr_thread(void *cpuid)
         wrmsrl(MSR_LBR_NHM_TO + i, 0);
     }
 
-    printk(KERN_ALERT "Enable LBR on CPU: %d", *(int *)cpuid);
+    printk(KERN_ALERT "Enable LBR on CPU: %d", smp_processor_id());
+
+    if (kthread_should_stop())
+    {
+        printk(KERN_ALERT "Stopping, on CPU: %d", smp_processor_id());
+        return 0;
+    }
+
     do_exit(0);
 }
 
@@ -86,24 +93,25 @@ static int init_lbr(struct task_struct *kth, int cpuid)
     char kth_name[20];
 
     sprintf(kth_name, "init_lbr_%d", cpuid);
-    kth = kthread_create(init_lbr_thread, &cpuid, kth_name);
-    if (kth == NULL)
+    kth = kthread_create(init_lbr_thread, NULL, kth_name);
+    if (IS_ERR(kth))
         return -1;
 
     kthread_bind(kth, cpuid);
     wake_up_process(kth);
-    
+
     return 0;
 }
 
-static int exit_lbr_thread(void *cpuid)
+static int exit_lbr_thread(void *)
 {
     printk(KERN_ALERT "LIBIHT: Sleep for a while\n");
     msleep(1000);
+
     /* Disable lbr */
     wrmsrl(MSR_IA32_DEBUGCTLMSR, 0);
 
-    printk(KERN_ALERT "Exit LBR on CPU: %d", *(int *)cpuid);
+    printk(KERN_ALERT "Exit LBR on CPU: %d", smp_processor_id());
     do_exit(0);
 }
 
@@ -114,12 +122,12 @@ static int exit_lbr(struct task_struct *kth, int cpuid)
     sprintf(kth_name, "exit_lbr_%d", cpuid);
     kth = kthread_create(exit_lbr_thread, &cpuid, kth_name);
 
-    if (kth == NULL)
+    if (IS_ERR(kth))
         return -1;
 
     kthread_bind(kth, cpuid);
     wake_up_process(kth);
-    
+
     return 0;
 }
 
@@ -171,36 +179,37 @@ static int __init libiht_init(void)
     num_cpus = num_online_cpus();
     printk(KERN_INFO "LIBIHT: Initialize for all %d cpus\n", num_cpus);
 
-    kth_arr = kmalloc(sizeof(struct task_struct) * num_cpus, GFP_KERNEL);
+    kth_arr = kmalloc(sizeof(struct task_struct *) * num_cpus, GFP_KERNEL);
     if (kth_arr == NULL)
         return -1;
-    
-    for (i = 0; i < num_cpus; i++)
+
+    for (i = 0; i < 1; i++)
     {
-        if (init_lbr(&kth_arr[i], i) < 0)
+        if (init_lbr(kth_arr[i], i) < 0)
             return -1;
     }
-    
 
+    // Create user interactive helper process
     proc_entry = proc_create("libiht-info", 0666, NULL, &libiht_ops);
     if (proc_entry)
         return -1;
-    
+
+    msleep(3000);
+    printk(KERN_INFO "LIBIHT: Initialization complete\n");
     return 0;
 }
 
 static void __exit libiht_exit(void)
 {
     int i;
-    
+
     if (proc_entry)
         proc_remove(proc_entry);
 
     for (i = 0; i < num_cpus; i++)
-        exit_lbr(&kth_arr[i], i);
+        exit_lbr(kth_arr[i], i);
     kfree(kth_arr);
 
-    msleep(5000);
     printk(KERN_INFO "LIBIHT: Exiting\n");
 }
 

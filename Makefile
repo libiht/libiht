@@ -13,6 +13,15 @@ insert: all
 remove:
 	sudo rmmod libiht
 
+# For test use
+mesg:
+	sudo dmesg -wH
+
+dump:
+	objdump -M intel -d libiht.ko > libiht.asm
+
+
+
 # Demo program compile process
 CC = gcc
 CFLAGS  = -g -Wall
