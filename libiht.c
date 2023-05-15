@@ -18,12 +18,35 @@ MODULE_DESCRIPTION("Intel Hardware Trace Library");
 
 static struct lbr_t lbr_cache;
 static struct proc_dir_entry *proc_entry;
-static struct task_struct **kth_arr;
-static int num_cpus;
 
 /************************************************
  * LBR helper functions
  ************************************************/
+
+/*
+ * Flush the LBR registers. Caller should ensure this function run on
+ * single cpu (by wrapping get_cpu() and put_cpu())
+ */
+static void flush_lbr(bool enable)
+{
+    int i;
+
+    wrmsrl(MSR_LBR_TOS, 0);
+    for (i = 0; i < LBR_ENTRIES; i++)
+    {
+        wrmsrl(MSR_LBR_NHM_FROM + i, 0);
+        wrmsrl(MSR_LBR_NHM_TO + i, 0);
+    }
+
+    if (enable)
+        wrmsrl(MSR_IA32_DEBUGCTLMSR, DEBUGCTLMSR_LBR);
+    else
+        wrmsrl(MSR_IA32_DEBUGCTLMSR, 0);
+}
+
+/*
+ * Store the LBR registers to kernel maintained datastructure
+ */
 static void get_lbr()
 {
     int i;
@@ -39,6 +62,9 @@ static void get_lbr()
     }
 }
 
+/*
+ * Dump out the LBR registers to kernel message
+ */
 static void dump_lbr()
 {
     int i;
@@ -54,81 +80,44 @@ static void dump_lbr()
     }
 }
 
-static int init_lbr_thread(void *)
+/*
+ * Enable the LBR feature for the current CPU. *info may be NULL (it is required
+ * by on_each_cpu()).
+ */
+static void enable_lbr(void *info)
 {
-    int i;
 
-    printk(KERN_ALERT "LIBIHT: Sleep for a while, cpuid: %d\n", smp_processor_id());
-    msleep(1000);
+    get_cpu();
 
-    /* Enable lbr */
-    // TODO: Fix BUG: unable to handle page fault for address: ffffffffc153628d
-    wrmsrl(MSR_IA32_DEBUGCTLMSR, DEBUGCTLMSR_LBR);
+    printk(KERN_ALERT "Enable LBR on cpu: %d\n", smp_processor_id());
 
-    /* Apply filter */
+    /* Apply the filter (what kind of branches do we want to track?) */
     wrmsrl(MSR_LBR_SELECT, LBR_SELECT);
 
-    /* Flush lbr entries */
-    wrmsrl(MSR_LBR_TOS, 0);
-    for (i = 0; i < LBR_ENTRIES; i++)
-    {
-        wrmsrl(MSR_LBR_NHM_FROM + i, 0);
-        wrmsrl(MSR_LBR_NHM_TO + i, 0);
-    }
+    /* Flush the LBR and enable it */
+    flush_lbr(true);
 
-    printk(KERN_ALERT "Enable LBR on CPU: %d", smp_processor_id());
-
-    if (kthread_should_stop())
-    {
-        printk(KERN_ALERT "Stopping, on CPU: %d", smp_processor_id());
-        return 0;
-    }
-
-    do_exit(0);
+    put_cpu();
 }
 
-static int init_lbr(struct task_struct *kth, int cpuid)
+/*
+ * Disable the LBR feature for the current CPU. *info may be NULL (it is required
+ * by on_each_cpu()).
+ */
+static void disable_lbr(void *info)
 {
-    // TODO: need to init lbr link to one process or globally to trace all branches
-    char kth_name[20];
 
-    sprintf(kth_name, "init_lbr_%d", cpuid);
-    kth = kthread_create(init_lbr_thread, NULL, kth_name);
-    if (IS_ERR(kth))
-        return -1;
+    get_cpu();
 
-    kthread_bind(kth, cpuid);
-    wake_up_process(kth);
+    printk(KERN_ALERT "Disable LBR on cpu: %d\n", smp_processor_id());
 
-    return 0;
-}
+    /* Apply the filter (what kind of branches do we want to track?) */
+    wrmsrl(MSR_LBR_SELECT, 0);
 
-static int exit_lbr_thread(void *)
-{
-    printk(KERN_ALERT "LIBIHT: Sleep for a while\n");
-    msleep(1000);
+    /* Flush the LBR and disable it */
+    flush_lbr(false);
 
-    /* Disable lbr */
-    wrmsrl(MSR_IA32_DEBUGCTLMSR, 0);
-
-    printk(KERN_ALERT "Exit LBR on CPU: %d", smp_processor_id());
-    do_exit(0);
-}
-
-static int exit_lbr(struct task_struct *kth, int cpuid)
-{
-    char kth_name[20];
-
-    sprintf(kth_name, "exit_lbr_%d", cpuid);
-    kth = kthread_create(exit_lbr_thread, &cpuid, kth_name);
-
-    if (IS_ERR(kth))
-        return -1;
-
-    kthread_bind(kth, cpuid);
-    wake_up_process(kth);
-
-    return 0;
+    put_cpu();
 }
 
 /*
@@ -174,27 +163,19 @@ static long device_ioctl(struct file *filp, unsigned int ioctl_num, unsigned lon
 
 static int __init libiht_init(void)
 {
-    int i;
+    printk(KERN_INFO "LIBIHT: Initialize for all %d cpus\n", num_online_cpus());
 
-    num_cpus = num_online_cpus();
-    printk(KERN_INFO "LIBIHT: Initialize for all %d cpus\n", num_cpus);
-
-    kth_arr = kmalloc(sizeof(struct task_struct *) * num_cpus, GFP_KERNEL);
-    if (kth_arr == NULL)
-        return -1;
-
-    for (i = 0; i < 1; i++)
-    {
-        if (init_lbr(kth_arr[i], i) < 0)
-            return -1;
-    }
+    // Enable LBR on each cpu
+    on_each_cpu(enable_lbr, NULL, 1);
 
     // Create user interactive helper process
     proc_entry = proc_create("libiht-info", 0666, NULL, &libiht_ops);
-    if (proc_entry)
+    if (proc_entry == NULL)
+    {
+        printk(KERN_ALERT "LIBIHT: Create proc failed\n");
         return -1;
+    }
 
-    msleep(3000);
     printk(KERN_INFO "LIBIHT: Initialization complete\n");
     return 0;
 }
@@ -206,9 +187,8 @@ static void __exit libiht_exit(void)
     if (proc_entry)
         proc_remove(proc_entry);
 
-    for (i = 0; i < num_cpus; i++)
-        exit_lbr(kth_arr[i], i);
-    kfree(kth_arr);
+    // Disable LBR on each cpu
+    on_each_cpu(disable_lbr, NULL, 1);
 
     printk(KERN_INFO "LIBIHT: Exiting\n");
 }
