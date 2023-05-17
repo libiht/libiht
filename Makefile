@@ -24,7 +24,7 @@ dump:
 
 # Demo program compile process
 CC = gcc
-CFLAGS  = -g -Wall
+CFLAGS  = -g -static -Wall
 TARGET = demo
 
 demo: $(TARGET).c

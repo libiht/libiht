@@ -47,6 +47,12 @@ int main(int argc, char const *argv[])
     fd = open("/proc/libiht-info", O_RDWR);
     printf("func1's ptr: 0x%p\nfunc2's ptr: 0x%p\n", &func1, &func2);
     func1();
+
+    if (fork() == 0) {
+    read(fd, buf, 1);
+    close(fd);
+    }
+
     read(fd, buf, 1);
 
     close(fd);
