@@ -182,8 +182,6 @@ static int __init libiht_init(void)
 
 static void __exit libiht_exit(void)
 {
-    int i;
-
     if (proc_entry)
         proc_remove(proc_entry);
 

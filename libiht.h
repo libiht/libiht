@@ -14,7 +14,7 @@
  * 
  * PS: might need change to variable to make it CPU dependent
  */
-#define LBR_ENTRIES 16
+#define LBR_ENTRIES 32
 
 /*
  * Total number of lbr trace records this kernel module maintains
