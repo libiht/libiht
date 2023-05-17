@@ -16,11 +16,38 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Thomason Zhao");
 MODULE_DESCRIPTION("Intel Hardware Trace Library");
 
+/************************************************
+ * Global variables
+ ************************************************/
+
+/*
+ * Due to differnt kernel version, determine which struct going to use
+ */
+#ifdef HAVE_PROC_OPS
+static struct proc_ops libiht_ops = {
+    .proc_open = device_open,
+    .proc_release = device_release,
+    .proc_read = device_read,
+    .proc_write = device_write,
+    .proc_ioctl = device_ioctl};
+#else
+static struct file_operations libiht_ops = {
+    .open = device_open,
+    .release = device_release
+                   .read = device_read,
+    .write = device_write,
+    .unlocked_ioctl = device_ioctl};
+#endif
+
 static struct lbr_t lbr_cache;
+static spinlock_t lbr_cache_lock;
 static struct proc_dir_entry *proc_entry;
+static pid_t target_proc;
 
 /************************************************
  * LBR helper functions
+ *
+ * Help to manage LBR stack/registers and kernel LBR datastructure
  ************************************************/
 
 /*
@@ -47,7 +74,7 @@ static void flush_lbr(bool enable)
 /*
  * Store the LBR registers to kernel maintained datastructure
  */
-static void get_lbr()
+static void get_lbr(void)
 {
     int i;
 
@@ -63,20 +90,38 @@ static void get_lbr()
 }
 
 /*
- * Dump out the LBR registers to kernel message
+ * Write the LBR registers from kernel maintained datastructure
  */
-static void dump_lbr()
+static void put_lbr(void)
 {
     int i;
 
-    printk(KERN_ALERT "MSR_IA32_DEBUGCTLMSR:    0x%llx\n", lbr_cache.debug);
-    printk(KERN_ALERT "MSR_LBR_SELECT:          0x%llx\n", lbr_cache.select);
-    printk(KERN_ALERT "MSR_LBR_TOS:             %lld\n", lbr_cache.tos);
+    wrmsrl(MSR_IA32_DEBUGCTLMSR, lbr_cache.debug);
+    wrmsrl(MSR_LBR_SELECT, lbr_cache.select);
+    wrmsrl(MSR_LBR_TOS, lbr_cache.tos);
 
     for (i = 0; i < LBR_ENTRIES; i++)
     {
-        printk(KERN_ALERT "MSR_LBR_NHM_FROM[%d]: 0x%llx\n", i, lbr_cache.from[i]);
-        printk(KERN_ALERT "MSR_LBR_NHM_TO  [%d]: 0x%llx\n", i, lbr_cache.to[i]);
+        wrmsrl(MSR_LBR_NHM_FROM + i, lbr_cache.from[i]);
+        wrmsrl(MSR_LBR_NHM_TO + i, lbr_cache.to[i]);
+    }
+}
+
+/*
+ * Dump out the LBR registers to kernel message
+ */
+static void dump_lbr(void)
+{
+    int i;
+
+    printk(KERN_ALERT "MSR_IA32_DEBUGCTLMSR: 0x%llx\n", lbr_cache.debug);
+    printk(KERN_ALERT "MSR_LBR_SELECT:       0x%llx\n", lbr_cache.select);
+    printk(KERN_ALERT "MSR_LBR_TOS:          %lld\n", lbr_cache.tos);
+
+    for (i = 0; i < LBR_ENTRIES; i++)
+    {
+        printk(KERN_ALERT "MSR_LBR_NHM_FROM[%2d]: 0x%llx\n", i, lbr_cache.from[i]);
+        printk(KERN_ALERT "MSR_LBR_NHM_TO  [%2d]: 0x%llx\n", i, lbr_cache.to[i]);
     }
 }
 
@@ -89,7 +134,7 @@ static void enable_lbr(void *info)
 
     get_cpu();
 
-    printk(KERN_ALERT "Enable LBR on cpu: %d\n", smp_processor_id());
+    printk(KERN_ALERT "Enable LBR on cpu core: %d\n", smp_processor_id());
 
     /* Apply the filter (what kind of branches do we want to track?) */
     wrmsrl(MSR_LBR_SELECT, LBR_SELECT);
@@ -109,7 +154,7 @@ static void disable_lbr(void *info)
 
     get_cpu();
 
-    printk(KERN_ALERT "Disable LBR on cpu: %d\n", smp_processor_id());
+    printk(KERN_ALERT "Disable LBR on cpu core: %d\n", smp_processor_id());
 
     /* Apply the filter (what kind of branches do we want to track?) */
     wrmsrl(MSR_LBR_SELECT, 0);
@@ -119,6 +164,53 @@ static void disable_lbr(void *info)
 
     put_cpu();
 }
+
+/************************************************
+ * Context switch hook functions
+ *
+ * Save and Restore the LBR state during context switches. Should be done as fast
+ * as possiable to minimize the overhead of context switches.
+ ************************************************/
+
+/*
+ * Save LBR state
+ */
+static void save_lbr(void)
+{
+    unsigned long lbr_cache_flags;
+
+    // Only save for target process
+    if (target_proc == current->pid)
+    {
+        spin_lock_irqsave(&lbr_cache_lock, lbr_cache_flags);
+        get_lbr();
+        wrmsrl(MSR_IA32_DEBUGCTLMSR, 0);
+        spin_unlock_irqrestore(&lbr_cache_lock, lbr_cache_flags);
+    }
+}
+
+/*
+ * Restore LBR state
+ */
+static void restore_lbr(void)
+{
+    unsigned long lbr_cache_flags;
+
+    // Only restore for target process
+    if (target_proc == current->pid)
+    {
+        spin_lock_irqsave(&lbr_cache_lock, lbr_cache_flags);
+        put_lbr();
+        wrmsrl(MSR_IA32_DEBUGCTLMSR, DEBUGCTLMSR_LBR);
+        spin_unlock_irqrestore(&lbr_cache_lock, lbr_cache_flags);
+    }
+}
+
+/************************************************
+ * Device hook functions
+ *
+ * Maintain functionality of the libiht-info helper process
+ ************************************************/
 
 /*
  * Device related functions
@@ -160,6 +252,10 @@ static long device_ioctl(struct file *filp, unsigned int ioctl_num, unsigned lon
     // TDOO: control read
     return 0;
 }
+
+/************************************************
+ * Kernel module functions
+ ************************************************/
 
 static int __init libiht_init(void)
 {

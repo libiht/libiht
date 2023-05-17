@@ -65,9 +65,13 @@ struct lbr_t {
  */
 static void flush_lbr(bool);
 static void get_lbr(void);
+static void put_lbr(void);
 static void dump_lbr(void);
 static void enable_lbr(void *);
 static void disable_lbr(void *);
+
+static void save_lbr(void);
+static void restore_lbr(void);
 
 static int device_open(struct inode *, struct file *);
 static int device_release(struct inode *, struct file *);
@@ -75,23 +79,5 @@ static ssize_t device_read(struct file *, char *, size_t, loff_t *);
 static ssize_t device_write(struct file *, const char *, size_t, loff_t *);
 static long device_ioctl(struct file *, unsigned int, unsigned long);
 
-/*
- * Due to differnt kernel version, determine which struct going to use
- */
-#ifdef HAVE_PROC_OPS
-static struct proc_ops libiht_ops = {
-    .proc_open = device_open,
-    .proc_release = device_release,
-    .proc_read = device_read,
-    .proc_write = device_write,
-    .proc_ioctl = device_ioctl
-};
-#else
-static struct file_operations libiht_ops = {
-    .open = device_open,
-    .release = device_release
-    .read = device_read,
-    .write = device_write,
-    .unlocked_ioctl = device_ioctl
-};
-#endif
+static int __init libiht_init(void);
+static void __exit libiht_exit(void);
