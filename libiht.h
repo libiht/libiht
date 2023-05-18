@@ -73,6 +73,9 @@ static void disable_lbr(void *);
 static void save_lbr(void);
 static void restore_lbr(void);
 
+static void sched_in(struct preempt_notifier *, int );
+static void sched_out(struct preempt_notifier *, struct task_struct *);
+
 static int device_open(struct inode *, struct file *);
 static int device_release(struct inode *, struct file *);
 static ssize_t device_read(struct file *, char *, size_t, loff_t *);

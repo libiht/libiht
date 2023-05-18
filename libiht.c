@@ -5,6 +5,7 @@
 #include <linux/init.h>
 #include <linux/uaccess.h>
 #include <linux/fs.h>
+#include <linux/preempt.h>
 #include <linux/ioctl.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
@@ -38,6 +39,14 @@ static struct file_operations libiht_ops = {
     .write = device_write,
     .unlocked_ioctl = device_ioctl};
 #endif
+
+/*
+ * Structures for installing the context switch hooks.
+ */
+static struct preempt_notifier notifier;
+static struct preempt_ops ops = {
+    .sched_in = sched_in,
+    .sched_out = sched_out};
 
 static struct lbr_t lbr_cache;
 static spinlock_t lbr_cache_lock;
@@ -114,14 +123,14 @@ static void dump_lbr(void)
 {
     int i;
 
-    printk(KERN_ALERT "MSR_IA32_DEBUGCTLMSR: 0x%llx\n", lbr_cache.debug);
-    printk(KERN_ALERT "MSR_LBR_SELECT:       0x%llx\n", lbr_cache.select);
-    printk(KERN_ALERT "MSR_LBR_TOS:          %lld\n", lbr_cache.tos);
+    printk(KERN_INFO "MSR_IA32_DEBUGCTLMSR: 0x%llx\n", lbr_cache.debug);
+    printk(KERN_INFO "MSR_LBR_SELECT:       0x%llx\n", lbr_cache.select);
+    printk(KERN_INFO "MSR_LBR_TOS:          %lld\n", lbr_cache.tos);
 
     for (i = 0; i < LBR_ENTRIES; i++)
     {
-        printk(KERN_ALERT "MSR_LBR_NHM_FROM[%2d]: 0x%llx\n", i, lbr_cache.from[i]);
-        printk(KERN_ALERT "MSR_LBR_NHM_TO  [%2d]: 0x%llx\n", i, lbr_cache.to[i]);
+        printk(KERN_INFO "MSR_LBR_NHM_FROM[%2d]: 0x%llx\n", i, lbr_cache.from[i]);
+        printk(KERN_INFO "MSR_LBR_NHM_TO  [%2d]: 0x%llx\n", i, lbr_cache.to[i]);
     }
 }
 
@@ -134,7 +143,7 @@ static void enable_lbr(void *info)
 
     get_cpu();
 
-    printk(KERN_ALERT "Enable LBR on cpu core: %d\n", smp_processor_id());
+    printk(KERN_INFO "LIBIHT: Enable LBR on cpu core: %d\n", smp_processor_id());
 
     /* Apply the filter (what kind of branches do we want to track?) */
     wrmsrl(MSR_LBR_SELECT, LBR_SELECT);
@@ -154,7 +163,7 @@ static void disable_lbr(void *info)
 
     get_cpu();
 
-    printk(KERN_ALERT "Disable LBR on cpu core: %d\n", smp_processor_id());
+    printk(KERN_INFO "LIBIHT: Disable LBR on cpu core: %d\n", smp_processor_id());
 
     /* Apply the filter (what kind of branches do we want to track?) */
     wrmsrl(MSR_LBR_SELECT, 0);
@@ -166,10 +175,9 @@ static void disable_lbr(void *info)
 }
 
 /************************************************
- * Context switch hook functions
+ * Save and Restore the LBR state during context switches.
  *
- * Save and Restore the LBR state during context switches. Should be done as fast
- * as possiable to minimize the overhead of context switches.
+ * Should be done as fast as possiable to minimize the overhead of context switches.
  ************************************************/
 
 /*
@@ -182,6 +190,7 @@ static void save_lbr(void)
     // Only save for target process
     if (target_proc == current->pid)
     {
+        printk(KERN_INFO "Saving LBR status for pid: %d\n", target_proc);
         spin_lock_irqsave(&lbr_cache_lock, lbr_cache_flags);
         get_lbr();
         wrmsrl(MSR_IA32_DEBUGCTLMSR, 0);
@@ -199,11 +208,32 @@ static void restore_lbr(void)
     // Only restore for target process
     if (target_proc == current->pid)
     {
+        printk(KERN_INFO "Restoring LBR status for pid: %d\n", target_proc);
         spin_lock_irqsave(&lbr_cache_lock, lbr_cache_flags);
         put_lbr();
         wrmsrl(MSR_IA32_DEBUGCTLMSR, DEBUGCTLMSR_LBR);
         spin_unlock_irqrestore(&lbr_cache_lock, lbr_cache_flags);
     }
+}
+
+/************************************************
+ * Context switch hook functions
+ ************************************************/
+
+/*
+ * Entering into scheduler
+ */
+static void sched_in(struct preempt_notifier *pn, int cpu)
+{
+    save_lbr();
+}
+
+/*
+ * Exiting from scheduler
+ */
+static void sched_out(struct preempt_notifier *pn, struct task_struct *next)
+{
+    restore_lbr();
 }
 
 /************************************************
@@ -213,23 +243,29 @@ static void restore_lbr(void)
  ************************************************/
 
 /*
- * Device related functions
+ * Hooks for opening the device
  */
 static int device_open(struct inode *inode, struct file *filp)
 {
-    printk(KERN_ALERT "LIBIHT: Device opened.\n");
+    printk(KERN_INFO "LIBIHT: Device opened.\n");
     return 0;
 }
 
+/*
+ * Hooks for releasing the device
+ */
 static int device_release(struct inode *inode, struct file *filp)
 {
-    printk(KERN_ALERT "LIBIHT: Device closed.\n");
+    printk(KERN_INFO "LIBIHT: Device closed.\n");
     return 0;
 }
 
+/*
+ * Hooks for reading the device
+ */
 static ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_t *offset)
 {
-    printk(KERN_ALERT "LIBIHT: Device read.\n");
+    printk(KERN_INFO "LIBIHT: Device read.\n");
     // TODO: read / dump out lbr info based on the mode set from ioctl
     get_cpu();
     get_lbr();
@@ -239,17 +275,26 @@ static ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_
     return 0;
 }
 
+/*
+ * Hooks for writting the device
+ */
 static ssize_t device_write(struct file *filp, const char *buf, size_t len, loff_t *off)
 {
-    printk(KERN_ALERT "LIBIHT: doesn't support write.\n");
+    printk(KERN_INFO "LIBIHT: doesn't support write.\n");
     return -EINVAL;
 }
 
+/*
+ * Hooks for I/O controling the device
+ */
 static long device_ioctl(struct file *filp, unsigned int ioctl_num, unsigned long ioctl_param)
 {
-    printk(KERN_ALERT "LIBIHT: Got ioctl argument %#x!", ioctl_num);
+    printk(KERN_INFO "LIBIHT: Got ioctl argument %#x!", ioctl_num);
     // TODO: control LBR_SELECT bits
     // TDOO: control read
+
+    // TODO: move init to ioctl, assign directly to the current proc
+    preempt_notifier_register(&notifier);
     return 0;
 }
 
@@ -261,6 +306,9 @@ static int __init libiht_init(void)
 {
     printk(KERN_INFO "LIBIHT: Initialize for all %d cpus\n", num_online_cpus());
 
+    // Init hooks on context switches
+    preempt_notifier_init(&notifier, &ops);
+
     // Enable LBR on each cpu
     on_each_cpu(enable_lbr, NULL, 1);
 
@@ -268,7 +316,7 @@ static int __init libiht_init(void)
     proc_entry = proc_create("libiht-info", 0666, NULL, &libiht_ops);
     if (proc_entry == NULL)
     {
-        printk(KERN_ALERT "LIBIHT: Create proc failed\n");
+        printk(KERN_INFO "LIBIHT: Create proc failed\n");
         return -1;
     }
 
@@ -283,6 +331,9 @@ static void __exit libiht_exit(void)
 
     // Disable LBR on each cpu
     on_each_cpu(disable_lbr, NULL, 1);
+
+    // Remove hooks on context switches
+    // preempt_notifier_unregister(&notifier);
 
     printk(KERN_INFO "LIBIHT: Exiting\n");
 }
