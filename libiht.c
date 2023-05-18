@@ -51,7 +51,6 @@ static struct preempt_ops ops = {
 static struct lbr_t lbr_cache;
 static spinlock_t lbr_cache_lock;
 static struct proc_dir_entry *proc_entry;
-static pid_t target_proc;
 
 /************************************************
  * LBR helper functions
@@ -123,6 +122,9 @@ static void dump_lbr(void)
 {
     int i;
 
+    get_cpu();
+    get_lbr();
+
     printk(KERN_INFO "MSR_IA32_DEBUGCTLMSR: 0x%llx\n", lbr_cache.debug);
     printk(KERN_INFO "MSR_LBR_SELECT:       0x%llx\n", lbr_cache.select);
     printk(KERN_INFO "MSR_LBR_TOS:          %lld\n", lbr_cache.tos);
@@ -132,6 +134,10 @@ static void dump_lbr(void)
         printk(KERN_INFO "MSR_LBR_NHM_FROM[%2d]: 0x%llx\n", i, lbr_cache.from[i]);
         printk(KERN_INFO "MSR_LBR_NHM_TO  [%2d]: 0x%llx\n", i, lbr_cache.to[i]);
     }
+
+    printk(KERN_INFO "LIBIHT: LBR info for cpuid: %d\n", smp_processor_id());
+
+    put_cpu();
 }
 
 /*
@@ -146,7 +152,7 @@ static void enable_lbr(void *info)
     printk(KERN_INFO "LIBIHT: Enable LBR on cpu core: %d\n", smp_processor_id());
 
     /* Apply the filter (what kind of branches do we want to track?) */
-    wrmsrl(MSR_LBR_SELECT, LBR_SELECT);
+    wrmsrl(MSR_LBR_SELECT, lbr_cache.select);
 
     /* Flush the LBR and enable it */
     flush_lbr(true);
@@ -188,9 +194,9 @@ static void save_lbr(void)
     unsigned long lbr_cache_flags;
 
     // Only save for target process
-    if (target_proc == current->pid)
+    if (lbr_cache.task->pid == current->pid)
     {
-        printk(KERN_INFO "Saving LBR status for pid: %d\n", target_proc);
+        printk(KERN_INFO "Saving LBR status for pid: %d\n", current->pid);
         spin_lock_irqsave(&lbr_cache_lock, lbr_cache_flags);
         get_lbr();
         wrmsrl(MSR_IA32_DEBUGCTLMSR, 0);
@@ -206,9 +212,9 @@ static void restore_lbr(void)
     unsigned long lbr_cache_flags;
 
     // Only restore for target process
-    if (target_proc == current->pid)
+    if (lbr_cache.task->pid == current->pid)
     {
-        printk(KERN_INFO "Restoring LBR status for pid: %d\n", target_proc);
+        printk(KERN_INFO "Restoring LBR status for pid: %d\n", current->pid);
         spin_lock_irqsave(&lbr_cache_lock, lbr_cache_flags);
         put_lbr();
         wrmsrl(MSR_IA32_DEBUGCTLMSR, DEBUGCTLMSR_LBR);
@@ -266,12 +272,7 @@ static int device_release(struct inode *inode, struct file *filp)
 static ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_t *offset)
 {
     printk(KERN_INFO "LIBIHT: Device read.\n");
-    // TODO: read / dump out lbr info based on the mode set from ioctl
-    get_cpu();
-    get_lbr();
     dump_lbr();
-    printk(KERN_INFO "LIBIHT: LBR info for cpuid: %d\n", smp_processor_id());
-    put_cpu();
     return 0;
 }
 
@@ -287,14 +288,43 @@ static ssize_t device_write(struct file *filp, const char *buf, size_t len, loff
 /*
  * Hooks for I/O controling the device
  */
-static long device_ioctl(struct file *filp, unsigned int ioctl_num, unsigned long ioctl_param)
+static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned long ioctl_param)
 {
-    printk(KERN_INFO "LIBIHT: Got ioctl argument %#x!", ioctl_num);
-    // TODO: control LBR_SELECT bits
-    // TDOO: control read
+    printk(KERN_INFO "LIBIHT: Got ioctl argument %#x!", ioctl_cmd);
 
-    // TODO: move init to ioctl, assign directly to the current proc
-    preempt_notifier_register(&notifier);
+    switch (ioctl_cmd)
+    {
+    case LIBIHT_IOC_INIT_LBR:
+        // Initialize LBR feature, auto trace current process
+        lbr_cache.select = LBR_SELECT;
+        lbr_cache.task = current;
+
+        // Enable LBR on each cpu
+        on_each_cpu(enable_lbr, NULL, 1);
+
+        // Register preemption hooks
+        preempt_notifier_register(&notifier);
+        break;
+
+    case LIBIHT_IOC_ENABLE_LBR:
+        wrmsrl(MSR_IA32_DEBUGCTLMSR, DEBUGCTLMSR_LBR);
+        break;
+
+    case LIBIHT_IOC_DISABLE_LBR:
+        wrmsrl(MSR_IA32_DEBUGCTLMSR, 0);
+        break;
+
+    case LIBIHT_IOC_DUMP_LBR:
+        dump_lbr();
+        break;
+
+    case LIBIHT_IOC_SELECT_LBR:
+        // Update select bits
+        lbr_cache.select = ioctl_param;
+        on_each_cpu(enable_lbr, NULL, 1);
+        break;
+    }
+
     return 0;
 }
 
@@ -308,9 +338,6 @@ static int __init libiht_init(void)
 
     // Init hooks on context switches
     preempt_notifier_init(&notifier, &ops);
-
-    // Enable LBR on each cpu
-    on_each_cpu(enable_lbr, NULL, 1);
 
     // Create user interactive helper process
     proc_entry = proc_create("libiht-info", 0666, NULL, &libiht_ops);
