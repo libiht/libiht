@@ -62,7 +62,8 @@ struct lbr_t
     uint64_t tos;    // index to most recent branch entry
     uint64_t from[LBR_ENTRIES];
     uint64_t to[LBR_ENTRIES];
-    struct task_struct *task; // pointer to the task_struct this state belongs to
+    pid_t    target;
+    // struct task_struct *task; // pointer to the task_struct this state belongs to
 };
 
 /*

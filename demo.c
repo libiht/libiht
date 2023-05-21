@@ -1,6 +1,7 @@
 #define _GNU_SOURCE
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/ioctl.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -37,20 +38,27 @@ void func2()
  */
 int main(int argc, char const *argv[])
 {
-    cpu_set_t set;
 
     // Bind process to cpu 0
-    CPU_ZERO(&set);
-    CPU_SET(0, &set);
-    sched_setaffinity(getpid(), sizeof(set), &set);
+    // cpu_set_t set;
+    // CPU_ZERO(&set);
+    // CPU_SET(0, &set);
+    // sched_setaffinity(getpid(), sizeof(set), &set);
 
     fd = open("/proc/libiht-info", O_RDWR);
+
+    // Init lbr trace
+    ioctl(fd, 0x6c01, 0);
+    // sleep(2);
+
+    printf("demo's pid: %d\n", getpid());
     printf("func1's ptr: 0x%p\nfunc2's ptr: 0x%p\n", &func1, &func2);
     func1();
 
     if (fork() == 0) {
-    read(fd, buf, 1);
-    close(fd);
+        // sleep(1);
+        read(fd, buf, 1);
+        close(fd);
     }
 
     read(fd, buf, 1);

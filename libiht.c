@@ -171,7 +171,7 @@ static void disable_lbr(void *info)
 
     printk(KERN_INFO "LIBIHT: Disable LBR on cpu core: %d\n", smp_processor_id());
 
-    /* Apply the filter (what kind of branches do we want to track?) */
+    /* Remove the filter */
     wrmsrl(MSR_LBR_SELECT, 0);
 
     /* Flush the LBR and disable it */
@@ -193,15 +193,16 @@ static void save_lbr(void)
 {
     unsigned long lbr_cache_flags;
 
-    // Only save for target process
-    if (lbr_cache.task->pid == current->pid)
-    {
-        printk(KERN_INFO "Saving LBR status for pid: %d\n", current->pid);
-        spin_lock_irqsave(&lbr_cache_lock, lbr_cache_flags);
-        get_lbr();
-        wrmsrl(MSR_IA32_DEBUGCTLMSR, 0);
-        spin_unlock_irqrestore(&lbr_cache_lock, lbr_cache_flags);
-    }
+    // Save when target process being preempted
+    // if (lbr_cache.target == current->pid)
+    // {
+    printk(KERN_INFO "LIBIHT: Leave, saving LBR status for pid: %d\n", current->pid);
+    spin_lock_irqsave(&lbr_cache_lock, lbr_cache_flags);
+    get_lbr();
+    // TODO: on each cpu disable lbr
+    // wrmsrl(MSR_IA32_DEBUGCTLMSR, 0);
+    spin_unlock_irqrestore(&lbr_cache_lock, lbr_cache_flags);
+    // }
 }
 
 /*
@@ -211,13 +212,14 @@ static void restore_lbr(void)
 {
     unsigned long lbr_cache_flags;
 
-    // Only restore for target process
-    if (lbr_cache.task->pid == current->pid)
+    // Restore when target process being rescheduled
+    if (lbr_cache.target == current->pid)
     {
-        printk(KERN_INFO "Restoring LBR status for pid: %d\n", current->pid);
+        printk(KERN_INFO "LIBIHT: Enter, restoring LBR status for pid: %d\n", current->pid);
         spin_lock_irqsave(&lbr_cache_lock, lbr_cache_flags);
         put_lbr();
-        wrmsrl(MSR_IA32_DEBUGCTLMSR, DEBUGCTLMSR_LBR);
+        // TODO: on each cpu enable lbr
+        // wrmsrl(MSR_IA32_DEBUGCTLMSR, DEBUGCTLMSR_LBR);
         spin_unlock_irqrestore(&lbr_cache_lock, lbr_cache_flags);
     }
 }
@@ -231,7 +233,7 @@ static void restore_lbr(void)
  */
 static void sched_in(struct preempt_notifier *pn, int cpu)
 {
-    save_lbr();
+    restore_lbr();
 }
 
 /*
@@ -239,7 +241,7 @@ static void sched_in(struct preempt_notifier *pn, int cpu)
  */
 static void sched_out(struct preempt_notifier *pn, struct task_struct *next)
 {
-    restore_lbr();
+    save_lbr();
 }
 
 /************************************************
@@ -297,12 +299,15 @@ static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned lon
     case LIBIHT_IOC_INIT_LBR:
         // Initialize LBR feature, auto trace current process
         lbr_cache.select = LBR_SELECT;
-        lbr_cache.task = current;
+        lbr_cache.target = current->pid;
 
         // Enable LBR on each cpu
+        printk(KERN_INFO "LIBIHT: Initializing for all %d cpus\n", num_online_cpus());
         on_each_cpu(enable_lbr, NULL, 1);
 
         // Register preemption hooks
+        printk(KERN_INFO "LIBIHT: Applying preemption hook\n");
+        preempt_notifier_inc();
         preempt_notifier_register(&notifier);
         break;
 
@@ -323,6 +328,10 @@ static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned lon
         lbr_cache.select = ioctl_param;
         on_each_cpu(enable_lbr, NULL, 1);
         break;
+
+    default:
+        // Error command code
+        return -EINVAL;
     }
 
     return 0;
@@ -334,7 +343,7 @@ static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned lon
 
 static int __init libiht_init(void)
 {
-    printk(KERN_INFO "LIBIHT: Initialize for all %d cpus\n", num_online_cpus());
+    printk(KERN_INFO "LIBIHT: Initializing\n");
 
     // Init hooks on context switches
     preempt_notifier_init(&notifier, &ops);
