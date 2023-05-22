@@ -199,8 +199,6 @@ static void save_lbr(void)
     printk(KERN_INFO "LIBIHT: Leave, saving LBR status for pid: %d\n", current->pid);
     spin_lock_irqsave(&lbr_cache_lock, lbr_cache_flags);
     get_lbr();
-    // TODO: on each cpu disable lbr
-    // wrmsrl(MSR_IA32_DEBUGCTLMSR, 0);
     spin_unlock_irqrestore(&lbr_cache_lock, lbr_cache_flags);
     // }
 }
@@ -218,8 +216,6 @@ static void restore_lbr(void)
         printk(KERN_INFO "LIBIHT: Enter, restoring LBR status for pid: %d\n", current->pid);
         spin_lock_irqsave(&lbr_cache_lock, lbr_cache_flags);
         put_lbr();
-        // TODO: on each cpu enable lbr
-        // wrmsrl(MSR_IA32_DEBUGCTLMSR, DEBUGCTLMSR_LBR);
         spin_unlock_irqrestore(&lbr_cache_lock, lbr_cache_flags);
     }
 }
