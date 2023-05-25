@@ -68,7 +68,7 @@ static void flush_lbr(bool enable)
     int i;
 
     wrmsrl(MSR_LBR_TOS, 0);
-    for (i = 0; i < LBR_ENTRIES; i++)
+    for (i = 0; i < lbr_cache.entries; i++)
     {
         wrmsrl(MSR_LBR_NHM_FROM + i, 0);
         wrmsrl(MSR_LBR_NHM_TO + i, 0);
@@ -91,7 +91,7 @@ static void get_lbr(void)
     rdmsrl(MSR_LBR_SELECT, lbr_cache.select);
     rdmsrl(MSR_LBR_TOS, lbr_cache.tos);
 
-    for (i = 0; i < LBR_ENTRIES; i++)
+    for (i = 0; i < lbr_cache.entries; i++)
     {
         rdmsrl(MSR_LBR_NHM_FROM + i, lbr_cache.from[i]);
         rdmsrl(MSR_LBR_NHM_TO + i, lbr_cache.to[i]);
@@ -109,7 +109,7 @@ static void put_lbr(void)
     wrmsrl(MSR_LBR_SELECT, lbr_cache.select);
     wrmsrl(MSR_LBR_TOS, lbr_cache.tos);
 
-    for (i = 0; i < LBR_ENTRIES; i++)
+    for (i = 0; i < lbr_cache.entries; i++)
     {
         wrmsrl(MSR_LBR_NHM_FROM + i, lbr_cache.from[i]);
         wrmsrl(MSR_LBR_NHM_TO + i, lbr_cache.to[i]);
@@ -130,7 +130,7 @@ static void dump_lbr(void)
     printk(KERN_INFO "MSR_LBR_SELECT:       0x%llx\n", lbr_cache.select);
     printk(KERN_INFO "MSR_LBR_TOS:          %lld\n", lbr_cache.tos);
 
-    for (i = 0; i < LBR_ENTRIES; i++)
+    for (i = 0; i < lbr_cache.entries; i++)
     {
         printk(KERN_INFO "MSR_LBR_NHM_FROM[%2d]: 0x%llx\n", i, lbr_cache.from[i]);
         printk(KERN_INFO "MSR_LBR_NHM_TO  [%2d]: 0x%llx\n", i, lbr_cache.to[i]);
