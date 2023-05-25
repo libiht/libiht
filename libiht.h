@@ -60,6 +60,7 @@ struct lbr_t
     uint64_t debug;  // contents of IA32_DEBUGCTL MSR
     uint64_t select; // contents of LBR_SELECT
     uint64_t tos;    // index to most recent branch entry
+    uint64_t entries;// total number of lbr entries
     uint64_t from[LBR_ENTRIES];
     uint64_t to[LBR_ENTRIES];
     pid_t    target;

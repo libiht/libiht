@@ -10,6 +10,7 @@
 #include <linux/slab.h>
 #include <linux/delay.h>
 #include <asm/msr.h>
+#include <asm/processor.h>
 
 #include "libiht.h"
 
@@ -337,9 +338,123 @@ static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned lon
  * Kernel module functions
  ************************************************/
 
+static int identify_cpu(void)
+{
+    unsigned int info;
+    unsigned int ext_model;
+    unsigned int model;
+    unsigned int family;
+    register unsigned int eax asm("eax");
+
+    asm(
+        "push %rbx;"
+        "push %rcx;"
+        "push %rdx;"
+        "movl $1, %eax;"
+        "cpuid;"
+        "pop %rdx;"
+        "pop %rcx;"
+        "pop %rbx;");
+
+    info = eax;
+    family = (info >> 8) & 0xf;
+
+    // Identify CPU family
+    if (family != 6)
+        return -1;
+
+    model = (info >> 4) & 0xf;
+    ext_model = (info >> 16) & 0xf;
+    model = (ext_model << 4) + model;
+
+    // Identify CPU modle
+    switch (model)
+    {
+    case 0x5c:
+    case 0x5f:
+    case 0x4e:
+    case 0x5e:
+    case 0x8e:
+    case 0x9e:
+    case 0x55:
+    case 0x66:
+    case 0x7a:
+    case 0x67:
+    case 0x6a:
+    case 0x6c:
+    case 0x7d:
+    case 0x7e:
+    case 0x8c:
+    case 0x8d:
+    case 0xa5:
+    case 0xa6:
+    case 0xa7:
+    case 0xa8:
+    case 0x86:
+    case 0x8a:
+    case 0x96:
+    case 0x9c:
+        lbr_cache.entries = 32;
+        break;
+
+    case 0x3d:
+    case 0x47:
+    case 0x4f:
+    case 0x56:
+    case 0x3c:
+    case 0x45:
+    case 0x46:
+    case 0x3f:
+    case 0x2a:
+    case 0x2d:
+    case 0x3a:
+    case 0x3e:
+    case 0x1a:
+    case 0x1e:
+    case 0x1f:
+    case 0x2e:
+    case 0x25:
+    case 0x2c:
+    case 0x2f:
+        lbr_cache.entries = 16;
+        break;
+
+    case 0x17:
+    case 0x1d:
+    case 0x0f:
+        lbr_cache.entries = 4;
+        break;
+
+    case 0x37:
+    case 0x4a:
+    case 0x4c:
+    case 0x4d:
+    case 0x5a:
+    case 0x5d:
+    case 0x1c:
+    case 0x26:
+    case 0x27:
+    case 0x35:
+    case 0x36:
+        lbr_cache.entries = 8;
+        break;
+
+    default:
+        // Error model number
+        return -1;
+    }
+
+    printk(KERN_INFO "LIBIHT: DisplayFamily_DisplayModel - %x_%xH\n", family, model);
+
+    return 0;
+}
+
 static int __init libiht_init(void)
 {
     printk(KERN_INFO "LIBIHT: Initializing\n");
+
+    if (identify_cpu() < 0)
+        return -1;
 
     // Init hooks on context switches
     preempt_notifier_init(&notifier, &ops);
