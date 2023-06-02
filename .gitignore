@@ -8,6 +8,7 @@
 *.symvers
 *.order
 
+# Some debugging file
 *.asm
 *.swp
 *.~

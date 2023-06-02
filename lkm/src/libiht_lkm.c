@@ -12,11 +12,11 @@
 #include <asm/msr.h>
 #include <asm/processor.h>
 
-#include "libiht.h"
+#include "../include/libiht_lkm.h"
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Thomason Zhao");
-MODULE_DESCRIPTION("Intel Hardware Trace Library");
+MODULE_DESCRIPTION("Intel Hardware Trace Library - Linux Kernel Module");
 
 /************************************************
  * Global variables
@@ -136,7 +136,7 @@ static void dump_lbr(void)
         printk(KERN_INFO "MSR_LBR_NHM_TO  [%2d]: 0x%llx\n", i, lbr_cache.to[i]);
     }
 
-    printk(KERN_INFO "LIBIHT: LBR info for cpuid: %d\n", smp_processor_id());
+    printk(KERN_INFO "LIBIHT-LKM: LBR info for cpuid: %d\n", smp_processor_id());
 
     put_cpu();
 }
@@ -150,7 +150,7 @@ static void enable_lbr(void *info)
 
     get_cpu();
 
-    printk(KERN_INFO "LIBIHT: Enable LBR on cpu core: %d\n", smp_processor_id());
+    printk(KERN_INFO "LIBIHT-LKM: Enable LBR on cpu core: %d\n", smp_processor_id());
 
     /* Apply the filter (what kind of branches do we want to track?) */
     wrmsrl(MSR_LBR_SELECT, lbr_cache.select);
@@ -170,7 +170,7 @@ static void disable_lbr(void *info)
 
     get_cpu();
 
-    printk(KERN_INFO "LIBIHT: Disable LBR on cpu core: %d\n", smp_processor_id());
+    printk(KERN_INFO "LIBIHT-LKM: Disable LBR on cpu core: %d\n", smp_processor_id());
 
     /* Remove the filter */
     wrmsrl(MSR_LBR_SELECT, 0);
@@ -197,7 +197,7 @@ static void save_lbr(void)
     // Save when target process being preempted
     // if (lbr_cache.target == current->pid)
     // {
-    printk(KERN_INFO "LIBIHT: Leave, saving LBR status for pid: %d\n", current->pid);
+    printk(KERN_INFO "LIBIHT-LKM: Leave, saving LBR status for pid: %d\n", current->pid);
     spin_lock_irqsave(&lbr_cache_lock, lbr_cache_flags);
     get_lbr();
     spin_unlock_irqrestore(&lbr_cache_lock, lbr_cache_flags);
@@ -214,7 +214,7 @@ static void restore_lbr(void)
     // Restore when target process being rescheduled
     if (lbr_cache.target == current->pid)
     {
-        printk(KERN_INFO "LIBIHT: Enter, restoring LBR status for pid: %d\n", current->pid);
+        printk(KERN_INFO "LIBIHT-LKM: Enter, restoring LBR status for pid: %d\n", current->pid);
         spin_lock_irqsave(&lbr_cache_lock, lbr_cache_flags);
         put_lbr();
         spin_unlock_irqrestore(&lbr_cache_lock, lbr_cache_flags);
@@ -252,7 +252,7 @@ static void sched_out(struct preempt_notifier *pn, struct task_struct *next)
  */
 static int device_open(struct inode *inode, struct file *filp)
 {
-    printk(KERN_INFO "LIBIHT: Device opened.\n");
+    printk(KERN_INFO "LIBIHT-LKM: Device opened.\n");
     return 0;
 }
 
@@ -261,7 +261,7 @@ static int device_open(struct inode *inode, struct file *filp)
  */
 static int device_release(struct inode *inode, struct file *filp)
 {
-    printk(KERN_INFO "LIBIHT: Device closed.\n");
+    printk(KERN_INFO "LIBIHT-LKM: Device closed.\n");
     return 0;
 }
 
@@ -270,7 +270,7 @@ static int device_release(struct inode *inode, struct file *filp)
  */
 static ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_t *offset)
 {
-    printk(KERN_INFO "LIBIHT: Device read.\n");
+    printk(KERN_INFO "LIBIHT-LKM: Device read.\n");
     dump_lbr();
     return 0;
 }
@@ -280,7 +280,7 @@ static ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_
  */
 static ssize_t device_write(struct file *filp, const char *buf, size_t len, loff_t *off)
 {
-    printk(KERN_INFO "LIBIHT: doesn't support write.\n");
+    printk(KERN_INFO "LIBIHT-LKM: doesn't support write.\n");
     return -EINVAL;
 }
 
@@ -289,7 +289,7 @@ static ssize_t device_write(struct file *filp, const char *buf, size_t len, loff
  */
 static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned long ioctl_param)
 {
-    printk(KERN_INFO "LIBIHT: Got ioctl argument %#x!", ioctl_cmd);
+    printk(KERN_INFO "LIBIHT-LKM: Got ioctl argument %#x!", ioctl_cmd);
 
     switch (ioctl_cmd)
     {
@@ -299,11 +299,11 @@ static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned lon
         lbr_cache.target = current->pid;
 
         // Enable LBR on each cpu
-        printk(KERN_INFO "LIBIHT: Initializing for all %d cpus\n", num_online_cpus());
+        printk(KERN_INFO "LIBIHT-LKM: Initializing for all %d cpus\n", num_online_cpus());
         on_each_cpu(enable_lbr, NULL, 1);
 
         // Register preemption hooks
-        printk(KERN_INFO "LIBIHT: Applying preemption hook\n");
+        printk(KERN_INFO "LIBIHT-LKM: Applying preemption hook\n");
         preempt_notifier_inc();
         preempt_notifier_register(&notifier);
         break;
@@ -444,14 +444,14 @@ static int identify_cpu(void)
         return -1;
     }
 
-    printk(KERN_INFO "LIBIHT: DisplayFamily_DisplayModel - %x_%xH\n", family, model);
+    printk(KERN_INFO "LIBIHT-LKM: DisplayFamily_DisplayModel - %x_%xH\n", family, model);
 
     return 0;
 }
 
 static int __init libiht_init(void)
 {
-    printk(KERN_INFO "LIBIHT: Initializing\n");
+    printk(KERN_INFO "LIBIHT-LKM: Initializing\n");
 
     if (identify_cpu() < 0)
         return -1;
@@ -463,11 +463,11 @@ static int __init libiht_init(void)
     proc_entry = proc_create("libiht-info", 0666, NULL, &libiht_ops);
     if (proc_entry == NULL)
     {
-        printk(KERN_INFO "LIBIHT: Create proc failed\n");
+        printk(KERN_INFO "LIBIHT-LKM: Create proc failed\n");
         return -1;
     }
 
-    printk(KERN_INFO "LIBIHT: Initialization complete\n");
+    printk(KERN_INFO "LIBIHT-LKM: Initialization complete\n");
     return 0;
 }
 
@@ -482,7 +482,7 @@ static void __exit libiht_exit(void)
     // Remove hooks on context switches
     // preempt_notifier_unregister(&notifier);
 
-    printk(KERN_INFO "LIBIHT: Exiting\n");
+    printk(KERN_INFO "LIBIHT-LKM: Exiting\n");
 }
 
 module_init(libiht_init);
