@@ -124,7 +124,8 @@ static void dump_lbr(void)
     int i;
 
     get_cpu();
-    get_lbr();
+    if (lbr_cache.target == current->pid)
+        get_lbr();
 
     printk(KERN_INFO "MSR_IA32_DEBUGCTLMSR: 0x%llx\n", lbr_cache.debug);
     printk(KERN_INFO "MSR_LBR_SELECT:       0x%llx\n", lbr_cache.select);
@@ -195,13 +196,10 @@ static void save_lbr(void)
     unsigned long lbr_cache_flags;
 
     // Save when target process being preempted
-    // if (lbr_cache.target == current->pid)
-    // {
     printk(KERN_INFO "LIBIHT-LKM: Leave, saving LBR status for pid: %d\n", current->pid);
     spin_lock_irqsave(&lbr_cache_lock, lbr_cache_flags);
     get_lbr();
     spin_unlock_irqrestore(&lbr_cache_lock, lbr_cache_flags);
-    // }
 }
 
 /*
