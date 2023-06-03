@@ -11,13 +11,6 @@
 #endif
 
 /*
- * The CPU hard-coded LBR stack capacity / entries
- *
- * PS: might need change to variable to make it CPU dependent
- */
-#define LBR_ENTRIES 32
-
-/*
  * Total number of lbr trace records this kernel module maintains
  *
  * PS: might need change to variable for ioctl
@@ -57,14 +50,11 @@
  */
 struct lbr_t
 {
-    uint64_t debug;  // contents of IA32_DEBUGCTL MSR
-    uint64_t select; // contents of LBR_SELECT
-    uint64_t tos;    // index to most recent branch entry
-    uint64_t entries;// total number of lbr entries
-    uint64_t from[LBR_ENTRIES];
-    uint64_t to[LBR_ENTRIES];
+    uint64_t lbr_ctl;  // contents of IA32_DEBUGCTL MSR
+    uint64_t lbr_select; // contents of LBR_SELECT
+    uint64_t lbr_tos;    // index to most recent branch entry
     pid_t    target;
-    // struct task_struct *task; // pointer to the task_struct this state belongs to
+    struct lbr_entry entries[];
 };
 
 /*
@@ -96,5 +86,5 @@ static ssize_t device_read(struct file *, char *, size_t, loff_t *);
 static ssize_t device_write(struct file *, const char *, size_t, loff_t *);
 static long device_ioctl(struct file *, unsigned int, unsigned long);
 
-static int __init libiht_init(void);
-static void __exit libiht_exit(void);
+static int __init libiht_lkm_init(void);
+static void __exit libiht_lkm_exit(void);

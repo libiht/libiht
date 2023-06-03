@@ -50,6 +50,7 @@ static struct preempt_ops ops = {
     .sched_out = sched_out};
 
 static struct lbr_t lbr_cache;
+uint64_t lbr_capacity;
 static spinlock_t lbr_cache_lock;
 static struct proc_dir_entry *proc_entry;
 
@@ -68,7 +69,7 @@ static void flush_lbr(bool enable)
     int i;
 
     wrmsrl(MSR_LBR_TOS, 0);
-    for (i = 0; i < lbr_cache.entries; i++)
+    for (i = 0; i < lbr_capacity; i++)
     {
         wrmsrl(MSR_LBR_NHM_FROM + i, 0);
         wrmsrl(MSR_LBR_NHM_TO + i, 0);
@@ -87,14 +88,14 @@ static void get_lbr(void)
 {
     int i;
 
-    rdmsrl(MSR_IA32_DEBUGCTLMSR, lbr_cache.debug);
-    rdmsrl(MSR_LBR_SELECT, lbr_cache.select);
-    rdmsrl(MSR_LBR_TOS, lbr_cache.tos);
+    rdmsrl(MSR_IA32_DEBUGCTLMSR, lbr_cache.lbr_ctl);
+    rdmsrl(MSR_LBR_SELECT, lbr_cache.lbr_select);
+    rdmsrl(MSR_LBR_TOS, lbr_cache.lbr_tos);
 
-    for (i = 0; i < lbr_cache.entries; i++)
+    for (i = 0; i < lbr_capacity; i++)
     {
-        rdmsrl(MSR_LBR_NHM_FROM + i, lbr_cache.from[i]);
-        rdmsrl(MSR_LBR_NHM_TO + i, lbr_cache.to[i]);
+        rdmsrl(MSR_LBR_NHM_FROM + i, lbr_cache.entries[i].from);
+        rdmsrl(MSR_LBR_NHM_TO + i, lbr_cache.entries[i].to);
     }
 }
 
@@ -105,14 +106,14 @@ static void put_lbr(void)
 {
     int i;
 
-    wrmsrl(MSR_IA32_DEBUGCTLMSR, lbr_cache.debug);
-    wrmsrl(MSR_LBR_SELECT, lbr_cache.select);
-    wrmsrl(MSR_LBR_TOS, lbr_cache.tos);
+    wrmsrl(MSR_IA32_DEBUGCTLMSR, lbr_cache.lbr_ctl);
+    wrmsrl(MSR_LBR_SELECT, lbr_cache.lbr_select);
+    wrmsrl(MSR_LBR_TOS, lbr_cache.lbr_tos);
 
-    for (i = 0; i < lbr_cache.entries; i++)
+    for (i = 0; i < lbr_capacity; i++)
     {
-        wrmsrl(MSR_LBR_NHM_FROM + i, lbr_cache.from[i]);
-        wrmsrl(MSR_LBR_NHM_TO + i, lbr_cache.to[i]);
+        wrmsrl(MSR_LBR_NHM_FROM + i, lbr_cache.entries[i].from);
+        wrmsrl(MSR_LBR_NHM_TO + i, lbr_cache.entries[i].to);
     }
 }
 
@@ -127,14 +128,14 @@ static void dump_lbr(void)
     if (lbr_cache.target == current->pid)
         get_lbr();
 
-    printk(KERN_INFO "MSR_IA32_DEBUGCTLMSR: 0x%llx\n", lbr_cache.debug);
-    printk(KERN_INFO "MSR_LBR_SELECT:       0x%llx\n", lbr_cache.select);
-    printk(KERN_INFO "MSR_LBR_TOS:          %lld\n", lbr_cache.tos);
+    printk(KERN_INFO "MSR_IA32_DEBUGCTLMSR: 0x%llx\n", lbr_cache.lbr_ctl);
+    printk(KERN_INFO "MSR_LBR_SELECT:       0x%llx\n", lbr_cache.lbr_select);
+    printk(KERN_INFO "MSR_LBR_TOS:          %lld\n", lbr_cache.lbr_tos);
 
-    for (i = 0; i < lbr_cache.entries; i++)
+    for (i = 0; i < lbr_capacity; i++)
     {
-        printk(KERN_INFO "MSR_LBR_NHM_FROM[%2d]: 0x%llx\n", i, lbr_cache.from[i]);
-        printk(KERN_INFO "MSR_LBR_NHM_TO  [%2d]: 0x%llx\n", i, lbr_cache.to[i]);
+        printk(KERN_INFO "MSR_LBR_NHM_FROM[%2d]: 0x%llx\n", i, lbr_cache.entries[i].from);
+        printk(KERN_INFO "MSR_LBR_NHM_TO  [%2d]: 0x%llx\n", i, lbr_cache.entries[i].to);
     }
 
     printk(KERN_INFO "LIBIHT-LKM: LBR info for cpuid: %d\n", smp_processor_id());
@@ -154,7 +155,7 @@ static void enable_lbr(void *info)
     printk(KERN_INFO "LIBIHT-LKM: Enable LBR on cpu core: %d\n", smp_processor_id());
 
     /* Apply the filter (what kind of branches do we want to track?) */
-    wrmsrl(MSR_LBR_SELECT, lbr_cache.select);
+    wrmsrl(MSR_LBR_SELECT, lbr_cache.lbr_select);
 
     /* Flush the LBR and enable it */
     flush_lbr(true);
@@ -293,7 +294,7 @@ static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned lon
     {
     case LIBIHT_IOC_INIT_LBR:
         // Initialize LBR feature, auto trace current process
-        lbr_cache.select = LBR_SELECT;
+        lbr_cache.lbr_select = LBR_SELECT;
         lbr_cache.target = current->pid;
 
         // Enable LBR on each cpu
@@ -320,7 +321,7 @@ static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned lon
 
     case LIBIHT_IOC_SELECT_LBR:
         // Update select bits
-        lbr_cache.select = ioctl_param;
+        lbr_cache.lbr_select = ioctl_param;
         on_each_cpu(enable_lbr, NULL, 1);
         break;
 
@@ -392,7 +393,7 @@ static int identify_cpu(void)
     case 0x8a:
     case 0x96:
     case 0x9c:
-        lbr_cache.entries = 32;
+        lbr_capacity = 32;
         break;
 
     case 0x3d:
@@ -414,13 +415,13 @@ static int identify_cpu(void)
     case 0x25:
     case 0x2c:
     case 0x2f:
-        lbr_cache.entries = 16;
+        lbr_capacity = 16;
         break;
 
     case 0x17:
     case 0x1d:
     case 0x0f:
-        lbr_cache.entries = 4;
+        lbr_capacity = 4;
         break;
 
     case 0x37:
@@ -434,7 +435,7 @@ static int identify_cpu(void)
     case 0x27:
     case 0x35:
     case 0x36:
-        lbr_cache.entries = 8;
+        lbr_capacity = 8;
         break;
 
     default:
@@ -447,17 +448,23 @@ static int identify_cpu(void)
     return 0;
 }
 
-static int __init libiht_init(void)
+static int __init libiht_lkm_init(void)
 {
-    printk(KERN_INFO "LIBIHT-LKM: Initializing\n");
+    printk(KERN_INFO "LIBIHT-LKM: Initializing...\n");
 
+    printk(KERN_INFO "LIBIHT-LKM: Identifying CPU for LBR availability...\n");
     if (identify_cpu() < 0)
+    {
+        printk(KERN_INFO "LIBIHT-LKM: Identify CPU failed\n");
         return -1;
+    }
 
     // Init hooks on context switches
+    printk(KERN_INFO "LIBIHT-LKM: Installing context switch hooks...\n");
     preempt_notifier_init(&notifier, &ops);
 
     // Create user interactive helper process
+    printk(KERN_INFO "LIBIHT-LKM: Creating helper process...\n");
     proc_entry = proc_create("libiht-info", 0666, NULL, &libiht_ops);
     if (proc_entry == NULL)
     {
@@ -469,7 +476,7 @@ static int __init libiht_init(void)
     return 0;
 }
 
-static void __exit libiht_exit(void)
+static void __exit libiht_lkm_exit(void)
 {
     if (proc_entry)
         proc_remove(proc_entry);
@@ -483,5 +490,5 @@ static void __exit libiht_exit(void)
     printk(KERN_INFO "LIBIHT-LKM: Exiting\n");
 }
 
-module_init(libiht_init);
-module_exit(libiht_exit);
+module_init(libiht_lkm_init);
+module_exit(libiht_lkm_exit);
