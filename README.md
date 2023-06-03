@@ -1,6 +1,6 @@
-# LIBIHT (Library of Intel Hardware Trace)
+# LIBIHT (Intel Hardware Trace Library)
 
-LIBIHT (Library of Intel Hardware Trace) is a library that provides userspace and kernel components for accessing and utilizing Intel hardware trace capabilities. It allows you to extract and analyze Last Branch Record (LBR) stack information from Intel processors.
+LIBIHT (Intel Hardware Trace Library) is a library that provides userspace and kernel components for accessing and utilizing Intel hardware trace capabilities. It allows you to extract and analyze Last Branch Record (LBR) stack information from Intel processors.
 
 ## Features
 
