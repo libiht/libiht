@@ -8,11 +8,11 @@ clean:
 	@$(MAKE) -C lib clean
 	@$(MAKE) -C lkm clean
 
-insert: all
-	sudo insmod lkm/src/libiht.ko
+insert:
+	@$(MAKE) -C lkm insert
 
 remove:
-	sudo rmmod libiht
+	@$(MAKE) -C lkm remove
 
 mesg:
 	sudo dmesg -wH

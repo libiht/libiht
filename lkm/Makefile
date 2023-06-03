@@ -7,6 +7,12 @@ all:
 clean:
 	make -C /lib/modules/$(KVERSION)/build M=$(PWD) clean
 
+insert: all
+	sudo insmod src/libiht_lkm.ko
+
+remove:
+	sudo rmmod libiht_lkm
+
 # For test use
 dump:
 	objdump -M intel -d src/libiht_lkm.ko > libiht_lkm.asm
