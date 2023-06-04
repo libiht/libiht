@@ -2,6 +2,7 @@
 #include <linux/proc_fs.h>
 #include <linux/sched.h>
 #include <linux/ioctl.h>
+#include <asm/fpu/types.h>
 
 /*
  * Check Linux kernel version.
@@ -48,12 +49,13 @@
 /*
  * The struct to represent one lbr trace record
  */
-struct lbr_t
+struct lbr_state
 {
-    uint64_t lbr_ctl;  // contents of IA32_DEBUGCTL MSR
     uint64_t lbr_select; // contents of LBR_SELECT
-    uint64_t lbr_tos;    // index to most recent branch entry
-    pid_t    target;
+    uint64_t lbr_tos;    // index to top of the stack (most recent entry)
+    pid_t pid;           // target lbr trace process pid
+    struct lbr_state *prev;
+    struct lbr_state *next;
     struct lbr_entry entries[];
 };
 
@@ -62,7 +64,7 @@ struct lbr_t
  *
  * PS: might need change to variable for ioctl
  */
-// struct lbr_t lbr_cache[LBR_CACHE_SIZE];
+// struct lbr_state lbr_state_list[LBR_CACHE_SIZE];
 
 /*
  * Static function prototypes
