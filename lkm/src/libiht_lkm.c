@@ -99,11 +99,13 @@ static void flush_lbr(bool enable)
 /*
  * Store the LBR registers to kernel maintained datastructure
  */
-static void get_lbr(void)
+static void get_lbr(pid_t pid)
 {
     int i;
     // TODO: Fix source of pid
-    struct lbr_state *state = find_lbr_state(1337);
+    struct lbr_state *state = find_lbr_state(pid);
+    if (state == NULL)
+        return;
 
     // rdmsrl(MSR_IA32_DEBUGCTLMSR, state.lbr_ctl);
     rdmsrl(MSR_LBR_SELECT, state->lbr_select);
@@ -119,11 +121,13 @@ static void get_lbr(void)
 /*
  * Write the LBR registers from kernel maintained datastructure
  */
-static void put_lbr(void)
+static void put_lbr(pid_t pid)
 {
     int i;
     // TODO: Fix source of pid
-    struct lbr_state *state = find_lbr_state(1337);
+    struct lbr_state *state = find_lbr_state(pid);
+    if (state == NULL)
+        return;
 
     wrmsrl(MSR_LBR_SELECT, state->lbr_select);
     wrmsrl(MSR_LBR_TOS, state->lbr_tos);
@@ -138,15 +142,17 @@ static void put_lbr(void)
 /*
  * Dump out the LBR registers to kernel message
  */
-static void dump_lbr(void)
+static void dump_lbr(pid_t pid)
 {
     int i;
     struct lbr_state *state;
 
     get_cpu();
     // TODO: Fix the logic bug here.
-    if ((state = find_lbr_state(current->pid)) != NULL)
-        get_lbr();
+    if ((state = find_lbr_state(current->pid)) == NULL)
+        return;
+    
+    get_lbr(pid);
 
     printk(KERN_INFO "MSR_LBR_SELECT:       0x%llx\n", state->lbr_select);
     printk(KERN_INFO "MSR_LBR_TOS:          %lld\n", state->lbr_tos);
@@ -262,7 +268,7 @@ static void save_lbr(void)
     // Save when target process being preempted
     printk(KERN_INFO "LIBIHT-LKM: Leave, saving LBR status for pid: %d\n", current->pid);
     spin_lock_irqsave(&lbr_cache_lock, lbr_cache_flags);
-    get_lbr();
+    get_lbr(current->pid);
     spin_unlock_irqrestore(&lbr_cache_lock, lbr_cache_flags);
 }
 
@@ -279,7 +285,7 @@ static void restore_lbr(void)
     {
         printk(KERN_INFO "LIBIHT-LKM: Enter, restoring LBR status for pid: %d\n", current->pid);
         spin_lock_irqsave(&lbr_cache_lock, lbr_cache_flags);
-        put_lbr();
+        put_lbr(current->pid);
         spin_unlock_irqrestore(&lbr_cache_lock, lbr_cache_flags);
     }
 }
@@ -334,7 +340,8 @@ static int device_release(struct inode *inode, struct file *filp)
 static ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_t *offset)
 {
     printk(KERN_INFO "LIBIHT-LKM: Device read.\n");
-    dump_lbr();
+    // TODO: Need to fix logical bug
+    dump_lbr(current->pid);
     return 0;
 }
 
@@ -389,7 +396,8 @@ static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned lon
         break;
 
     case LIBIHT_IOC_DUMP_LBR:
-        dump_lbr();
+        // TODO: Need to fix logical bug
+        dump_lbr(current->pid);
         break;
 
     case LIBIHT_IOC_SELECT_LBR:

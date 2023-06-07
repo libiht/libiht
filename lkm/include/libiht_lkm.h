@@ -79,9 +79,9 @@ struct cpu_to_lbr {
  * Static function prototypes
  */
 static void flush_lbr(bool);
-static void get_lbr(void);
-static void put_lbr(void);
-static void dump_lbr(void);
+static void get_lbr(pid_t);
+static void put_lbr(pid_t);
+static void dump_lbr(pid_t);
 static void enable_lbr(void *);
 static void disable_lbr(void *);
 
