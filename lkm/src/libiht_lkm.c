@@ -21,6 +21,22 @@ MODULE_DESCRIPTION("Intel Hardware Trace Library - Linux Kernel Module");
 /************************************************
  * Global variables
  ************************************************/
+/*
+ * Constant CPU - LBR map, if the model not listed, it does not
+ * support the LBR feature.
+ */
+static const struct cpu_to_lbr cpu_lbr_maps[] = {
+    {0x5c, 32}, {0x5f, 32}, {0x4e, 32}, {0x5e, 32}, {0x8e, 32}, {0x9e, 32},
+    {0x55, 32}, {0x66, 32}, {0x7a, 32}, {0x67, 32}, {0x6a, 32}, {0x6c, 32},
+    {0x7d, 32}, {0x7e, 32}, {0x8c, 32}, {0x8d, 32}, {0xa5, 32}, {0xa6, 32},
+    {0xa7, 32}, {0xa8, 32}, {0x86, 32}, {0x8a, 32}, {0x96, 32}, {0x9c, 32},
+    {0x3d, 16}, {0x47, 16}, {0x4f, 16}, {0x56, 16}, {0x3c, 16}, {0x45, 16},
+    {0x46, 16}, {0x3f, 16}, {0x2a, 16}, {0x2d, 16}, {0x3a, 16}, {0x3e, 16},
+    {0x1a, 16}, {0x1e, 16}, {0x1f, 16}, {0x2e, 16}, {0x25, 16}, {0x2c, 16},
+    {0x2f, 16}, {0x17, 4},  {0x1d, 4},  {0x0f, 4},  {0x37, 8},  {0x4a, 8},
+    {0x4c, 8},  {0x4d, 8},  {0x5a, 8},  {0x5d, 8},  {0x1c, 8},  {0x26, 8},
+    {0x27, 8},  {0x35, 8},  {0x36, 8}
+};
 
 /*
  * Due to differnt kernel version, determine which struct going to use
@@ -86,15 +102,17 @@ static void flush_lbr(bool enable)
 static void get_lbr(void)
 {
     int i;
+    // TODO: Fix source of pid
+    struct lbr_state *state = find_lbr_state(1337);
 
-    rdmsrl(MSR_IA32_DEBUGCTLMSR, lbr_state_list.lbr_ctl);
-    rdmsrl(MSR_LBR_SELECT, lbr_state_list.lbr_select);
-    rdmsrl(MSR_LBR_TOS, lbr_state_list.lbr_tos);
+    // rdmsrl(MSR_IA32_DEBUGCTLMSR, state.lbr_ctl);
+    rdmsrl(MSR_LBR_SELECT, state->lbr_select);
+    rdmsrl(MSR_LBR_TOS, state->lbr_tos);
 
     for (i = 0; i < lbr_capacity; i++)
     {
-        rdmsrl(MSR_LBR_NHM_FROM + i, lbr_state_list.entries[i].from);
-        rdmsrl(MSR_LBR_NHM_TO + i, lbr_state_list.entries[i].to);
+        rdmsrl(MSR_LBR_NHM_FROM + i, state->entries[i].from);
+        rdmsrl(MSR_LBR_NHM_TO + i, state->entries[i].to);
     }
 }
 
@@ -104,15 +122,16 @@ static void get_lbr(void)
 static void put_lbr(void)
 {
     int i;
+    // TODO: Fix source of pid
+    struct lbr_state *state = find_lbr_state(1337);
 
-    wrmsrl(MSR_IA32_DEBUGCTLMSR, lbr_state_list.lbr_ctl);
-    wrmsrl(MSR_LBR_SELECT, lbr_state_list.lbr_select);
-    wrmsrl(MSR_LBR_TOS, lbr_state_list.lbr_tos);
+    wrmsrl(MSR_LBR_SELECT, state->lbr_select);
+    wrmsrl(MSR_LBR_TOS, state->lbr_tos);
 
     for (i = 0; i < lbr_capacity; i++)
     {
-        wrmsrl(MSR_LBR_NHM_FROM + i, lbr_state_list.entries[i].from);
-        wrmsrl(MSR_LBR_NHM_TO + i, lbr_state_list.entries[i].to);
+        wrmsrl(MSR_LBR_NHM_FROM + i, state->entries[i].from);
+        wrmsrl(MSR_LBR_NHM_TO + i, state->entries[i].to);
     }
 }
 
@@ -122,19 +141,20 @@ static void put_lbr(void)
 static void dump_lbr(void)
 {
     int i;
+    struct lbr_state *state;
 
     get_cpu();
-    if (lbr_state_list.pid == current->pid)
+    // TODO: Fix the logic bug here.
+    if ((state = find_lbr_state(current->pid)) != NULL)
         get_lbr();
 
-    printk(KERN_INFO "MSR_IA32_DEBUGCTLMSR: 0x%llx\n", lbr_state_list.lbr_ctl);
-    printk(KERN_INFO "MSR_LBR_SELECT:       0x%llx\n", lbr_state_list.lbr_select);
-    printk(KERN_INFO "MSR_LBR_TOS:          %lld\n", lbr_state_list.lbr_tos);
+    printk(KERN_INFO "MSR_LBR_SELECT:       0x%llx\n", state->lbr_select);
+    printk(KERN_INFO "MSR_LBR_TOS:          %lld\n", state->lbr_tos);
 
     for (i = 0; i < lbr_capacity; i++)
     {
-        printk(KERN_INFO "MSR_LBR_NHM_FROM[%2d]: 0x%llx\n", i, lbr_state_list.entries[i].from);
-        printk(KERN_INFO "MSR_LBR_NHM_TO  [%2d]: 0x%llx\n", i, lbr_state_list.entries[i].to);
+        printk(KERN_INFO "MSR_LBR_NHM_FROM[%2d]: 0x%llx\n", i, state->entries[i].from);
+        printk(KERN_INFO "MSR_LBR_NHM_TO  [%2d]: 0x%llx\n", i, state->entries[i].to);
     }
 
     printk(KERN_INFO "LIBIHT-LKM: LBR info for cpuid: %d\n", smp_processor_id());
@@ -190,7 +210,7 @@ static void disable_lbr(void *info)
 /*
  * Insert new LBR state into the back of the list
  */
-void insert_lbr_state(struct lbr_state *new_state)
+static void insert_lbr_state(struct lbr_state *new_state)
 {
     struct lbr_state *head = lbr_state_list; 
     if (head == NULL)
@@ -211,7 +231,7 @@ void insert_lbr_state(struct lbr_state *new_state)
 /*
  * Find the LBR state by given the pid. (Try to do as fast as possiable)
  */
-struct lbr_state *find_lbr_state(pid_t pid)
+static struct lbr_state *find_lbr_state(pid_t pid)
 {
     // Perform a backward traversal (typically, newly created processes are
     // more likely to be find)
@@ -252,9 +272,10 @@ static void save_lbr(void)
 static void restore_lbr(void)
 {
     unsigned long lbr_cache_flags;
+    struct lbr_state *state;
 
     // Restore when target process being rescheduled
-    if (lbr_state_list.pid == current->pid)
+    if ((state = find_lbr_state(current->pid)) != NULL)
     {
         printk(KERN_INFO "LIBIHT-LKM: Enter, restoring LBR status for pid: %d\n", current->pid);
         spin_lock_irqsave(&lbr_cache_lock, lbr_cache_flags);
@@ -331,13 +352,14 @@ static ssize_t device_write(struct file *filp, const char *buf, size_t len, loff
  */
 static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned long ioctl_param)
 {
-    printk(KERN_INFO "LIBIHT-LKM: Got ioctl argument %#x!", ioctl_cmd);
+    struct lbr_state * state;
 
+    printk(KERN_INFO "LIBIHT-LKM: Got ioctl argument %#x!", ioctl_cmd);
     switch (ioctl_cmd)
     {
     case LIBIHT_IOC_INIT_LBR:
         // Initialize LBR feature, auto trace current process
-        struct lbr_state *state = kmalloc(sizeof(struct lbr_state), GFP_KERNEL);
+        state = kmalloc(sizeof(struct lbr_state), GFP_KERNEL);
         if (state == NULL)
             return -EINVAL;
 
@@ -372,7 +394,9 @@ static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned lon
 
     case LIBIHT_IOC_SELECT_LBR:
         // Update select bits
-        lbr_state_list.lbr_select = ioctl_param;
+        // TODO: Fix source of pid
+        state = find_lbr_state(1337);
+        state->lbr_select = ioctl_param;
         on_each_cpu(enable_lbr, NULL, 1);
         break;
 
@@ -395,6 +419,7 @@ static int identify_cpu(void)
     unsigned int model;
     unsigned int family;
     register unsigned int eax asm("eax");
+    int i;
 
     asm(
         "push %rbx;"
@@ -417,79 +442,16 @@ static int identify_cpu(void)
     ext_model = (info >> 16) & 0xf;
     model = (ext_model << 4) + model;
 
-    // Identify CPU modle
-    switch (model)
-    {
-    case 0x5c:
-    case 0x5f:
-    case 0x4e:
-    case 0x5e:
-    case 0x8e:
-    case 0x9e:
-    case 0x55:
-    case 0x66:
-    case 0x7a:
-    case 0x67:
-    case 0x6a:
-    case 0x6c:
-    case 0x7d:
-    case 0x7e:
-    case 0x8c:
-    case 0x8d:
-    case 0xa5:
-    case 0xa6:
-    case 0xa7:
-    case 0xa8:
-    case 0x86:
-    case 0x8a:
-    case 0x96:
-    case 0x9c:
-        lbr_capacity = 32;
-        break;
+    // Identify CPU model
+    lbr_capacity = -1;
+    for (i = 0; i < sizeof(cpu_lbr_maps) / sizeof(cpu_lbr_maps[0]); ++i) {
+        if (model == cpu_lbr_maps[i].model) {
+            lbr_capacity = cpu_lbr_maps[i].lbr_capacity;
+            break;
+        }
+    }
 
-    case 0x3d:
-    case 0x47:
-    case 0x4f:
-    case 0x56:
-    case 0x3c:
-    case 0x45:
-    case 0x46:
-    case 0x3f:
-    case 0x2a:
-    case 0x2d:
-    case 0x3a:
-    case 0x3e:
-    case 0x1a:
-    case 0x1e:
-    case 0x1f:
-    case 0x2e:
-    case 0x25:
-    case 0x2c:
-    case 0x2f:
-        lbr_capacity = 16;
-        break;
-
-    case 0x17:
-    case 0x1d:
-    case 0x0f:
-        lbr_capacity = 4;
-        break;
-
-    case 0x37:
-    case 0x4a:
-    case 0x4c:
-    case 0x4d:
-    case 0x5a:
-    case 0x5d:
-    case 0x1c:
-    case 0x26:
-    case 0x27:
-    case 0x35:
-    case 0x36:
-        lbr_capacity = 8;
-        break;
-
-    default:
+    if (lbr_capacity == -1) {
         // Model name not found
         return -1;
     }

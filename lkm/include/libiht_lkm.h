@@ -60,6 +60,15 @@ struct lbr_state
 };
 
 /*
+ * The struct represent the mapping between CPU model and its corrosponding
+ * LBR entries (if exist)
+ */
+struct cpu_to_lbr {
+    uint32_t model;
+    uint32_t lbr_capacity;
+};
+
+/*
  * Maintian lbr trace records
  *
  * PS: might need change to variable for ioctl
@@ -78,6 +87,9 @@ static void disable_lbr(void *);
 
 static void save_lbr(void);
 static void restore_lbr(void);
+
+static void insert_lbr_state(struct lbr_state *);
+static struct lbr_state *find_lbr_state(pid_t);
 
 static void sched_in(struct preempt_notifier *, int);
 static void sched_out(struct preempt_notifier *, struct task_struct *);
