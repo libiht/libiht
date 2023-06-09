@@ -210,7 +210,7 @@ static struct lbr_state *create_lbr_state(void)
 {
     struct lbr_state *state;
     int state_size = sizeof(struct lbr_state) +
-                     lbr_capacity * sizeof(struct lbr_entry);
+                     lbr_capacity * sizeof(struct lbr_stack_entry);
 
     state = kmalloc(state_size, GFP_KERNEL);
     if (state == NULL)
@@ -378,7 +378,7 @@ static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned lon
     printk(KERN_INFO "LIBIHT-LKM: Got ioctl argument %#x!", ioctl_cmd);
     switch (ioctl_cmd)
     {
-    case LIBIHT_IOC_INIT_LBR:
+    case LIBIHT_LKM_IOC_INIT_LBR:
         // Initialize LBR feature, auto trace current process
         state = create_lbr_state();
         if (state == NULL)
@@ -391,20 +391,20 @@ static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned lon
         state->pid = current->pid;
         break;
 
-    case LIBIHT_IOC_ENABLE_LBR:
+    case LIBIHT_LKM_IOC_ENABLE_LBR:
         wrmsrl(MSR_IA32_DEBUGCTLMSR, DEBUGCTLMSR_LBR);
         break;
 
-    case LIBIHT_IOC_DISABLE_LBR:
+    case LIBIHT_LKM_IOC_DISABLE_LBR:
         wrmsrl(MSR_IA32_DEBUGCTLMSR, 0);
         break;
 
-    case LIBIHT_IOC_DUMP_LBR:
+    case LIBIHT_LKM_IOC_DUMP_LBR:
         // TODO: Need to fix logical bug
         dump_lbr(current->pid);
         break;
 
-    case LIBIHT_IOC_SELECT_LBR:
+    case LIBIHT_LKM_IOC_SELECT_LBR:
         // Update select bits
         // TODO: Fix source of pid
         state = find_lbr_state(1337);

@@ -39,12 +39,21 @@
 /*
  * I/O control table
  */
-#define LIBIHT_IOC_MAGIC 'l'
-#define LIBIHT_IOC_INIT_LBR     _IO(LIBIHT_IOC_MAGIC, 1)
-#define LIBIHT_IOC_ENABLE_LBR   _IO(LIBIHT_IOC_MAGIC, 2)
-#define LIBIHT_IOC_DISABLE_LBR  _IO(LIBIHT_IOC_MAGIC, 3)
-#define LIBIHT_IOC_DUMP_LBR     _IO(LIBIHT_IOC_MAGIC, 4)
-#define LIBIHT_IOC_SELECT_LBR   _IO(LIBIHT_IOC_MAGIC, 5)
+#define LIBIHT_LKM_IOC_MAGIC 'l'
+#define LIBIHT_LKM_IOC_INIT_LBR     _IO(LIBIHT_LKM_IOC_MAGIC, 1)
+#define LIBIHT_LKM_IOC_ENABLE_LBR   _IO(LIBIHT_LKM_IOC_MAGIC, 2)
+#define LIBIHT_LKM_IOC_DISABLE_LBR  _IO(LIBIHT_LKM_IOC_MAGIC, 3)
+#define LIBIHT_LKM_IOC_DUMP_LBR     _IO(LIBIHT_LKM_IOC_MAGIC, 4)
+#define LIBIHT_LKM_IOC_SELECT_LBR   _IO(LIBIHT_LKM_IOC_MAGIC, 5)
+
+/*
+ * The struct to represent one lbr stack entry
+ */
+struct lbr_stack_entry
+{
+    uint64_t from;
+    uint64_t to;
+};
 
 /*
  * The struct to represent one lbr trace record
@@ -56,7 +65,7 @@ struct lbr_state
     pid_t pid;           // target lbr trace process pid
     struct lbr_state *prev;
     struct lbr_state *next;
-    struct lbr_entry entries[];
+    struct lbr_stack_entry entries[];
 };
 
 /*
