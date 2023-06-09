@@ -88,6 +88,7 @@ static void disable_lbr(void *);
 static void save_lbr(void);
 static void restore_lbr(void);
 
+static struct lbr_state *create_lbr_state(void);
 static void insert_lbr_state(struct lbr_state *);
 static struct lbr_state *find_lbr_state(pid_t);
 

@@ -26,17 +26,7 @@ MODULE_DESCRIPTION("Intel Hardware Trace Library - Linux Kernel Module");
  * support the LBR feature.
  */
 static const struct cpu_to_lbr cpu_lbr_maps[] = {
-    {0x5c, 32}, {0x5f, 32}, {0x4e, 32}, {0x5e, 32}, {0x8e, 32}, {0x9e, 32},
-    {0x55, 32}, {0x66, 32}, {0x7a, 32}, {0x67, 32}, {0x6a, 32}, {0x6c, 32},
-    {0x7d, 32}, {0x7e, 32}, {0x8c, 32}, {0x8d, 32}, {0xa5, 32}, {0xa6, 32},
-    {0xa7, 32}, {0xa8, 32}, {0x86, 32}, {0x8a, 32}, {0x96, 32}, {0x9c, 32},
-    {0x3d, 16}, {0x47, 16}, {0x4f, 16}, {0x56, 16}, {0x3c, 16}, {0x45, 16},
-    {0x46, 16}, {0x3f, 16}, {0x2a, 16}, {0x2d, 16}, {0x3a, 16}, {0x3e, 16},
-    {0x1a, 16}, {0x1e, 16}, {0x1f, 16}, {0x2e, 16}, {0x25, 16}, {0x2c, 16},
-    {0x2f, 16}, {0x17, 4},  {0x1d, 4},  {0x0f, 4},  {0x37, 8},  {0x4a, 8},
-    {0x4c, 8},  {0x4d, 8},  {0x5a, 8},  {0x5d, 8},  {0x1c, 8},  {0x26, 8},
-    {0x27, 8},  {0x35, 8},  {0x36, 8}
-};
+    {0x5c, 32}, {0x5f, 32}, {0x4e, 32}, {0x5e, 32}, {0x8e, 32}, {0x9e, 32}, {0x55, 32}, {0x66, 32}, {0x7a, 32}, {0x67, 32}, {0x6a, 32}, {0x6c, 32}, {0x7d, 32}, {0x7e, 32}, {0x8c, 32}, {0x8d, 32}, {0xa5, 32}, {0xa6, 32}, {0xa7, 32}, {0xa8, 32}, {0x86, 32}, {0x8a, 32}, {0x96, 32}, {0x9c, 32}, {0x3d, 16}, {0x47, 16}, {0x4f, 16}, {0x56, 16}, {0x3c, 16}, {0x45, 16}, {0x46, 16}, {0x3f, 16}, {0x2a, 16}, {0x2d, 16}, {0x3a, 16}, {0x3e, 16}, {0x1a, 16}, {0x1e, 16}, {0x1f, 16}, {0x2e, 16}, {0x25, 16}, {0x2c, 16}, {0x2f, 16}, {0x17, 4}, {0x1d, 4}, {0x0f, 4}, {0x37, 8}, {0x4a, 8}, {0x4c, 8}, {0x4d, 8}, {0x5a, 8}, {0x5d, 8}, {0x1c, 8}, {0x26, 8}, {0x27, 8}, {0x35, 8}, {0x36, 8}};
 
 /*
  * Due to differnt kernel version, determine which struct going to use
@@ -151,7 +141,7 @@ static void dump_lbr(pid_t pid)
     // TODO: Fix the logic bug here.
     if ((state = find_lbr_state(current->pid)) == NULL)
         return;
-    
+
     get_lbr(pid);
 
     printk(KERN_INFO "MSR_LBR_SELECT:       0x%llx\n", state->lbr_select);
@@ -214,11 +204,29 @@ static void disable_lbr(void *info)
  * Help to manage kernel LBR state datastructure
  ************************************************/
 /*
+ * Create a new empty LBR state
+ */
+static struct lbr_state *create_lbr_state(void)
+{
+    struct lbr_state *state;
+    int state_size = sizeof(struct lbr_state) +
+                     lbr_capacity * sizeof(struct lbr_entry);
+
+    state = kmalloc(state_size, GFP_KERNEL);
+    if (state == NULL)
+        return NULL;
+
+    memset(state, 0, state_size);
+
+    return state;
+}
+
+/*
  * Insert new LBR state into the back of the list
  */
 static void insert_lbr_state(struct lbr_state *new_state)
 {
-    struct lbr_state *head = lbr_state_list; 
+    struct lbr_state *head = lbr_state_list;
     if (head == NULL)
     {
         new_state->prev = NULL;
@@ -264,8 +272,13 @@ static struct lbr_state *find_lbr_state(pid_t pid)
 static void save_lbr(void)
 {
     unsigned long lbr_cache_flags;
+    struct lbr_state *state;
 
     // Save when target process being preempted
+    state = find_lbr_state(current->pid);
+    if (state == NULL)
+        return;
+
     printk(KERN_INFO "LIBIHT-LKM: Leave, saving LBR status for pid: %d\n", current->pid);
     spin_lock_irqsave(&lbr_cache_lock, lbr_cache_flags);
     get_lbr(current->pid);
@@ -281,13 +294,14 @@ static void restore_lbr(void)
     struct lbr_state *state;
 
     // Restore when target process being rescheduled
-    if ((state = find_lbr_state(current->pid)) != NULL)
-    {
-        printk(KERN_INFO "LIBIHT-LKM: Enter, restoring LBR status for pid: %d\n", current->pid);
-        spin_lock_irqsave(&lbr_cache_lock, lbr_cache_flags);
-        put_lbr(current->pid);
-        spin_unlock_irqrestore(&lbr_cache_lock, lbr_cache_flags);
-    }
+    state = find_lbr_state(current->pid);
+    if (state == NULL)
+        return;
+
+    printk(KERN_INFO "LIBIHT-LKM: Enter, restoring LBR status for pid: %d\n", current->pid);
+    spin_lock_irqsave(&lbr_cache_lock, lbr_cache_flags);
+    put_lbr(current->pid);
+    spin_unlock_irqrestore(&lbr_cache_lock, lbr_cache_flags);
 }
 
 /************************************************
@@ -359,32 +373,22 @@ static ssize_t device_write(struct file *filp, const char *buf, size_t len, loff
  */
 static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned long ioctl_param)
 {
-    struct lbr_state * state;
+    struct lbr_state *state;
 
     printk(KERN_INFO "LIBIHT-LKM: Got ioctl argument %#x!", ioctl_cmd);
     switch (ioctl_cmd)
     {
     case LIBIHT_IOC_INIT_LBR:
         // Initialize LBR feature, auto trace current process
-        state = kmalloc(sizeof(struct lbr_state), GFP_KERNEL);
+        state = create_lbr_state();
         if (state == NULL)
             return -EINVAL;
-
-        memset(state, 0, sizeof(struct lbr_state));
-        state->lbr_select = LBR_SELECT;
-        state->pid = current->pid;
 
         insert_lbr_state(state);
 
         // Set the select bit to default
         state->lbr_select = LBR_SELECT;
         state->pid = current->pid;
-        wrmsrl(MSR_LBR_SELECT, state->lbr_select);
-
-        // Register preemption hooks
-        printk(KERN_INFO "LIBIHT-LKM: Applying preemption hook\n");
-        preempt_notifier_inc();
-        preempt_notifier_register(&notifier);
         break;
 
     case LIBIHT_IOC_ENABLE_LBR:
@@ -452,14 +456,17 @@ static int identify_cpu(void)
 
     // Identify CPU model
     lbr_capacity = -1;
-    for (i = 0; i < sizeof(cpu_lbr_maps) / sizeof(cpu_lbr_maps[0]); ++i) {
-        if (model == cpu_lbr_maps[i].model) {
+    for (i = 0; i < sizeof(cpu_lbr_maps) / sizeof(cpu_lbr_maps[0]); ++i)
+    {
+        if (model == cpu_lbr_maps[i].model)
+        {
             lbr_capacity = cpu_lbr_maps[i].lbr_capacity;
             break;
         }
     }
 
-    if (lbr_capacity == -1) {
+    if (lbr_capacity == -1)
+    {
         // Model name not found
         return -1;
     }
@@ -490,9 +497,11 @@ static int __init libiht_lkm_init(void)
         return -1;
     }
 
-    // Init hooks on context switches
-    printk(KERN_INFO "LIBIHT-LKM: Initializing context switch hooks...\n");
+    // Init & Register hooks on context switches
+    printk(KERN_INFO "LIBIHT-LKM: Initializing & Registering context switch hooks...\n");
     preempt_notifier_init(&notifier, &ops);
+    preempt_notifier_inc();
+    preempt_notifier_register(&notifier);
 
     // Enable LBR on each cpu (Not yet set the selection filter bit)
     printk(KERN_INFO "LIBIHT-LKM: Initializing LBR for all %d cpus\n", num_online_cpus());
@@ -519,10 +528,8 @@ static void __exit libiht_lkm_exit(void)
     // Disable LBR on each cpu
     on_each_cpu(disable_lbr, NULL, 1);
 
-    // TODO: Unregister hooks on context switches.
-    // Problem: If the notifier not being registed, it will be an error
-    // and crash the kernel. Need to identify the state
-    // preempt_notifier_unregister(&notifier);
+    // Unregister hooks on context switches.
+    preempt_notifier_unregister(&notifier);
 
     printk(KERN_INFO "LIBIHT-LKM: Exiting\n");
 }
