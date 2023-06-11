@@ -40,7 +40,7 @@
  * I/O control table
  */
 #define LIBIHT_LKM_IOC_MAGIC 'l'
-#define LIBIHT_LKM_IOC_INIT_LBR     _IO(LIBIHT_LKM_IOC_MAGIC, 1)
+#define LIBIHT_LKM_IOC_TRACE_LBR     _IO(LIBIHT_LKM_IOC_MAGIC, 1)
 #define LIBIHT_LKM_IOC_ENABLE_LBR   _IO(LIBIHT_LKM_IOC_MAGIC, 2)
 #define LIBIHT_LKM_IOC_DISABLE_LBR  _IO(LIBIHT_LKM_IOC_MAGIC, 3)
 #define LIBIHT_LKM_IOC_DUMP_LBR     _IO(LIBIHT_LKM_IOC_MAGIC, 4)
@@ -95,15 +95,18 @@ static void dump_lbr(pid_t);
 static void enable_lbr(void *);
 static void disable_lbr(void *);
 
-static void save_lbr(void);
-static void restore_lbr(void);
-
 static struct lbr_state *create_lbr_state(void);
 static void insert_lbr_state(struct lbr_state *);
 static struct lbr_state *find_lbr_state(pid_t);
 
+static void save_lbr(void);
+static void restore_lbr(void);
+
 static void sched_in(struct preempt_notifier *, int);
 static void sched_out(struct preempt_notifier *, struct task_struct *);
+
+static int __kprobes pre_fork_handler(struct kprobe *, struct pt_regs *);
+static void __kprobes post_fork_handler(struct kprobe *, struct pt_regs *, unsigned long);
 
 static int device_open(struct inode *, struct file *);
 static int device_release(struct inode *, struct file *);

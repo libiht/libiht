@@ -1,6 +1,7 @@
 #include <linux/cpumask.h>
 #include <linux/kernel.h>
 #include <linux/kthread.h>
+#include <linux/kprobes.h>
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/uaccess.h>
@@ -64,6 +65,15 @@ static struct preempt_notifier notifier;
 static struct preempt_ops ops = {
     .sched_in = sched_in,
     .sched_out = sched_out
+};
+
+/*
+ * Structures for installing the syscall (fork) hooks.
+ */
+static struct kprobe kp = {
+    .symbol_name = "kernel_clone",
+    .pre_handler = pre_fork_handler,
+    .post_handler = post_fork_handler
 };
 
 static struct lbr_state *lbr_state_list;
@@ -334,6 +344,29 @@ static void sched_out(struct preempt_notifier *pn, struct task_struct *next)
     save_lbr();
 }
 
+static int __kprobes pre_fork_handler(struct kprobe *p, struct pt_regs *regs)
+{
+    // TODO: replace the sample code to insert lbr_sate logic
+	return 0;
+}
+
+/*
+ * Fork syscall post handler (just after fork() is executed)
+ */
+static void __kprobes post_fork_handler(struct kprobe *p, struct pt_regs *regs,
+				unsigned long flags)
+{
+    // TODO: replace the sample code to insert lbr_sate logic
+    // Check if the current process is the parent or child
+    if (regs->ax > 0) {
+        // Parent process
+        pr_info("Parent process (PID: %d) forked child process (PID: %ld)\n", current->pid, regs->ax);
+    } else if (regs->ax == 0) {
+        // Child process
+        pr_info("Child process (PID: %d) initialized\n", current->pid);
+    }
+}
+
 /************************************************
  * Device hook functions
  *
@@ -388,11 +421,12 @@ static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned lon
 {
     struct lbr_state *state;
     struct ioctl_request request;
+    unsigned long ret;
 
     printk(KERN_INFO "LIBIHT-LKM: Got ioctl argument %#x!", ioctl_cmd);
     switch (ioctl_cmd)
     {
-    case LIBIHT_LKM_IOC_INIT_LBR:
+    case LIBIHT_LKM_IOC_TRACE_LBR:
         // Initialize LBR feature, auto trace current process
         state = create_lbr_state();
         if (state == NULL)
@@ -414,15 +448,23 @@ static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned lon
         break;
 
     case LIBIHT_LKM_IOC_DUMP_LBR:
-        copy_from_user(&request, (struct ioctl_request *)ioctl_param,
+        ret = copy_from_user(&request, (struct ioctl_request *)ioctl_param,
                         sizeof(struct ioctl_request));
+        if (ret < sizeof(struct ioctl_request))
+            // Partial copy
+            return -1;
+
         dump_lbr(request.pid);
         break;
 
     case LIBIHT_LKM_IOC_SELECT_LBR:
         // Update select bits
-        copy_from_user(&request, (struct ioctl_request *)ioctl_param,
+        ret = copy_from_user(&request, (struct ioctl_request *)ioctl_param,
                         sizeof(struct ioctl_request));
+        if (ret < sizeof(struct ioctl_request))
+            // Partial copy
+            return -1;
+        
         state = find_lbr_state(request.pid);
         if (state != NULL)
             state->lbr_select = ioctl_param;
@@ -513,6 +555,14 @@ static int __init libiht_lkm_init(void)
         return -1;
     }
 
+    // Register kprobe hooks on fork system call
+    printk(KERN_INFO "LIBIHT-LKM: Registering system call hooks...\n");
+    if (register_kprobe(&kp) < 0)
+    {
+        printk(KERN_INFO "LIBIHT-LKM: kprobe hook failed\n");
+        return -1;
+    }
+
     // Init & Register hooks on context switches
     printk(KERN_INFO "LIBIHT-LKM: Initializing & Registering context switch hooks...\n");
     preempt_notifier_init(&notifier, &ops);
@@ -543,6 +593,9 @@ static void __exit libiht_lkm_exit(void)
 
     // Disable LBR on each cpu
     on_each_cpu(disable_lbr, NULL, 1);
+
+    // Unregister hooks on fork system call
+    unregister_kprobe(&kp);
 
     // Unregister hooks on context switches.
     preempt_notifier_unregister(&notifier);
