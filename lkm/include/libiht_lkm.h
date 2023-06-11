@@ -47,6 +47,14 @@
 #define LIBIHT_LKM_IOC_SELECT_LBR   _IO(LIBIHT_LKM_IOC_MAGIC, 5)
 
 /*
+ * The struct used for I/O control communication
+ */
+struct ioctl_request{
+    uint64_t lbr_select;
+    pid_t pid;
+};
+
+/*
  * The struct to represent one lbr stack entry
  */
 struct lbr_stack_entry
@@ -76,13 +84,6 @@ struct cpu_to_lbr {
     uint32_t model;
     uint32_t lbr_capacity;
 };
-
-/*
- * Maintian lbr trace records
- *
- * PS: might need change to variable for ioctl
- */
-// struct lbr_state lbr_state_list[LBR_CACHE_SIZE];
 
 /*
  * Static function prototypes

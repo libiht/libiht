@@ -26,7 +26,17 @@ MODULE_DESCRIPTION("Intel Hardware Trace Library - Linux Kernel Module");
  * support the LBR feature.
  */
 static const struct cpu_to_lbr cpu_lbr_maps[] = {
-    {0x5c, 32}, {0x5f, 32}, {0x4e, 32}, {0x5e, 32}, {0x8e, 32}, {0x9e, 32}, {0x55, 32}, {0x66, 32}, {0x7a, 32}, {0x67, 32}, {0x6a, 32}, {0x6c, 32}, {0x7d, 32}, {0x7e, 32}, {0x8c, 32}, {0x8d, 32}, {0xa5, 32}, {0xa6, 32}, {0xa7, 32}, {0xa8, 32}, {0x86, 32}, {0x8a, 32}, {0x96, 32}, {0x9c, 32}, {0x3d, 16}, {0x47, 16}, {0x4f, 16}, {0x56, 16}, {0x3c, 16}, {0x45, 16}, {0x46, 16}, {0x3f, 16}, {0x2a, 16}, {0x2d, 16}, {0x3a, 16}, {0x3e, 16}, {0x1a, 16}, {0x1e, 16}, {0x1f, 16}, {0x2e, 16}, {0x25, 16}, {0x2c, 16}, {0x2f, 16}, {0x17, 4}, {0x1d, 4}, {0x0f, 4}, {0x37, 8}, {0x4a, 8}, {0x4c, 8}, {0x4d, 8}, {0x5a, 8}, {0x5d, 8}, {0x1c, 8}, {0x26, 8}, {0x27, 8}, {0x35, 8}, {0x36, 8}};
+    {0x5c, 32}, {0x5f, 32}, {0x4e, 32}, {0x5e, 32}, {0x8e, 32}, {0x9e, 32}, 
+    {0x55, 32}, {0x66, 32}, {0x7a, 32}, {0x67, 32}, {0x6a, 32}, {0x6c, 32}, 
+    {0x7d, 32}, {0x7e, 32}, {0x8c, 32}, {0x8d, 32}, {0xa5, 32}, {0xa6, 32}, 
+    {0xa7, 32}, {0xa8, 32}, {0x86, 32}, {0x8a, 32}, {0x96, 32}, {0x9c, 32}, 
+    {0x3d, 16}, {0x47, 16}, {0x4f, 16}, {0x56, 16}, {0x3c, 16}, {0x45, 16}, 
+    {0x46, 16}, {0x3f, 16}, {0x2a, 16}, {0x2d, 16}, {0x3a, 16}, {0x3e, 16}, 
+    {0x1a, 16}, {0x1e, 16}, {0x1f, 16}, {0x2e, 16}, {0x25, 16}, {0x2c, 16}, 
+    {0x2f, 16}, {0x17, 4}, {0x1d, 4}, {0x0f, 4}, {0x37, 8}, {0x4a, 8}, 
+    {0x4c, 8}, {0x4d, 8}, {0x5a, 8}, {0x5d, 8}, {0x1c, 8}, {0x26, 8}, 
+    {0x27, 8}, {0x35, 8}, {0x36, 8}
+};
 
 /*
  * Due to differnt kernel version, determine which struct going to use
@@ -53,10 +63,11 @@ static struct file_operations libiht_ops = {
 static struct preempt_notifier notifier;
 static struct preempt_ops ops = {
     .sched_in = sched_in,
-    .sched_out = sched_out};
+    .sched_out = sched_out
+};
 
 static struct lbr_state *lbr_state_list;
-uint64_t lbr_capacity;
+static uint64_t lbr_capacity;
 static spinlock_t lbr_cache_lock;
 static struct proc_dir_entry *proc_entry;
 
@@ -92,7 +103,7 @@ static void flush_lbr(bool enable)
 static void get_lbr(pid_t pid)
 {
     int i;
-    // TODO: Fix source of pid
+
     struct lbr_state *state = find_lbr_state(pid);
     if (state == NULL)
         return;
@@ -114,7 +125,7 @@ static void get_lbr(pid_t pid)
 static void put_lbr(pid_t pid)
 {
     int i;
-    // TODO: Fix source of pid
+
     struct lbr_state *state = find_lbr_state(pid);
     if (state == NULL)
         return;
@@ -138,8 +149,7 @@ static void dump_lbr(pid_t pid)
     struct lbr_state *state;
 
     get_cpu();
-    // TODO: Fix the logic bug here.
-    if ((state = find_lbr_state(current->pid)) == NULL)
+    if ((state = find_lbr_state(pid)) == NULL)
         return;
 
     get_lbr(pid);
@@ -335,6 +345,7 @@ static void sched_out(struct preempt_notifier *pn, struct task_struct *next)
  */
 static int device_open(struct inode *inode, struct file *filp)
 {
+    // Reserve for future use
     printk(KERN_INFO "LIBIHT-LKM: Device opened.\n");
     return 0;
 }
@@ -344,6 +355,7 @@ static int device_open(struct inode *inode, struct file *filp)
  */
 static int device_release(struct inode *inode, struct file *filp)
 {
+    // Reserve for future use
     printk(KERN_INFO "LIBIHT-LKM: Device closed.\n");
     return 0;
 }
@@ -354,8 +366,8 @@ static int device_release(struct inode *inode, struct file *filp)
 static ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_t *offset)
 {
     printk(KERN_INFO "LIBIHT-LKM: Device read.\n");
-    // TODO: Need to fix logical bug
-    dump_lbr(current->pid);
+    // Dafault for the head of the list
+    dump_lbr(lbr_state_list->pid);
     return 0;
 }
 
@@ -364,8 +376,9 @@ static ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_
  */
 static ssize_t device_write(struct file *filp, const char *buf, size_t len, loff_t *off)
 {
-    printk(KERN_INFO "LIBIHT-LKM: doesn't support write.\n");
-    return -EINVAL;
+    // Reserve for future use
+    printk(KERN_INFO "LIBIHT-LKM: Device write.\n");
+    return 0;
 }
 
 /*
@@ -374,6 +387,7 @@ static ssize_t device_write(struct file *filp, const char *buf, size_t len, loff
 static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned long ioctl_param)
 {
     struct lbr_state *state;
+    struct ioctl_request request;
 
     printk(KERN_INFO "LIBIHT-LKM: Got ioctl argument %#x!", ioctl_cmd);
     switch (ioctl_cmd)
@@ -392,24 +406,26 @@ static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned lon
         break;
 
     case LIBIHT_LKM_IOC_ENABLE_LBR:
-        wrmsrl(MSR_IA32_DEBUGCTLMSR, DEBUGCTLMSR_LBR);
+        on_each_cpu(enable_lbr, NULL, 1);
         break;
 
     case LIBIHT_LKM_IOC_DISABLE_LBR:
-        wrmsrl(MSR_IA32_DEBUGCTLMSR, 0);
+        on_each_cpu(disable_lbr, NULL, 1);
         break;
 
     case LIBIHT_LKM_IOC_DUMP_LBR:
-        // TODO: Need to fix logical bug
-        dump_lbr(current->pid);
+        copy_from_user(&request, (struct ioctl_request *)ioctl_param,
+                        sizeof(struct ioctl_request));
+        dump_lbr(request.pid);
         break;
 
     case LIBIHT_LKM_IOC_SELECT_LBR:
         // Update select bits
-        // TODO: Fix source of pid
-        state = find_lbr_state(1337);
-        state->lbr_select = ioctl_param;
-        on_each_cpu(enable_lbr, NULL, 1);
+        copy_from_user(&request, (struct ioctl_request *)ioctl_param,
+                        sizeof(struct ioctl_request));
+        state = find_lbr_state(request.pid);
+        if (state != NULL)
+            state->lbr_select = ioctl_param;
         break;
 
     default:
@@ -516,7 +532,7 @@ static int __init libiht_lkm_init(void)
 
 static void __exit libiht_lkm_exit(void)
 {
-    // Free the state list
+    // Free the LBR state list
     struct lbr_state *tmp = lbr_state_list;
     while (tmp != NULL)
         kfree(tmp);
