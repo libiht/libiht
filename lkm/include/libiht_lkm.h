@@ -40,11 +40,10 @@
  * I/O control table
  */
 #define LIBIHT_LKM_IOC_MAGIC 'l'
-#define LIBIHT_LKM_IOC_TRACE_LBR     _IO(LIBIHT_LKM_IOC_MAGIC, 1)
-#define LIBIHT_LKM_IOC_ENABLE_LBR   _IO(LIBIHT_LKM_IOC_MAGIC, 2)
-#define LIBIHT_LKM_IOC_DISABLE_LBR  _IO(LIBIHT_LKM_IOC_MAGIC, 3)
-#define LIBIHT_LKM_IOC_DUMP_LBR     _IO(LIBIHT_LKM_IOC_MAGIC, 4)
-#define LIBIHT_LKM_IOC_SELECT_LBR   _IO(LIBIHT_LKM_IOC_MAGIC, 5)
+#define LIBIHT_LKM_IOC_ENABLE_TRACE     _IO(LIBIHT_LKM_IOC_MAGIC, 1)
+#define LIBIHT_LKM_IOC_DISABLE_TRACE    _IO(LIBIHT_LKM_IOC_MAGIC, 2)
+#define LIBIHT_LKM_IOC_DUMP_LBR         _IO(LIBIHT_LKM_IOC_MAGIC, 3)
+#define LIBIHT_LKM_IOC_SELECT_LBR       _IO(LIBIHT_LKM_IOC_MAGIC, 4)
 
 /*
  * The struct used for I/O control communication
@@ -73,6 +72,7 @@ struct lbr_state
     pid_t pid;           // target lbr trace process pid
     struct lbr_state *prev;
     struct lbr_state *next;
+    struct lbr_state *parent;
     struct lbr_stack_entry entries[];
 };
 
@@ -97,6 +97,7 @@ static void disable_lbr(void *);
 
 static struct lbr_state *create_lbr_state(void);
 static void insert_lbr_state(struct lbr_state *);
+static void remove_lbr_state(struct lbr_state *);
 static struct lbr_state *find_lbr_state(pid_t);
 
 static void save_lbr(void);

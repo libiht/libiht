@@ -71,7 +71,7 @@ static struct preempt_ops ops = {
  * Structures for installing the syscall (fork) hooks.
  */
 static struct kprobe kp = {
-    .symbol_name = "kernel_clone",
+    .symbol_name = "sys_##fork",
     .pre_handler = pre_fork_handler,
     .post_handler = post_fork_handler
 };
@@ -262,6 +262,11 @@ static void insert_lbr_state(struct lbr_state *new_state)
     }
 }
 
+static void remove_lbr_state(struct lbr_state *old_state)
+{
+    // TODO: Implement this
+}
+
 /*
  * Find the LBR state by given the pid. (Try to do as fast as possiable)
  */
@@ -347,6 +352,7 @@ static void sched_out(struct preempt_notifier *pn, struct task_struct *next)
 static int __kprobes pre_fork_handler(struct kprobe *p, struct pt_regs *regs)
 {
     // TODO: replace the sample code to insert lbr_sate logic
+    pr_info("Pre fork pid: %d\n", current->pid);
 	return 0;
 }
 
@@ -358,13 +364,14 @@ static void __kprobes post_fork_handler(struct kprobe *p, struct pt_regs *regs,
 {
     // TODO: replace the sample code to insert lbr_sate logic
     // Check if the current process is the parent or child
-    if (regs->ax > 0) {
-        // Parent process
-        pr_info("Parent process (PID: %d) forked child process (PID: %ld)\n", current->pid, regs->ax);
-    } else if (regs->ax == 0) {
-        // Child process
-        pr_info("Child process (PID: %d) initialized\n", current->pid);
-    }
+    pr_info("Post fork pid: %d\n", current->pid);
+    // if (regs->ax > 0) {
+    //     // Parent process
+    //     pr_info("Parent process (PID: %d) forked child process (PID: %ld)\n", current->pid, regs->ax);
+    // } else if (regs->ax == 0) {
+    //     // Child process
+    //     pr_info("Child process (PID: %d) initialized\n", current->pid);
+    // }
 }
 
 /************************************************
@@ -424,47 +431,40 @@ static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned lon
     unsigned long ret;
 
     printk(KERN_INFO "LIBIHT-LKM: Got ioctl argument %#x!", ioctl_cmd);
+
+    // Copy user request
+    ret = copy_from_user(&request, (struct ioctl_request *)ioctl_param,
+                    sizeof(struct ioctl_request));
+    if (ret < sizeof(struct ioctl_request))
+        // Partial copy
+        return -1;
+
     switch (ioctl_cmd)
     {
-    case LIBIHT_LKM_IOC_TRACE_LBR:
-        // Initialize LBR feature, auto trace current process
+    case LIBIHT_LKM_IOC_ENABLE_TRACE:
+        // Trace assigned process
         state = create_lbr_state();
         if (state == NULL)
             return -EINVAL;
 
+        // Set the field
+        state->lbr_select = request.lbr_select ? request.lbr_select : LBR_SELECT;
+        state->pid = request.pid ? request.pid : current->pid;
+        state->parent = NULL;
+
         insert_lbr_state(state);
-
-        // Set the select bit to default
-        state->lbr_select = LBR_SELECT;
-        state->pid = current->pid;
         break;
-
-    case LIBIHT_LKM_IOC_ENABLE_LBR:
-        on_each_cpu(enable_lbr, NULL, 1);
-        break;
-
-    case LIBIHT_LKM_IOC_DISABLE_LBR:
-        on_each_cpu(disable_lbr, NULL, 1);
+    
+    case LIBIHT_LKM_IOC_DISABLE_TRACE:
+        // TODO: Disable here
         break;
 
     case LIBIHT_LKM_IOC_DUMP_LBR:
-        ret = copy_from_user(&request, (struct ioctl_request *)ioctl_param,
-                        sizeof(struct ioctl_request));
-        if (ret < sizeof(struct ioctl_request))
-            // Partial copy
-            return -1;
-
         dump_lbr(request.pid);
         break;
 
     case LIBIHT_LKM_IOC_SELECT_LBR:
         // Update select bits
-        ret = copy_from_user(&request, (struct ioctl_request *)ioctl_param,
-                        sizeof(struct ioctl_request));
-        if (ret < sizeof(struct ioctl_request))
-            // Partial copy
-            return -1;
-        
         state = find_lbr_state(request.pid);
         if (state != NULL)
             state->lbr_select = ioctl_param;
@@ -560,6 +560,7 @@ static int __init libiht_lkm_init(void)
     if (register_kprobe(&kp) < 0)
     {
         printk(KERN_INFO "LIBIHT-LKM: kprobe hook failed\n");
+        proc_remove(proc_entry);
         return -1;
     }
 
@@ -587,18 +588,18 @@ static void __exit libiht_lkm_exit(void)
     while (tmp != NULL)
         kfree(tmp);
 
-    // Remove the helper process if exist
-    if (proc_entry)
-        proc_remove(proc_entry);
-
     // Disable LBR on each cpu
     on_each_cpu(disable_lbr, NULL, 1);
+
+    // Unregister hooks on context switches.
+    preempt_notifier_unregister(&notifier);
 
     // Unregister hooks on fork system call
     unregister_kprobe(&kp);
 
-    // Unregister hooks on context switches.
-    preempt_notifier_unregister(&notifier);
+    // Remove the helper process if exist
+    if (proc_entry)
+        proc_remove(proc_entry);
 
     printk(KERN_INFO "LIBIHT-LKM: Exiting\n");
 }
