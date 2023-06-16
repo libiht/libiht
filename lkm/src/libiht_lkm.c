@@ -10,6 +10,8 @@
 #include <linux/ioctl.h>
 #include <linux/slab.h>
 #include <linux/delay.h>
+#include <linux/proc_fs.h>
+#include <linux/sched.h>
 #include <asm/msr.h>
 #include <asm/processor.h>
 
@@ -351,8 +353,8 @@ static void sched_out(struct preempt_notifier *pn, struct task_struct *next)
 
 static int __kprobes pre_fork_handler(struct kprobe *p, struct pt_regs *regs)
 {
-    // TODO: replace the sample code to insert lbr_sate logic
-    pr_info("Pre fork pid: %d\n", current->pid);
+    // Reserve for future use
+    printk(KERN_INFO "Process %d is calling fork()\n", current->pid);
 	return 0;
 }
 
@@ -362,16 +364,34 @@ static int __kprobes pre_fork_handler(struct kprobe *p, struct pt_regs *regs)
 static void __kprobes post_fork_handler(struct kprobe *p, struct pt_regs *regs,
 				unsigned long flags)
 {
-    // TODO: replace the sample code to insert lbr_sate logic
-    // Check if the current process is the parent or child
-    pr_info("Post fork pid: %d\n", current->pid);
-    // if (regs->ax > 0) {
-    //     // Parent process
-    //     pr_info("Parent process (PID: %d) forked child process (PID: %ld)\n", current->pid, regs->ax);
-    // } else if (regs->ax == 0) {
-    //     // Child process
-    //     pr_info("Child process (PID: %d) initialized\n", current->pid);
-    // }
+    struct task_struct* task;
+    struct list_head* list;
+    struct lbr_state *parent_state, *child_state;
+    
+    // Examine parent process
+    parent_state = find_lbr_state(current->pid);
+    if (parent_state == NULL)
+        return;
+    
+    // Iterate through 
+    list_for_each(list, &current->children) {
+        task = list_entry(list, struct task_struct, sibling);
+        child_state = find_lbr_state(task->pid);
+        if (child_state == NULL)
+        {
+            // Set up trace for new child
+            child_state = create_lbr_state();
+            if (child_state != NULL)
+            {
+                // Copy field from parent (forking lbr_state for child)
+                child_state->lbr_select = parent_state->lbr_select;
+                child_state->pid = task->pid;
+                child_state->parent = parent_state;
+
+                insert_lbr_state(child_state);
+            }
+        }
+    }
 }
 
 /************************************************
