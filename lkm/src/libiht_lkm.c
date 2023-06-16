@@ -266,7 +266,26 @@ static void insert_lbr_state(struct lbr_state *new_state)
 
 static void remove_lbr_state(struct lbr_state *old_state)
 {
-    // TODO: Implement this
+    struct lbr_state *head;
+    struct lbr_state *tmp;
+
+    head = lbr_state_list;
+    if (head == old_state)
+        lbr_state_list = head->next;
+    
+    // Unlink from linked list
+    old_state->prev->next = old_state->next;
+    old_state->next->prev = old_state->prev;
+
+    // Free all its child
+    tmp = lbr_state_list;
+    while (tmp != NULL)
+    {
+        if (tmp->parent == old_state)
+            remove_lbr_state(tmp);
+    }
+
+    kfree(old_state);
 }
 
 /*
@@ -462,7 +481,7 @@ static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned lon
     switch (ioctl_cmd)
     {
     case LIBIHT_LKM_IOC_ENABLE_TRACE:
-        // Trace assigned process
+        // Enable trace for assigned process
         state = create_lbr_state();
         if (state == NULL)
             return -EINVAL;
@@ -476,15 +495,18 @@ static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned lon
         break;
     
     case LIBIHT_LKM_IOC_DISABLE_TRACE:
-        // TODO: Disable here
+        // Disable trace for assigned process (and its children)
+        state = find_lbr_state(request.pid);
+        remove_lbr_state(state);
         break;
 
     case LIBIHT_LKM_IOC_DUMP_LBR:
+        // Dump LBR info for assigned process
         dump_lbr(request.pid);
         break;
 
     case LIBIHT_LKM_IOC_SELECT_LBR:
-        // Update select bits
+        // Update the select bits for assigned process
         state = find_lbr_state(request.pid);
         if (state != NULL)
             state->lbr_select = ioctl_param;
