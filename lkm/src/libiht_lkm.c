@@ -73,7 +73,7 @@ static struct preempt_ops ops = {
  * Structures for installing the syscall (fork) hooks.
  */
 static struct kprobe kp = {
-    .symbol_name = "sys_##fork",
+    .symbol_name = "kernel_clone",
     .pre_handler = pre_fork_handler,
     .post_handler = post_fork_handler
 };
