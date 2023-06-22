@@ -1,5 +1,4 @@
 #include <linux/version.h>
-#include <linux/proc_fs.h>
 #include <linux/sched.h>
 #include <linux/ioctl.h>
 #include <asm/fpu/types.h>
