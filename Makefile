@@ -1,37 +1,18 @@
-# Kernel module compile process
-obj-m = libiht.o
-KVERSION = $(shell uname -r)
+.PHONY: all clean insert remove mesg
 
 all:
-	make -C /lib/modules/$(KVERSION)/build M=$(PWD) modules
-clean:
-	make -C /lib/modules/$(KVERSION)/build M=$(PWD) clean
+	@$(MAKE) -C lib
+	@$(MAKE) -C lkm
 
-insert: all
-	sudo insmod libiht.ko
+clean:
+	@$(MAKE) -C lib clean
+	@$(MAKE) -C lkm clean
+
+insert:
+	@$(MAKE) -C lkm insert
 
 remove:
-	sudo rmmod libiht
+	@$(MAKE) -C lkm remove
 
-# For test use
 mesg:
 	sudo dmesg -wH
-
-dump:
-	objdump -M intel -d libiht.ko > libiht.asm
-
-
-
-# Demo program compile process
-CC = gcc
-CFLAGS  = -g -static -Wall
-TARGET = demo
-
-demo: $(TARGET).c
-	$(CC) $(CFLAGS) -o $(TARGET) $(TARGET).c
-
-clean_demo:
-	rm -f $(TARGET)
-
-dump_demo:
-	objdump -M intel -d demo > demo.asm

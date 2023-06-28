@@ -1,7 +1,7 @@
 #include <linux/version.h>
-#include <linux/proc_fs.h>
 #include <linux/sched.h>
 #include <linux/ioctl.h>
+#include <asm/fpu/types.h>
 
 /*
  * Check Linux kernel version.
@@ -9,13 +9,6 @@
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
 #define HAVE_PROC_OPS
 #endif
-
-/*
- * The CPU hard-coded LBR stack capacity / entries
- *
- * PS: might need change to variable to make it CPU dependent
- */
-#define LBR_ENTRIES 32
 
 /*
  * Total number of lbr trace records this kernel module maintains
@@ -45,43 +38,66 @@
 /*
  * I/O control table
  */
-#define LIBIHT_IOC_MAGIC 'l'
-#define LIBIHT_IOC_INIT_LBR     _IO(LIBIHT_IOC_MAGIC, 1)
-#define LIBIHT_IOC_ENABLE_LBR   _IO(LIBIHT_IOC_MAGIC, 2)
-#define LIBIHT_IOC_DISABLE_LBR  _IO(LIBIHT_IOC_MAGIC, 3)
-#define LIBIHT_IOC_DUMP_LBR     _IO(LIBIHT_IOC_MAGIC, 4)
-#define LIBIHT_IOC_SELECT_LBR   _IO(LIBIHT_IOC_MAGIC, 5)
+#define LIBIHT_LKM_IOC_MAGIC 'l'
+#define LIBIHT_LKM_IOC_ENABLE_TRACE     _IO(LIBIHT_LKM_IOC_MAGIC, 1)
+#define LIBIHT_LKM_IOC_DISABLE_TRACE    _IO(LIBIHT_LKM_IOC_MAGIC, 2)
+#define LIBIHT_LKM_IOC_DUMP_LBR         _IO(LIBIHT_LKM_IOC_MAGIC, 3)
+#define LIBIHT_LKM_IOC_SELECT_LBR       _IO(LIBIHT_LKM_IOC_MAGIC, 4)
+
+/*
+ * The struct used for I/O control communication
+ */
+struct ioctl_request{
+    uint64_t lbr_select;
+    pid_t pid;
+};
+
+/*
+ * The struct to represent one lbr stack entry
+ */
+struct lbr_stack_entry
+{
+    uint64_t from;
+    uint64_t to;
+};
 
 /*
  * The struct to represent one lbr trace record
  */
-struct lbr_t
+struct lbr_state
 {
-    uint64_t debug;  // contents of IA32_DEBUGCTL MSR
-    uint64_t select; // contents of LBR_SELECT
-    uint64_t tos;    // index to most recent branch entry
-    uint64_t from[LBR_ENTRIES];
-    uint64_t to[LBR_ENTRIES];
-    pid_t    target;
-    // struct task_struct *task; // pointer to the task_struct this state belongs to
+    uint64_t lbr_select; // contents of LBR_SELECT
+    uint64_t lbr_tos;    // index to top of the stack (most recent entry)
+    pid_t pid;           // target lbr trace process pid
+    struct lbr_state *prev;
+    struct lbr_state *next;
+    struct lbr_state *parent;
+    struct lbr_stack_entry entries[];
 };
 
 /*
- * Maintian lbr trace records
- *
- * PS: might need change to variable for ioctl
+ * The struct represent the mapping between CPU model and its corrosponding
+ * LBR entries (if exist)
  */
-// struct lbr_t lbr_cache[LBR_CACHE_SIZE];
+struct cpu_to_lbr {
+    uint32_t model;
+    uint32_t lbr_capacity;
+};
 
 /*
  * Static function prototypes
  */
 static void flush_lbr(bool);
-static void get_lbr(void);
-static void put_lbr(void);
-static void dump_lbr(void);
+static void get_lbr(pid_t);
+static void put_lbr(pid_t);
+static void dump_lbr(pid_t);
 static void enable_lbr(void *);
 static void disable_lbr(void *);
+
+static struct lbr_state *create_lbr_state(void);
+static void insert_lbr_state(struct lbr_state *);
+static void remove_lbr_state(struct lbr_state *);
+static struct lbr_state *find_lbr_state(pid_t);
 
 static void save_lbr(void);
 static void restore_lbr(void);
@@ -89,11 +105,14 @@ static void restore_lbr(void);
 static void sched_in(struct preempt_notifier *, int);
 static void sched_out(struct preempt_notifier *, struct task_struct *);
 
+static int __kprobes pre_fork_handler(struct kprobe *, struct pt_regs *);
+static void __kprobes post_fork_handler(struct kprobe *, struct pt_regs *, unsigned long);
+
 static int device_open(struct inode *, struct file *);
 static int device_release(struct inode *, struct file *);
 static ssize_t device_read(struct file *, char *, size_t, loff_t *);
 static ssize_t device_write(struct file *, const char *, size_t, loff_t *);
 static long device_ioctl(struct file *, unsigned int, unsigned long);
 
-static int __init libiht_init(void);
-static void __exit libiht_exit(void);
+static int __init libiht_lkm_init(void);
+static void __exit libiht_lkm_exit(void);

@@ -7,16 +7,16 @@
                 "/usr/include",
                 "/usr/local/include",
                 "/usr/lib/gcc/x86_64-linux-gnu/11/include",
-                "/usr/src/linux-headers-5.15.0-72/include",
-                "/usr/src/linux-headers-5.15.0-72/arch/x86/include",
-                "/usr/src/linux-headers-5.15.0-72-generic/include",
-                "/usr/src/linux-headers-5.15.0-72-generic/include/uapi",
-                "/usr/src/linux-headers-5.15.0-72-generic/include/generated/uapi",
-                "/usr/src/linux-headers-5.15.0-72-generic/arch/x86/include",
-                "/usr/src/linux-headers-5.15.0-72-generic/arch/x86/include/uapi",
-                "/usr/src/linux-headers-5.15.0-72-generic/arch/x86/include/generated",
-                "/usr/src/linux-headers-5.15.0-72-generic/arch/x86/include/generated/uapi",
-                "/usr/src/linux-headers-5.15.0-72-generic/ubuntu/include"
+                "/usr/src/linux-headers-5.15.0-75/include",
+                "/usr/src/linux-headers-5.15.0-75/arch/x86/include",
+                "/usr/src/linux-headers-5.15.0-75-generic/include",
+                "/usr/src/linux-headers-5.15.0-75-generic/include/uapi",
+                "/usr/src/linux-headers-5.15.0-75-generic/include/generated/uapi",
+                "/usr/src/linux-headers-5.15.0-75-generic/arch/x86/include",
+                "/usr/src/linux-headers-5.15.0-75-generic/arch/x86/include/uapi",
+                "/usr/src/linux-headers-5.15.0-75-generic/arch/x86/include/generated",
+                "/usr/src/linux-headers-5.15.0-75-generic/arch/x86/include/generated/uapi",
+                "/usr/src/linux-headers-5.15.0-75-generic/ubuntu/include"
             ],
             "defines": [
                 "KBUILD_MODNAME=\"libiht\"",
@@ -25,8 +25,7 @@
                 "MODULE"
             ],
             "compilerPath": "/usr/bin/gcc",
-            "cStandard": "c17",
-            "cppStandard": "c++14",
+            "cStandard": "c99",
             "intelliSenseMode": "linux-gcc-x64",
             "configurationProvider": "ms-vscode.makefile-tools"
         }
