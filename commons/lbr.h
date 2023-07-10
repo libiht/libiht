@@ -93,4 +93,6 @@ static struct lbr_state *find_lbr_state(u32);
 static void save_lbr(void);
 static void restore_lbr(void);
 
+static s32 identify_cpu(void);
+
 #endif /* _COMMONS_LBR_H */
