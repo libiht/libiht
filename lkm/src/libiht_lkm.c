@@ -91,7 +91,7 @@ static struct proc_dir_entry *proc_entry;
  * Flush the LBR registers. Caller should ensure this function run on
  * single cpu (by wrapping get_cpu() and put_cpu())
  */
-static void flush_lbr(bool enable)
+static void flush_lbr(u8 enable)
 {
     int i;
 
@@ -113,7 +113,7 @@ static void flush_lbr(bool enable)
 /*
  * Store the LBR registers to kernel maintained datastructure
  */
-static void get_lbr(pid_t pid)
+static void get_lbr(u32 pid)
 {
     int i;
 
@@ -135,7 +135,7 @@ static void get_lbr(pid_t pid)
 /*
  * Write the LBR registers from kernel maintained datastructure
  */
-static void put_lbr(pid_t pid)
+static void put_lbr(u32 pid)
 {
     int i;
 
@@ -156,7 +156,7 @@ static void put_lbr(pid_t pid)
 /*
  * Dump out the LBR registers to kernel message
  */
-static void dump_lbr(pid_t pid)
+static void dump_lbr(u32 pid)
 {
     int i;
     struct lbr_state *state;
@@ -325,7 +325,7 @@ static void remove_lbr_state(struct lbr_state *old_state)
 /*
  * Find the LBR state by given the pid. (Try to do as fast as possiable)
  */
-static struct lbr_state *find_lbr_state(pid_t pid)
+static struct lbr_state *find_lbr_state(u32 pid)
 {
     // Perform a backward traversal (typically, newly created processes are
     // more likely to be find)
