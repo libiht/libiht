@@ -1,6 +1,12 @@
 # Kernel module compile process
-obj-m = src/libiht_lkm.o
 KVERSION = $(shell uname -r)
+MODULE = libiht_lkm
+SRC_DIR = ./src/
+# OBJS can add more helper files in it
+OBJS = $(SRC_DIR)libiht_lkm.o
+
+obj-m += $(MODULE).o
+$(MODULE)-objs := $(OBJS)
 
 all:
 	make -C /lib/modules/$(KVERSION)/build M=$(PWD) modules
