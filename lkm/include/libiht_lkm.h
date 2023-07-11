@@ -4,6 +4,7 @@
 #include <asm/fpu/types.h>
 
 #include "../../commons/lbr.h"
+#include "../../commons/debug.h"
 
 /*
  * Check Linux kernel version.

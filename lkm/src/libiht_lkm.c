@@ -81,6 +81,19 @@ static uint64_t lbr_capacity;
 static spinlock_t lbr_cache_lock;
 static struct proc_dir_entry *proc_entry;
 
+static void print_dbg(const char *format, ...)
+#ifdef DEBUG_MSG
+{
+    va_list args;
+    va_start(args, format);
+    vprintk(format, args);
+}
+#else
+{
+    return;
+}
+#endif
+
 /************************************************
  * LBR helper functions
  *
@@ -165,23 +178,23 @@ static void dump_lbr(u32 pid)
     state = find_lbr_state(pid);
     if (state == NULL)
     {
-        printk(KERN_INFO "LIBIHT-LKM: find lbr_state failed\n");
+        print_dbg(KERN_INFO "LIBIHT-LKM: find lbr_state failed\n");
         return;
     }
 
     get_lbr(pid);
 
-    printk(KERN_INFO "PROC_PID:             %d\n", state->pid);
-    printk(KERN_INFO "MSR_LBR_SELECT:       0x%llx\n", state->lbr_select);
-    printk(KERN_INFO "MSR_LBR_TOS:          %lld\n", state->lbr_tos);
+    print_dbg(KERN_INFO "PROC_PID:             %d\n", state->pid);
+    print_dbg(KERN_INFO "MSR_LBR_SELECT:       0x%llx\n", state->lbr_select);
+    print_dbg(KERN_INFO "MSR_LBR_TOS:          %lld\n", state->lbr_tos);
 
     for (i = 0; i < lbr_capacity; i++)
     {
-        printk(KERN_INFO "MSR_LBR_NHM_FROM[%2d]: 0x%llx\n", i, state->entries[i].from);
-        printk(KERN_INFO "MSR_LBR_NHM_TO  [%2d]: 0x%llx\n", i, state->entries[i].to);
+        print_dbg(KERN_INFO "MSR_LBR_NHM_FROM[%2d]: 0x%llx\n", i, state->entries[i].from);
+        print_dbg(KERN_INFO "MSR_LBR_NHM_TO  [%2d]: 0x%llx\n", i, state->entries[i].to);
     }
 
-    printk(KERN_INFO "LIBIHT-LKM: LBR info for cpuid: %d\n", smp_processor_id());
+    print_dbg(KERN_INFO "LIBIHT-LKM: LBR info for cpuid: %d\n", smp_processor_id());
 
     put_cpu();
 }
@@ -195,7 +208,7 @@ static void enable_lbr(void *info)
 
     get_cpu();
 
-    printk(KERN_INFO "LIBIHT-LKM: Enable LBR on cpu core: %d...\n", smp_processor_id());
+    print_dbg(KERN_INFO "LIBIHT-LKM: Enable LBR on cpu core: %d...\n", smp_processor_id());
 
     /* Flush the LBR and enable it */
     flush_lbr(true);
@@ -212,7 +225,7 @@ static void disable_lbr(void *info)
 
     get_cpu();
 
-    printk(KERN_INFO "LIBIHT-LKM: Disable LBR on cpu core: %d...\n", smp_processor_id());
+    print_dbg(KERN_INFO "LIBIHT-LKM: Disable LBR on cpu core: %d...\n", smp_processor_id());
 
     /* Remove the filter */
     wrmsrl(MSR_LBR_SELECT, 0);
@@ -256,7 +269,7 @@ static void insert_lbr_state(struct lbr_state *new_state)
 
     if (new_state == NULL)
     {
-        printk(KERN_INFO "LIBIHT-LKM: Insert new state param is NULL\n");
+        print_dbg(KERN_INFO "LIBIHT-LKM: Insert new state param is NULL\n");
         return;
     }
     
@@ -283,14 +296,14 @@ static void remove_lbr_state(struct lbr_state *old_state)
 
     if (old_state == NULL)
     {
-        printk(KERN_INFO "LIBIHT-LKM: Remove old state param is NULL\n");
+        print_dbg(KERN_INFO "LIBIHT-LKM: Remove old state param is NULL\n");
         return;
     }
     
     head = lbr_state_list;
     if (head == NULL)
     {
-        printk(KERN_INFO "LIBIHT-LKM: Remove old state list head is NULL\n");
+        print_dbg(KERN_INFO "LIBIHT-LKM: Remove old state list head is NULL\n");
         return;
     }
     
@@ -364,7 +377,7 @@ static void save_lbr(void)
     if (state == NULL)
         return;
 
-    printk(KERN_INFO "LIBIHT-LKM: Leave, saving LBR status for pid: %d\n", current->pid);
+    print_dbg(KERN_INFO "LIBIHT-LKM: Leave, saving LBR status for pid: %d\n", current->pid);
     spin_lock_irqsave(&lbr_cache_lock, lbr_cache_flags);
     get_lbr(current->pid);
     spin_unlock_irqrestore(&lbr_cache_lock, lbr_cache_flags);
@@ -383,7 +396,7 @@ static void restore_lbr(void)
     if (state == NULL)
         return;
 
-    printk(KERN_INFO "LIBIHT-LKM: Enter, restoring LBR status for pid: %d\n", current->pid);
+    print_dbg(KERN_INFO "LIBIHT-LKM: Enter, restoring LBR status for pid: %d\n", current->pid);
     spin_lock_irqsave(&lbr_cache_lock, lbr_cache_flags);
     put_lbr(current->pid);
     spin_unlock_irqrestore(&lbr_cache_lock, lbr_cache_flags);
@@ -419,7 +432,7 @@ static void sched_out(struct preempt_notifier *pn, struct task_struct *next)
 static int __kprobes pre_fork_handler(struct kprobe *p, struct pt_regs *regs)
 {
     // Reserve for future use
-    // printk(KERN_INFO "Process %d is calling fork()\n", current->pid);
+    // print_dbg(KERN_INFO "Process %d is calling fork()\n", current->pid);
     return 0;
 }
 
@@ -438,20 +451,20 @@ static void __kprobes post_fork_handler(struct kprobe *p, struct pt_regs *regs,
     if (parent_state == NULL)
         return;
 
-    printk(KERN_INFO "LIBIHT-LKM: Process %d is calling fork()\n", current->pid);
+    print_dbg(KERN_INFO "LIBIHT-LKM: Process %d is calling fork()\n", current->pid);
 
     // TODO: Fix this
     // task = list_entry(&current->children, struct task_struct, children);
-    // printk(KERN_INFO "LIBIHT-LKM: Possiable Child PID %d\n", task->pid);
+    // print_dbg(KERN_INFO "LIBIHT-LKM: Possiable Child PID %d\n", task->pid);
 
     // Iterate through children
     // list_for_each(list, &current->children)
     // {
     //     task = list_entry(list, struct task_struct, sibling);
-    //     printk(KERN_INFO "LIBIHT-LKM: Child's sibling task ptr 0x%p\n", task);
+    //     print_dbg(KERN_INFO "LIBIHT-LKM: Child's sibling task ptr 0x%p\n", task);
     //     if (task != NULL)
     //     {
-    //         printk(KERN_INFO "LIBIHT-LKM: Child PID %d\n", task->pid);
+    //         print_dbg(KERN_INFO "LIBIHT-LKM: Child PID %d\n", task->pid);
     //         // child_state = find_lbr_state(task->pid);
     //         // if (child_state == NULL)
     //         // {
@@ -465,22 +478,22 @@ static void __kprobes post_fork_handler(struct kprobe *p, struct pt_regs *regs,
     //         //         child_state->parent = parent_state;
 
     //         //         insert_lbr_state(child_state);
-    //         //         printk(KERN_INFO "LIBIHT-LKM: new child %d of parent %d is inserted\n",
+    //         //         print_dbg(KERN_INFO "LIBIHT-LKM: new child %d of parent %d is inserted\n",
     //         //                             child_state->pid, current->pid);
     //         //     }
     //         //     else
     //         //     {
-    //         //         printk(KERN_INFO "LIBIHT-LKM: new child_state is NULL, create state failed\n");
+    //         //         print_dbg(KERN_INFO "LIBIHT-LKM: new child_state is NULL, create state failed\n");
     //         //     }
     //         // }
     //         // else
     //         // {
-    //         //     printk(KERN_INFO "LIBIHT-LKM: child_state is not NULL, child in the list\n");
+    //         //     print_dbg(KERN_INFO "LIBIHT-LKM: child_state is not NULL, child in the list\n");
     //         // }
     //     }
     //     else
     //     {
-    //         printk(KERN_INFO "LIBIHT-LKM: Task is NULL, no child found\n");
+    //         print_dbg(KERN_INFO "LIBIHT-LKM: Task is NULL, no child found\n");
     //     }
     // }
 }
@@ -497,7 +510,7 @@ static void __kprobes post_fork_handler(struct kprobe *p, struct pt_regs *regs,
 static int device_open(struct inode *inode, struct file *filp)
 {
     // Reserve for future use
-    printk(KERN_INFO "LIBIHT-LKM: Device opened.\n");
+    print_dbg(KERN_INFO "LIBIHT-LKM: Device opened.\n");
     return 0;
 }
 
@@ -507,7 +520,7 @@ static int device_open(struct inode *inode, struct file *filp)
 static int device_release(struct inode *inode, struct file *filp)
 {
     // Reserve for future use
-    printk(KERN_INFO "LIBIHT-LKM: Device closed.\n");
+    print_dbg(KERN_INFO "LIBIHT-LKM: Device closed.\n");
     return 0;
 }
 
@@ -516,7 +529,7 @@ static int device_release(struct inode *inode, struct file *filp)
  */
 static ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_t *offset)
 {
-    printk(KERN_INFO "LIBIHT-LKM: Device read.\n");
+    print_dbg(KERN_INFO "LIBIHT-LKM: Device read.\n");
     // Dafault for the head of the list
     if (lbr_state_list != NULL)
         dump_lbr(lbr_state_list->pid);
@@ -529,7 +542,7 @@ static ssize_t device_read(struct file *filp, char *buffer, size_t length, loff_
 static ssize_t device_write(struct file *filp, const char *buf, size_t len, loff_t *off)
 {
     // Reserve for future use
-    printk(KERN_INFO "LIBIHT-LKM: Device write.\n");
+    print_dbg(KERN_INFO "LIBIHT-LKM: Device write.\n");
     return 0;
 }
 
@@ -542,7 +555,7 @@ static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned lon
     struct ioctl_request request;
     unsigned long ret;
 
-    printk(KERN_INFO "LIBIHT-LKM: Got ioctl argument %#x!", ioctl_cmd);
+    print_dbg(KERN_INFO "LIBIHT-LKM: Got ioctl argument %#x!", ioctl_cmd);
 
     // Copy user request
     ret = copy_from_user(&request, (struct ioctl_request *)ioctl_param,
@@ -550,22 +563,22 @@ static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned lon
     if (ret != 0)
     {
         // Partial copy
-        printk(KERN_INFO "LIBIHT-LKM: Remaining size %ld\n", ret);
+        print_dbg(KERN_INFO "LIBIHT-LKM: Remaining size %ld\n", ret);
         return -1;
     }
 
-    printk(KERN_INFO "LIBIHT-LKM: request select bits: %lld", request.lbr_select);
-    printk(KERN_INFO "LIBIHT-LKM: request pid: %d", request.pid);
+    print_dbg(KERN_INFO "LIBIHT-LKM: request select bits: %lld", request.lbr_select);
+    print_dbg(KERN_INFO "LIBIHT-LKM: request pid: %d", request.pid);
 
     switch (ioctl_cmd)
     {
     case LIBIHT_LKM_IOC_ENABLE_TRACE:
-        printk(KERN_INFO "LIBIHT-LKM: ENABLE_TRACE\n");
+        print_dbg(KERN_INFO "LIBIHT-LKM: ENABLE_TRACE\n");
         // Enable trace for assigned process
         state = create_lbr_state();
         if (state == NULL)
         {
-            printk(KERN_INFO "LIBIHT-LKM: create lbr_state failed\n");
+            print_dbg(KERN_INFO "LIBIHT-LKM: create lbr_state failed\n");
             return -EINVAL;
         }
 
@@ -581,12 +594,12 @@ static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned lon
         break;
 
     case LIBIHT_LKM_IOC_DISABLE_TRACE:
-        printk(KERN_INFO "LIBIHT-LKM: DISABLE_TRACE\n");
+        print_dbg(KERN_INFO "LIBIHT-LKM: DISABLE_TRACE\n");
         // Disable trace for assigned process (and its children)
         state = find_lbr_state(request.pid);
         if (state == NULL)
         {
-            printk(KERN_INFO "LIBIHT-LKM: find lbr_state failed\n");
+            print_dbg(KERN_INFO "LIBIHT-LKM: find lbr_state failed\n");
             return -EINVAL;
         }
 
@@ -594,18 +607,18 @@ static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned lon
         break;
 
     case LIBIHT_LKM_IOC_DUMP_LBR:
-        printk(KERN_INFO "LIBIHT-LKM: DUMP_LBR\n");
+        print_dbg(KERN_INFO "LIBIHT-LKM: DUMP_LBR\n");
         // Dump LBR info for assigned process
         dump_lbr(request.pid);
         break;
 
     case LIBIHT_LKM_IOC_SELECT_LBR:
-        printk(KERN_INFO "LIBIHT-LKM: SELECT_LBR\n");
+        print_dbg(KERN_INFO "LIBIHT-LKM: SELECT_LBR\n");
         // Update the select bits for assigned process
         state = find_lbr_state(request.pid);
         if (state == NULL)
         {
-            printk(KERN_INFO "LIBIHT-LKM: find lbr_state failed\n");
+            print_dbg(KERN_INFO "LIBIHT-LKM: find lbr_state failed\n");
             return -EINVAL;
         }
 
@@ -617,7 +630,7 @@ static long device_ioctl(struct file *filp, unsigned int ioctl_cmd, unsigned lon
 
     default:
         // Error command code
-        printk(KERN_INFO "LIBIHT-LKM: Error ioctl command\n");
+        print_dbg(KERN_INFO "LIBIHT-LKM: Error ioctl command\n");
         return -EINVAL;
     }
 
@@ -675,55 +688,55 @@ static int identify_cpu(void)
         return -1;
     }
 
-    printk(KERN_INFO "LIBIHT-LKM: DisplayFamily_DisplayModel - %x_%xH\n", family, model);
+    print_dbg(KERN_INFO "LIBIHT-LKM: DisplayFamily_DisplayModel - %x_%xH\n", family, model);
 
     return 0;
 }
 
 static int __init libiht_lkm_init(void)
 {
-    printk(KERN_INFO "LIBIHT-LKM: Initializing...\n");
+    print_dbg(KERN_INFO "LIBIHT-LKM: Initializing...\n");
 
     // Check availability of the cpu
-    printk(KERN_INFO "LIBIHT-LKM: Identifying CPU for LBR availability...\n");
+    print_dbg(KERN_INFO "LIBIHT-LKM: Identifying CPU for LBR availability...\n");
     if (identify_cpu() < 0)
     {
-        printk(KERN_INFO "LIBIHT-LKM: Identify CPU failed\n");
+        print_dbg(KERN_INFO "LIBIHT-LKM: Identify CPU failed\n");
         return -1;
     }
 
     // Create user interactive helper process
-    printk(KERN_INFO "LIBIHT-LKM: Creating helper process...\n");
+    print_dbg(KERN_INFO "LIBIHT-LKM: Creating helper process...\n");
     proc_entry = proc_create("libiht-info", 0666, NULL, &libiht_ops);
     if (proc_entry == NULL)
     {
-        printk(KERN_INFO "LIBIHT-LKM: Create proc failed\n");
+        print_dbg(KERN_INFO "LIBIHT-LKM: Create proc failed\n");
         return -1;
     }
 
     // Register kprobe hooks on fork system call
-    printk(KERN_INFO "LIBIHT-LKM: Registering system call hooks...\n");
+    print_dbg(KERN_INFO "LIBIHT-LKM: Registering system call hooks...\n");
     if (register_kprobe(&kp) < 0)
     {
-        printk(KERN_INFO "LIBIHT-LKM: kprobe hook failed\n");
+        print_dbg(KERN_INFO "LIBIHT-LKM: kprobe hook failed\n");
         proc_remove(proc_entry);
         return -1;
     }
 
     // Init & Register hooks on context switches
-    printk(KERN_INFO "LIBIHT-LKM: Initializing & Registering context switch hooks...\n");
+    print_dbg(KERN_INFO "LIBIHT-LKM: Initializing & Registering context switch hooks...\n");
     preempt_notifier_init(&notifier, &ops);
     preempt_notifier_inc();
     preempt_notifier_register(&notifier);
 
     // Enable LBR on each cpu (Not yet set the selection filter bit)
-    printk(KERN_INFO "LIBIHT-LKM: Initializing LBR for all %d cpus...\n", num_online_cpus());
+    print_dbg(KERN_INFO "LIBIHT-LKM: Initializing LBR for all %d cpus...\n", num_online_cpus());
     on_each_cpu(enable_lbr, NULL, 1);
 
     // Set the state list to NULL after module initialized
     lbr_state_list = NULL;
 
-    printk(KERN_INFO "LIBIHT-LKM: Initialization complete\n");
+    print_dbg(KERN_INFO "LIBIHT-LKM: Initialization complete\n");
     return 0;
 }
 
@@ -731,10 +744,10 @@ static void __exit libiht_lkm_exit(void)
 {
     struct lbr_state *tmp;
 
-    printk(KERN_INFO "LIBIHT-LKM: Exiting...\n");
+    print_dbg(KERN_INFO "LIBIHT-LKM: Exiting...\n");
 
     // Free the LBR state list
-    printk(KERN_INFO "LIBIHT-LKM: Freeing LBR state list...\n");
+    print_dbg(KERN_INFO "LIBIHT-LKM: Freeing LBR state list...\n");
     if (lbr_state_list != NULL)
     {
         tmp = lbr_state_list;
@@ -747,22 +760,22 @@ static void __exit libiht_lkm_exit(void)
     }
     
     // Disable LBR on each cpu
-    printk(KERN_INFO "LIBIHT-LKM: Disabling LBR for all %d cpus...\n", num_online_cpus());
+    print_dbg(KERN_INFO "LIBIHT-LKM: Disabling LBR for all %d cpus...\n", num_online_cpus());
     on_each_cpu(disable_lbr, NULL, 1);
 
     // Unregister hooks on context switches.
-    printk(KERN_INFO "LIBIHT-LKM: Unregistering context switch hooks...\n");
+    print_dbg(KERN_INFO "LIBIHT-LKM: Unregistering context switch hooks...\n");
     preempt_notifier_unregister(&notifier);
 
     // Unregister hooks on fork system call
-    printk(KERN_INFO "LIBIHT-LKM: Unregistering system call hooks...\n");
+    print_dbg(KERN_INFO "LIBIHT-LKM: Unregistering system call hooks...\n");
     unregister_kprobe(&kp);
 
     // Remove the helper process if exist
-    printk(KERN_INFO "LIBIHT-LKM: Removing helper process...\n");
+    print_dbg(KERN_INFO "LIBIHT-LKM: Removing helper process...\n");
     proc_remove(proc_entry);
 
-    printk(KERN_INFO "LIBIHT-LKM: Exit complete\n");
+    print_dbg(KERN_INFO "LIBIHT-LKM: Exit complete\n");
 }
 
 module_init(libiht_lkm_init);
