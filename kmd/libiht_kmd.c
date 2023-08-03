@@ -1,37 +1,15 @@
 #include <ntddk.h>
+#include <wdm.h>
 #include <intrin.h>
 
 #include "libiht_kmd.h"
-
-/************************************************
- * Global variables
- ************************************************/
-
- /*
-  * Constant CPU - LBR map, if the model not listed, it does not
-  * support the LBR feature.
-  */
-static const struct cpu_to_lbr cpu_lbr_maps[] = {
-    {0x5c, 32}, {0x5f, 32}, {0x4e, 32}, {0x5e, 32}, {0x8e, 32}, {0x9e, 32},
-    {0x55, 32}, {0x66, 32}, {0x7a, 32}, {0x67, 32}, {0x6a, 32}, {0x6c, 32},
-    {0x7d, 32}, {0x7e, 32}, {0x8c, 32}, {0x8d, 32}, {0xa5, 32}, {0xa6, 32},
-    {0xa7, 32}, {0xa8, 32}, {0x86, 32}, {0x8a, 32}, {0x96, 32}, {0x9c, 32},
-    {0x3d, 16}, {0x47, 16}, {0x4f, 16}, {0x56, 16}, {0x3c, 16}, {0x45, 16},
-    {0x46, 16}, {0x3f, 16}, {0x2a, 16}, {0x2d, 16}, {0x3a, 16}, {0x3e, 16},
-    {0x1a, 16}, {0x1e, 16}, {0x1f, 16}, {0x2e, 16}, {0x25, 16}, {0x2c, 16},
-    {0x2f, 16}, {0x17, 4}, {0x1d, 4}, {0x0f, 4}, {0x37, 8}, {0x4a, 8}, {0x4c, 8},
-    {0x4d, 8}, {0x5a, 8}, {0x5d, 8}, {0x1c, 8}, {0x26, 8}, {0x27, 8}, {0x35, 8},
-    {0x36, 8} };
-
-static struct lbr_state* lbr_state_list;
-static u64 lbr_capacity;
 
 static void print_dbg(const char* format, ...)
 #ifdef DEBUG_MSG
 {
     va_list args;
     _crt_va_start(args, format);
-    DbgPrint(format, args);
+    vDbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, format, args);
 }
 #else
 {
@@ -39,6 +17,9 @@ static void print_dbg(const char* format, ...)
 }
 #endif // DEBUG_MSG
 
+/************************************************
+ * Global variables
+ ************************************************/
 
 
 /************************************************
@@ -121,6 +102,7 @@ static void dump_lbr(u32 pid)
     int i;
     struct lbr_state* state;
 
+    // TODO: fix this
     get_cpu();
     state = find_lbr_state(pid);
     if (state == NULL)
@@ -143,6 +125,7 @@ static void dump_lbr(u32 pid)
 
     print_dbg("LIBIHT-KMD: LBR info for cpuid: %d\n", KeGetCurrentProcessorNumberEx(NULL));
 
+    // TODO: fix this
     put_cpu();
 }
 
@@ -150,9 +133,15 @@ static void dump_lbr(u32 pid)
  * Enable the LBR feature for the current CPU. *info may be NULL (it is required
  * by on_each_cpu()).
  */
-static void enable_lbr(void* info)
+ULONG_PTR enable_lbr_wrap(ULONG_PTR info)
 {
     UNREFERENCED_PARAMETER(info);
+	enable_lbr();
+	return 0;
+}
+static void enable_lbr()
+{
+    // TODO: fix this
     get_cpu();
 
     print_dbg("LIBIHT-KMD: Enable LBR on cpu core: %d...\n", KeGetCurrentProcessorNumberEx(NULL));
@@ -160,6 +149,7 @@ static void enable_lbr(void* info)
     /* Flush the LBR and enable it */
     flush_lbr(TRUE);
 
+    // TODO: fix this
     put_cpu();
 }
 
@@ -167,9 +157,15 @@ static void enable_lbr(void* info)
  * Disable the LBR feature for the current CPU. *info may be NULL (it is required
  * by on_each_cpu()).
  */
-static void disable_lbr(void* info)
+ULONG_PTR disable_lbr_wrap(ULONG_PTR info)
 {
-    UNREFERENCED_PARAMETER(info);
+	UNREFERENCED_PARAMETER(info);
+	disable_lbr();
+	return 0;
+}
+static void disable_lbr(void)
+{
+    // TODO: fix this
     get_cpu();
 
     print_dbg("LIBIHT-KMD: Disable LBR on cpu core: %d...\n", KeGetCurrentProcessorNumberEx(NULL));
@@ -180,6 +176,7 @@ static void disable_lbr(void* info)
     /* Flush the LBR and disable it */
     flush_lbr(FALSE);
 
+    // TODO: fix this
     put_cpu();
 }
 
@@ -198,8 +195,7 @@ static struct lbr_state* create_lbr_state(void)
     u64 state_size = sizeof(struct lbr_state) +
         lbr_capacity * sizeof(struct lbr_stack_entry);
 
-    // TODO: fix malloc
-    // state = kmalloc(state_size, GFP_KERNEL);
+    state = ExAllocatePool2(POOL_FLAG_NON_PAGED, state_size, LBR_STATE_TAG);
     if (state == NULL)
         return NULL;
 
@@ -280,8 +276,7 @@ static void remove_lbr_state(struct lbr_state* old_state)
         } while (tmp != lbr_state_list);
     }
 
-    // TODO: fix it
-    // kfree(old_state);
+    ExFreePoolWithTag(old_state, LBR_STATE_TAG);
 }
 
 /*
@@ -306,18 +301,108 @@ static struct lbr_state* find_lbr_state(u32 pid)
     return NULL;
 }
 
-VOID DriverExit(IN PDRIVER_OBJECT driverObject)
+/************************************************
+ * Kernel module functions
+ ************************************************/
+
+static int identify_cpu(void)
 {
-	UNREFERENCED_PARAMETER(driverObject);
-	KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "Unloading driver\n"));
+    u32 eax, ebx, ecx, edx;
+	u32 family, model;
+	int i;
+
+	cpuid(0x1, &eax, &ebx, &ecx, &edx);
+
+	family = (eax >> 8) & 0xf;
+	model = (eax >> 4) & 0xf;
+
+    // Identify CPU model
+    lbr_capacity = (u64) - 1;
+    for (i = 0; i < sizeof(cpu_lbr_maps) / sizeof(cpu_lbr_maps[0]); ++i)
+    {
+        if (model == cpu_lbr_maps[i].model)
+        {
+            lbr_capacity = cpu_lbr_maps[i].lbr_capacity;
+            break;
+        }
+    }
+
+    if (lbr_capacity == -1)
+    {
+        // Model name not found
+        return -1;
+    }
+
+    print_dbg("LIBIHT-LKM: DisplayFamily_DisplayModel - %x_%xH\n", family, model);
+
+    return 0;
 }
 
-NTSTATUS DriverEntry(IN PDRIVER_OBJECT driverObject, IN PUNICODE_STRING regPath)
+NTSTATUS DriverEntry(PDRIVER_OBJECT driverObject, PUNICODE_STRING regPath)
 {
 	UNREFERENCED_PARAMETER(regPath);
-	KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "========== Entry Point ==========\n"));
-	KdPrintEx((DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, "========== Hello World ==========\n"));
+    driverObject->DriverUnload = DriverExit;
 
-	driverObject->DriverUnload = DriverExit;
+    print_dbg("LIBIHT-KMD: Initializing...\n");
+
+    // Check availability of the cpu
+    if (identify_cpu() < 0)
+	{
+		print_dbg("LIBIHT-KMD: Identify CPU failed\n");
+		return STATUS_UNSUCCESSFUL;
+	}
+
+    // TODO: Create user interactive helper process
+    print_dbg("LIBIHT-KMD: Creating helper process...\n");
+
+    // TODO: Register kprobe hooks on fork system call
+    print_dbg("LIBIHT-KMD: Registering system call hooks...\n");
+
+    // TODO: Init & Register hooks on context switches
+    print_dbg("LIBIHT-KMD: Initializing & Registering context switch hooks...\n");
+
+    // Enable LBR on each cpu (Not yet set the selection filter bit)
+    print_dbg("LIBIHT-KMD: Enabling LBR for all %d cpus...\n", KeQueryActiveProcessorCount(NULL));
+    KeIpiGenericCall(enable_lbr_wrap, 0);
+
+    // Set the state list to NULL after module initialized
+    lbr_state_list = NULL;
+
+	print_dbg("LIBIHT-KMD: Initialized\n");
 	return STATUS_SUCCESS;
+}
+
+void DriverExit(PDRIVER_OBJECT driverObject)
+{
+    UNREFERENCED_PARAMETER(driverObject);
+    struct lbr_state* tmp;
+
+    print_dbg("LIBIHT-KMD: Exiting...\n");
+
+    // Free the LBR state list
+    print_dbg("LIBIHT-KMD: Freeing LBR state list...\n");
+    if (lbr_state_list != NULL)
+    {
+        tmp = lbr_state_list;
+        do
+        {
+            ExFreePoolWithTag(tmp, LBR_STATE_TAG);
+            tmp = tmp->prev;
+        } while (tmp != lbr_state_list);
+    }
+
+    // Disable LBR on each cpu
+    print_dbg("LIBIHT-KMD: Disabling LBR for all %d cpus...\n", KeQueryActiveProcessorCount(NULL));
+    KeIpiGenericCall(disable_lbr_wrap, 0);
+
+    // TODO: Unregister hooks on context switches.
+    print_dbg("LIBIHT-KMD: Unregistering context switch hooks...\n");
+
+    // TODO: Unregister hooks on fork system call
+    print_dbg("LIBIHT-KMD: Unregistering system call hooks...\n");
+
+    // TODO: Remove the helper process if exist
+    print_dbg("LIBIHT-KMD: Removing helper process...\n");
+
+    print_dbg("LIBIHT-KMD: Exit complete\n");
 }

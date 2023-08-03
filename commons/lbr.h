@@ -67,6 +67,7 @@ struct lbr_state
 };
 
 /* LBR related extern globals */
+
 static struct lbr_state *lbr_state_list;
 static u64 lbr_capacity;
 
