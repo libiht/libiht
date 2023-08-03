@@ -3,7 +3,9 @@
 #include <linux/ioctl.h>
 #include <asm/fpu/types.h>
 
+#include "../../commons/types.h"
 #include "../../commons/lbr.h"
+#include "../../commons/cpu.h"
 #include "../../commons/debug.h"
 
 /*

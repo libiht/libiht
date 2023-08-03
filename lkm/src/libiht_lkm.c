@@ -26,22 +26,6 @@ MODULE_DESCRIPTION("Intel Hardware Trace Library - Linux Kernel Module");
  ************************************************/
 
 /*
- * Constant CPU - LBR map, if the model not listed, it does not
- * support the LBR feature.
- */
-static const struct cpu_to_lbr cpu_lbr_maps[] = {
-    {0x5c, 32}, {0x5f, 32}, {0x4e, 32}, {0x5e, 32}, {0x8e, 32}, {0x9e, 32}, 
-    {0x55, 32}, {0x66, 32}, {0x7a, 32}, {0x67, 32}, {0x6a, 32}, {0x6c, 32}, 
-    {0x7d, 32}, {0x7e, 32}, {0x8c, 32}, {0x8d, 32}, {0xa5, 32}, {0xa6, 32}, 
-    {0xa7, 32}, {0xa8, 32}, {0x86, 32}, {0x8a, 32}, {0x96, 32}, {0x9c, 32}, 
-    {0x3d, 16}, {0x47, 16}, {0x4f, 16}, {0x56, 16}, {0x3c, 16}, {0x45, 16}, 
-    {0x46, 16}, {0x3f, 16}, {0x2a, 16}, {0x2d, 16}, {0x3a, 16}, {0x3e, 16}, 
-    {0x1a, 16}, {0x1e, 16}, {0x1f, 16}, {0x2e, 16}, {0x25, 16}, {0x2c, 16}, 
-    {0x2f, 16}, {0x17, 4}, {0x1d, 4}, {0x0f, 4}, {0x37, 8}, {0x4a, 8}, {0x4c, 8}, 
-    {0x4d, 8}, {0x5a, 8}, {0x5d, 8}, {0x1c, 8}, {0x26, 8}, {0x27, 8}, {0x35, 8}, 
-    {0x36, 8}};
-
-/*
  * Due to differnt kernel version, determine which struct going to use
  */
 #ifdef HAVE_PROC_OPS
@@ -76,8 +60,8 @@ static struct kprobe kp = {
     .pre_handler = pre_fork_handler,
     .post_handler = post_fork_handler};
 
-static struct lbr_state *lbr_state_list;
-static uint64_t lbr_capacity;
+// static struct lbr_state *lbr_state_list;
+// static u64 lbr_capacity;
 static spinlock_t lbr_cache_lock;
 static struct proc_dir_entry *proc_entry;
 
@@ -203,7 +187,12 @@ static void dump_lbr(u32 pid)
  * Enable the LBR feature for the current CPU. *info may be NULL (it is required
  * by on_each_cpu()).
  */
-static void enable_lbr(void *info)
+static void enable_lbr_wrap(void *info)
+{
+    enable_lbr();
+}
+
+static void enable_lbr(void)
 {
 
     get_cpu();
@@ -220,7 +209,12 @@ static void enable_lbr(void *info)
  * Disable the LBR feature for the current CPU. *info may be NULL (it is required
  * by on_each_cpu()).
  */
-static void disable_lbr(void *info)
+static void diable_lbr_wrap(void *info)
+{
+    disable_lbr();
+}
+
+static void disable_lbr(void)
 {
 
     get_cpu();
@@ -731,7 +725,7 @@ static int __init libiht_lkm_init(void)
 
     // Enable LBR on each cpu (Not yet set the selection filter bit)
     print_dbg(KERN_INFO "LIBIHT-LKM: Initializing LBR for all %d cpus...\n", num_online_cpus());
-    on_each_cpu(enable_lbr, NULL, 1);
+    on_each_cpu(enable_lbr_wrap, NULL, 1);
 
     // Set the state list to NULL after module initialized
     lbr_state_list = NULL;
@@ -761,7 +755,7 @@ static void __exit libiht_lkm_exit(void)
     
     // Disable LBR on each cpu
     print_dbg(KERN_INFO "LIBIHT-LKM: Disabling LBR for all %d cpus...\n", num_online_cpus());
-    on_each_cpu(disable_lbr, NULL, 1);
+    on_each_cpu(diable_lbr_wrap, NULL, 1);
 
     // Unregister hooks on context switches.
     print_dbg(KERN_INFO "LIBIHT-LKM: Unregistering context switch hooks...\n");

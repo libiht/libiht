@@ -66,33 +66,25 @@ struct lbr_state
     struct lbr_stack_entry entries[];
 };
 
-/*
- * The struct represent the mapping between CPU model and its corrosponding
- * LBR entries (if exist)
- */
-struct cpu_to_lbr
-{
-    u32 model;
-    u32 lbr_capacity;
-};
+/* LBR related extern globals */
+static struct lbr_state *lbr_state_list;
+static u64 lbr_capacity;
 
 /* LBR related function prototypes */
 
-static void flush_lbr(u8);
-static void get_lbr(u32);
-static void put_lbr(u32);
-static void dump_lbr(u32);
-static void enable_lbr(void *);
-static void disable_lbr(void *);
+static void flush_lbr(u8 enable);
+static void get_lbr(u32 pid);
+static void put_lbr(u32 pid);
+static void dump_lbr(u32 pid);
+static void enable_lbr(void);
+static void disable_lbr(void);
 
 static struct lbr_state *create_lbr_state(void);
-static void insert_lbr_state(struct lbr_state *);
-static void remove_lbr_state(struct lbr_state *);
-static struct lbr_state *find_lbr_state(u32);
+static void insert_lbr_state(struct lbr_state *new_state);
+static void remove_lbr_state(struct lbr_state *old_state);
+static struct lbr_state *find_lbr_state(u32 pid);
 
 static void save_lbr(void);
 static void restore_lbr(void);
-
-static s32 identify_cpu(void);
 
 #endif /* _COMMONS_LBR_H */
