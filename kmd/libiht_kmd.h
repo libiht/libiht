@@ -22,6 +22,23 @@
 #define LIBIHT_KMD_IOC_DUMP_LBR			CTL_CODE(KMD_IOCTL_TYPE, KMD_IOCTL_FUNC + 3, METHOD_BUFFERED, FILE_ANY_ACCESS)
 #define LIBIHT_KMD_IOC_SELECT_LBR		CTL_CODE(KMD_IOCTL_TYPE, KMD_IOCTL_FUNC + 4, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
+/*
+ * The prototype of the original NtCreateUserProcess function prototype
+ */
+typedef NTSTATUS(*NtCreateUserProcess)(
+    OUT PHANDLE ProcessHandle,
+    OUT PHANDLE ThreadHandle,
+    ACCESS_MASK ProcessDesiredAccess,
+    ACCESS_MASK ThreadDesiredAccess,
+    POBJECT_ATTRIBUTES ProcessObjectAttributes OPTIONAL,
+    POBJECT_ATTRIBUTES ThreadObjectAttributes OPTIONAL,
+    ULONG ProcessFlags,
+    ULONG ThreadFlags,
+    PVOID ProcessParameters OPTIONAL,
+    PVOID CreateInfo,
+    PVOID AttributeList OPTIONAL
+);
+
  /*
   * The struct used for I/O control communication
   */
@@ -34,6 +51,25 @@ struct ioctl_request
 /*
  * Function prototypes
  */
+NTSTATUS change_mem_protect(PVOID address, ULONG size, ULONG new_protection, PULONG old_protection);
+NTSTATUS NtCreateUserProcess_hook(
+    OUT PHANDLE ProcessHandle,
+    OUT PHANDLE ThreadHandle,
+    ACCESS_MASK ProcessDesiredAccess,
+    ACCESS_MASK ThreadDesiredAccess,
+    POBJECT_ATTRIBUTES ProcessObjectAttributes OPTIONAL,
+    POBJECT_ATTRIBUTES ThreadObjectAttributes OPTIONAL,
+    ULONG ProcessFlags,
+    ULONG ThreadFlags,
+    PVOID ProcessParameters OPTIONAL,
+    PVOID CreateInfo,
+    PVOID AttributeList OPTIONAL
+);
+NTSTATUS hook_create(void);
+NTSTATUS hook_remove(void);
+
+NTSTATUS device_create(PDRIVER_OBJECT driver_obj);
+NTSTATUS device_remove(PDRIVER_OBJECT driver_obj);
 NTSTATUS device_ioctl(PDEVICE_OBJECT device_obj, PIRP Irp);
 NTSTATUS device_default(PDEVICE_OBJECT device_obj, PIRP Irp);
 
