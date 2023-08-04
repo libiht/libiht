@@ -5,6 +5,38 @@
 
 #define LBR_STATE_TAG 'SbrL'
 
+/*
+ * I/O Device name
+ */
+#define DEVICE_NAME			L"\\Device\\libiht-info"
+#define SYM_DEVICE_NAME		L"\\DosDevices\\libiht-info"
+
+/*
+ * I/O control table
+ */
+#define KMD_IOCTL_TYPE 0x8888
+#define KMD_IOCTL_FUNC 0x888
+
+#define LIBIHT_KMD_IOC_ENABLE_TRACE		CTL_CODE(KMD_IOCTL_TYPE, KMD_IOCTL_FUNC + 1, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define LIBIHT_KMD_IOC_DISABLE_TRACE    CTL_CODE(KMD_IOCTL_TYPE, KMD_IOCTL_FUNC + 2, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define LIBIHT_KMD_IOC_DUMP_LBR			CTL_CODE(KMD_IOCTL_TYPE, KMD_IOCTL_FUNC + 3, METHOD_BUFFERED, FILE_ANY_ACCESS)
+#define LIBIHT_KMD_IOC_SELECT_LBR		CTL_CODE(KMD_IOCTL_TYPE, KMD_IOCTL_FUNC + 4, METHOD_BUFFERED, FILE_ANY_ACCESS)
+
+ /*
+  * The struct used for I/O control communication
+  */
+struct ioctl_request
+{
+	u64 lbr_select;
+	u32 pid;
+};
+
+/*
+ * Function prototypes
+ */
+NTSTATUS device_ioctl(PDEVICE_OBJECT device_obj, PIRP Irp);
+NTSTATUS device_default(PDEVICE_OBJECT device_obj, PIRP Irp);
+
 KIPI_BROADCAST_WORKER enable_lbr_wrap;
 KIPI_BROADCAST_WORKER disable_lbr_wrap;
 

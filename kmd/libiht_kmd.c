@@ -304,7 +304,114 @@ static struct lbr_state* find_lbr_state(u32 pid)
  * Maintain functionality of the libiht-info helper process
  ************************************************/
 
-// TODO
+ /*
+  * Hooks for I/O controling the device
+  */
+NTSTATUS device_ioctl(PDEVICE_OBJECT device_obj, PIRP Irp)
+{
+	PIO_STACK_LOCATION irp_stack;
+	ULONG ioctl_cmd;
+    KIRQL oldIrql;
+    struct lbr_state* state;
+    struct ioctl_request* request;
+    u64 request_size;
+
+	UNREFERENCED_PARAMETER(device_obj);
+
+	irp_stack = IoGetCurrentIrpStackLocation(Irp);
+
+	ioctl_cmd = irp_stack->Parameters.DeviceIoControl.IoControlCode;
+    request_size = irp_stack->Parameters.DeviceIoControl.InputBufferLength;
+    request = Irp->AssociatedIrp.SystemBuffer; // Input buffer
+
+    if (request_size != sizeof(request))
+    {
+        print_dbg("LIBIHT-KMD: Wrong request size of %ld, expect: %ld\n", request_size, sizeof(request));
+        return STATUS_INVALID_DEVICE_REQUEST;
+    }
+
+    print_dbg("LIBIHT-KMD: Got ioctl argument %#x!", ioctl_cmd);
+    print_dbg("LIBIHT-KMD: request select bits: %lld", request->lbr_select);
+    print_dbg("LIBIHT-KMD: request pid: %d", request->pid);
+
+    switch (ioctl_cmd)
+    {
+    case(LIBIHT_KMD_IOC_ENABLE_TRACE):
+		print_dbg("LIBIHT-KMD: ENABLE_TRACE\n");
+        // Enable trace for assigned process
+        state = create_lbr_state();
+        if (state == NULL)
+        {
+            print_dbg("LIBIHT-KMD: create lbr_state failed\n");
+            return STATUS_UNSUCCESSFUL;
+        }
+
+        // Set the field
+        state->lbr_select = request->lbr_select ? request->lbr_select : LBR_SELECT;
+        state->pid = request->pid ? request->pid : (u32)(ULONG_PTR)PsGetCurrentProcessId();
+        state->parent = NULL;
+
+        insert_lbr_state(state);
+        KeRaiseIrql(DISPATCH_LEVEL, &oldIrql);
+        put_lbr(request->pid);
+        KeLowerIrql(oldIrql);
+		break;
+    case(LIBIHT_KMD_IOC_DISABLE_TRACE):
+        print_dbg("LIBIHT-KMD: DISABLE_TRACE\n");
+        // Disable trace for assigned process (and its children)
+        state = find_lbr_state(request->pid);
+        if (state == NULL)
+        {
+            print_dbg("LIBIHT-KMD: find lbr_state failed\n");
+            return STATUS_UNSUCCESSFUL;
+        }
+
+        remove_lbr_state(state);
+        break;
+    case(LIBIHT_KMD_IOC_DUMP_LBR):
+        print_dbg("LIBIHT-KMD: DUMP_LBR\n");
+        // Dump LBR info for assigned process
+        dump_lbr(request->pid);
+        break;
+    case(LIBIHT_KMD_IOC_SELECT_LBR):
+		print_dbg("LIBIHT-KMD: SELECT_LBR\n");
+        // Update the select bits for assigned process
+        state = create_lbr_state();
+        if (state == NULL)
+        {
+            print_dbg("LIBIHT-KMD: create lbr_state failed\n");
+            return STATUS_UNSUCCESSFUL;
+        }
+
+        state->lbr_select = request->lbr_select;
+        KeRaiseIrql(DISPATCH_LEVEL, &oldIrql);
+        put_lbr(request->pid);
+        KeLowerIrql(oldIrql);
+		break;
+    default:
+        // Error command code
+        print_dbg("LIBIHT-KMD: Error IOCTL command \n");
+        return STATUS_INVALID_DEVICE_REQUEST;
+    }
+    
+    // Complete the request
+    Irp->IoStatus.Status = STATUS_SUCCESS;
+    Irp->IoStatus.Information = 0;
+    IoCompleteRequest(Irp, IO_NO_INCREMENT);
+
+    return STATUS_SUCCESS;
+}
+
+/*
+ * Device dispatch function
+ */
+NTSTATUS device_default(PDEVICE_OBJECT device_obj, PIRP Irp)
+{
+    UNREFERENCED_PARAMETER(device_obj);
+    Irp->IoStatus.Status = STATUS_SUCCESS;
+    IoCompleteRequest(Irp, IO_NO_INCREMENT);
+    return STATUS_SUCCESS;
+}
 
 
 /************************************************
@@ -319,11 +426,8 @@ static int identify_cpu(void)
 
 	__cpuid(cpuinfo, 1);
 
-	//family = (cpuinfo[0] >> 8) & 0xf;
-	//model = (cpuinfo[0] >> 4) & 0xf;
     family = ((cpuinfo[0] >> 8) & 0xF) + ((cpuinfo[0] >> 20) & 0xFF);
     model = ((cpuinfo[0] >> 4) & 0xF) | ((cpuinfo[0] >> 12) & 0xF0);
-    print_dbg("LIBIHT-KMD: DisplayFamily_DisplayModel - %x_%xH\n", family, model);
 
     // Identify CPU model
     lbr_capacity = (u64) - 1;
@@ -347,10 +451,11 @@ static int identify_cpu(void)
     return 0;
 }
 
-NTSTATUS DriverEntry(PDRIVER_OBJECT driverObject, PUNICODE_STRING regPath)
+NTSTATUS DriverEntry(PDRIVER_OBJECT driver_obj, PUNICODE_STRING reg_path)
 {
-	UNREFERENCED_PARAMETER(regPath);
-    driverObject->DriverUnload = DriverExit;
+	UNREFERENCED_PARAMETER(reg_path);
+    NTSTATUS status;
+    driver_obj->DriverUnload = DriverExit;
 
     print_dbg("LIBIHT-KMD: Initializing...\n");
 
@@ -361,10 +466,35 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driverObject, PUNICODE_STRING regPath)
 		return STATUS_UNSUCCESSFUL;
 	}
 
-    // TODO: Create user interactive helper process
-    print_dbg("LIBIHT-KMD: Creating helper process...\n");
+    // Create user interactive helper device
+    print_dbg("LIBIHT-KMD: Creating helper device...\n");
+    PDEVICE_OBJECT device_obj;
+    UNICODE_STRING device_name, sym_device_name;
 
-    // TODO: Register kprobe hooks on fork system call
+    // Set dispatch routines
+    for (ULONG i = 0; i <= IRP_MJ_MAXIMUM_FUNCTION; i++) {
+        driver_obj->MajorFunction[i] = device_default;
+    }
+    driver_obj->MajorFunction[IRP_MJ_DEVICE_CONTROL] = device_ioctl;
+
+    // Create device object
+    RtlInitUnicodeString(&device_name, DEVICE_NAME);
+    status = IoCreateDevice(driver_obj, 0, &device_name, FILE_DEVICE_UNKNOWN, FILE_DEVICE_SECURE_OPEN, FALSE, &device_obj);
+    if (!NT_SUCCESS(status)) {
+        print_dbg("Failed to create device object\n");
+        return status;
+    }
+
+    // Create symbolic link
+    RtlInitUnicodeString(&sym_device_name, SYM_DEVICE_NAME);
+    status = IoCreateSymbolicLink(&sym_device_name, &device_name);
+    if (!NT_SUCCESS(status)) {
+        KdPrint(("Failed to create symbolic link\n"));
+        IoDeleteDevice(device_obj);
+        return status;
+    }
+
+    // TODO: Register hooks on fork system call
     print_dbg("LIBIHT-KMD: Registering system call hooks...\n");
 
     // TODO: Init & Register hooks on context switches
@@ -381,9 +511,9 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driverObject, PUNICODE_STRING regPath)
 	return STATUS_SUCCESS;
 }
 
-NTSTATUS DriverExit(PDRIVER_OBJECT driverObject)
+NTSTATUS DriverExit(PDRIVER_OBJECT driver_obj)
 {
-    UNREFERENCED_PARAMETER(driverObject);
+    UNREFERENCED_PARAMETER(driver_obj);
     struct lbr_state *curr, *prev;
 
     print_dbg("LIBIHT-KMD: Exiting...\n");
@@ -411,8 +541,13 @@ NTSTATUS DriverExit(PDRIVER_OBJECT driverObject)
     // TODO: Unregister hooks on fork system call
     print_dbg("LIBIHT-KMD: Unregistering system call hooks...\n");
 
-    // TODO: Remove the helper process if exist
-    print_dbg("LIBIHT-KMD: Removing helper process...\n");
+    // Remove the helper device if exist
+    print_dbg("LIBIHT-KMD: Removing helper device...\n");
+    PDEVICE_OBJECT device_obj = driver_obj->DeviceObject;
+    UNICODE_STRING sym_device_name;
+    RtlInitUnicodeString(&sym_device_name, SYM_DEVICE_NAME);
+    IoDeleteSymbolicLink(&sym_device_name);
+    IoDeleteDevice(device_obj);
 
     print_dbg("LIBIHT-KMD: Exit complete\n");
     return STATUS_SUCCESS;
