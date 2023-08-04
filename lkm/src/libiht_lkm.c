@@ -736,7 +736,7 @@ static int __init libiht_lkm_init(void)
 
 static void __exit libiht_lkm_exit(void)
 {
-    struct lbr_state *tmp;
+    struct lbr_state *curr, *prev;
 
     print_dbg(KERN_INFO "LIBIHT-LKM: Exiting...\n");
 
@@ -744,13 +744,14 @@ static void __exit libiht_lkm_exit(void)
     print_dbg(KERN_INFO "LIBIHT-LKM: Freeing LBR state list...\n");
     if (lbr_state_list != NULL)
     {
-        tmp = lbr_state_list;
+        curr = lbr_state_list;
 
         do
         {
-            kfree(tmp);
-            tmp = tmp->prev;
-        } while (tmp != lbr_state_list);
+            prev = curr->prev;
+            kfree(curr);
+            curr = prev;
+        } while (curr != lbr_state_list);
     }
     
     // Disable LBR on each cpu
