@@ -30,7 +30,7 @@ static void print_dbg(const char* format, ...)
 
  /*
   * Flush the LBR registers. Caller should ensure this function run on
-  * single cpu (by wrapping get_cpu() and put_cpu())
+  * single cpu (by wrapping KeRaiseIrql() and KeLowerIrql())
   */
 static void flush_lbr(u8 enable)
 {
@@ -102,8 +102,8 @@ static void dump_lbr(u32 pid)
     int i;
     struct lbr_state* state;
 
-    // TODO: fix this
-    get_cpu();
+    KIRQL oldIrql;
+    KeRaiseIrql(DISPATCH_LEVEL, &oldIrql);
     state = find_lbr_state(pid);
     if (state == NULL)
     {
@@ -125,8 +125,7 @@ static void dump_lbr(u32 pid)
 
     print_dbg("LIBIHT-KMD: LBR info for cpuid: %d\n", KeGetCurrentProcessorNumberEx(NULL));
 
-    // TODO: fix this
-    put_cpu();
+    KeLowerIrql(oldIrql);
 }
 
 /*
@@ -141,16 +140,15 @@ ULONG_PTR enable_lbr_wrap(ULONG_PTR info)
 }
 static void enable_lbr()
 {
-    // TODO: fix this
-    get_cpu();
+    KIRQL oldIrql;
+    KeRaiseIrql(DISPATCH_LEVEL, &oldIrql);
 
     print_dbg("LIBIHT-KMD: Enable LBR on cpu core: %d...\n", KeGetCurrentProcessorNumberEx(NULL));
 
     /* Flush the LBR and enable it */
     flush_lbr(TRUE);
 
-    // TODO: fix this
-    put_cpu();
+    KeLowerIrql(oldIrql);
 }
 
 /*
@@ -165,8 +163,8 @@ ULONG_PTR disable_lbr_wrap(ULONG_PTR info)
 }
 static void disable_lbr(void)
 {
-    // TODO: fix this
-    get_cpu();
+    KIRQL oldIrql;
+    KeRaiseIrql(DISPATCH_LEVEL, &oldIrql);
 
     print_dbg("LIBIHT-KMD: Disable LBR on cpu core: %d...\n", KeGetCurrentProcessorNumberEx(NULL));
 
@@ -176,8 +174,7 @@ static void disable_lbr(void)
     /* Flush the LBR and disable it */
     flush_lbr(FALSE);
 
-    // TODO: fix this
-    put_cpu();
+    KeLowerIrql(oldIrql);
 }
 
 /************************************************
@@ -302,19 +299,31 @@ static struct lbr_state* find_lbr_state(u32 pid)
 }
 
 /************************************************
+ * Device hook functions
+ *
+ * Maintain functionality of the libiht-info helper process
+ ************************************************/
+
+// TODO
+
+
+/************************************************
  * Kernel module functions
  ************************************************/
 
 static int identify_cpu(void)
 {
-    u32 eax, ebx, ecx, edx;
+    s32 cpuinfo[4] = {0};
 	u32 family, model;
 	int i;
 
-	cpuid(0x1, &eax, &ebx, &ecx, &edx);
+	__cpuid(cpuinfo, 1);
 
-	family = (eax >> 8) & 0xf;
-	model = (eax >> 4) & 0xf;
+	//family = (cpuinfo[0] >> 8) & 0xf;
+	//model = (cpuinfo[0] >> 4) & 0xf;
+    family = ((cpuinfo[0] >> 8) & 0xF) + ((cpuinfo[0] >> 20) & 0xFF);
+    model = ((cpuinfo[0] >> 4) & 0xF) | ((cpuinfo[0] >> 12) & 0xF0);
+    print_dbg("LIBIHT-KMD: DisplayFamily_DisplayModel - %x_%xH\n", family, model);
 
     // Identify CPU model
     lbr_capacity = (u64) - 1;
@@ -333,7 +342,7 @@ static int identify_cpu(void)
         return -1;
     }
 
-    print_dbg("LIBIHT-LKM: DisplayFamily_DisplayModel - %x_%xH\n", family, model);
+    print_dbg("LIBIHT-KMD: DisplayFamily_DisplayModel - %x_%xH\n", family, model);
 
     return 0;
 }
@@ -372,10 +381,10 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driverObject, PUNICODE_STRING regPath)
 	return STATUS_SUCCESS;
 }
 
-void DriverExit(PDRIVER_OBJECT driverObject)
+NTSTATUS DriverExit(PDRIVER_OBJECT driverObject)
 {
     UNREFERENCED_PARAMETER(driverObject);
-    struct lbr_state* tmp;
+    struct lbr_state *curr, *prev;
 
     print_dbg("LIBIHT-KMD: Exiting...\n");
 
@@ -383,12 +392,13 @@ void DriverExit(PDRIVER_OBJECT driverObject)
     print_dbg("LIBIHT-KMD: Freeing LBR state list...\n");
     if (lbr_state_list != NULL)
     {
-        tmp = lbr_state_list;
+        curr = lbr_state_list;
         do
         {
-            ExFreePoolWithTag(tmp, LBR_STATE_TAG);
-            tmp = tmp->prev;
-        } while (tmp != lbr_state_list);
+            prev = curr->prev;
+            ExFreePoolWithTag(curr, LBR_STATE_TAG);
+            curr = prev;
+        } while (curr != lbr_state_list);
     }
 
     // Disable LBR on each cpu
@@ -405,4 +415,5 @@ void DriverExit(PDRIVER_OBJECT driverObject)
     print_dbg("LIBIHT-KMD: Removing helper process...\n");
 
     print_dbg("LIBIHT-KMD: Exit complete\n");
+    return STATUS_SUCCESS;
 }
