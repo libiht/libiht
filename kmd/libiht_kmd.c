@@ -1,8 +1,13 @@
+#include <ntifs.h>
 #include <ntddk.h>
 #include <wdm.h>
+#include <windef.h>
 #include <intrin.h>
 
 #include "libiht_kmd.h"
+
+#pragma intrinsic(_disable)
+#pragma intrinsic(_enable)
 
 static void print_dbg(const char* format, ...)
 #ifdef DEBUG_MSG
@@ -20,8 +25,9 @@ static void print_dbg(const char* format, ...)
 /************************************************
  * Global variables
  ************************************************/
+ULONG NCUP_patch_size = 0;
+PUCHAR NCUP_head_n_byte = NULL;
 NtCreateUserProcess NtCreateUserProcess_original = NULL;
-UCHAR hook_origin_bytes[5];
 
 
 /************************************************
@@ -184,7 +190,7 @@ static struct lbr_state* create_lbr_state(void)
 	u64 state_size = sizeof(struct lbr_state) +
 		lbr_capacity * sizeof(struct lbr_stack_entry);
 
-	state = ExAllocatePool2(POOL_FLAG_NON_PAGED, state_size, LBR_STATE_TAG);
+	state = ExAllocatePool2(POOL_FLAG_NON_PAGED, state_size, LIBIHT_KMD_TAG);
 	if (state == NULL)
 		return NULL;
 
@@ -268,7 +274,7 @@ static void remove_lbr_state(struct lbr_state* old_state)
 		} while (tmp != lbr_state_list);
 	}
 
-	ExFreePoolWithTag(old_state, LBR_STATE_TAG);
+	ExFreePoolWithTag(old_state, LIBIHT_KMD_TAG);
 }
 
 /*
@@ -333,7 +339,8 @@ ULONG_PTR disable_lbr_wrap(ULONG_PTR info)
  */
 VOID lde_init()
 {
-	lde_disasm = ExAllocatePool(NonPagedPool, 12800);
+	lde_disasm = ExAllocatePool2(POOL_FLAG_NON_PAGED_EXECUTE, 12800, LIBIHT_KMD_TAG);
+	ASSERT(lde_disasm != NULL);
 	memcpy(lde_disasm, sz_shellcode, 12800);
 }
 
@@ -342,7 +349,7 @@ VOID lde_init()
  */
 VOID lde_destroy()
 {
-	ExFreePool(lde_disasm);
+	ExFreePoolWithTag(lde_disasm, LIBIHT_KMD_TAG);
 }
 
 /*
@@ -362,11 +369,14 @@ ULONG get_full_patch_size(PUCHAR addr)
 	return len_cnt;
 }
 
+/************************************************
+ * Kernel hook helper functions
+ ************************************************/
 
 /*
  * Helper function to disable memory protection
  */
-KIRQL wpage_off()
+KIRQL wpage_offx64()
 {
 	KIRQL irql = KeRaiseIrqlToDpcLevel();
 	UINT64 cr0 = __readcr0();
@@ -379,7 +389,7 @@ KIRQL wpage_off()
 /*
  * Helper function to disable memory protection
  */
-VOID wpage_on(KIRQL irql)
+VOID wpage_onx64(KIRQL irql)
 {
 	UINT64 cr0 = __readcr0();
 	cr0 |= 0x10000;
@@ -394,8 +404,80 @@ VOID wpage_on(KIRQL irql)
 PVOID get_func_addr(PCWSTR func_name)
 {
 	UNICODE_STRING unicode_func_name;
+	PVOID addr;
 	RtlInitUnicodeString(&unicode_func_name, func_name);
-	return MmGetSystemRoutineAddress(&unicode_func_name);
+	addr = MmGetSystemRoutineAddress(&unicode_func_name);
+	ASSERT(addr != NULL);
+	return addr;
+}
+
+/*
+ * Inline hook kernel api function
+ */
+PVOID kernel_api_hook(PVOID api_addr, PVOID proxy_addr, OUT PVOID *ori_api_addr, OUT ULONG* patch_size)
+{
+	KIRQL irql;
+	UINT64 tmpv;
+	PVOID head_n_byte, ori_func;
+
+	// Save return instruction: JMP QWORD PTR [After this instruction]
+	UCHAR jmp_code[] =
+		"\xFF\x25\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF";
+	// Save original instruction.
+	UCHAR jmp_code_orifunc[] =
+		"\xFF\x25\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF";
+
+	// Get function address instruction size
+	*patch_size = get_full_patch_size((PUCHAR)api_addr);
+
+	// Allocate memory for the original instruction of the api function address
+	head_n_byte = ExAllocatePool2(POOL_FLAG_NON_PAGED, *patch_size, LIBIHT_KMD_TAG);
+	ASSERT(head_n_byte != NULL);
+
+	irql = wpage_offx64();
+	RtlCopyMemory(head_n_byte, api_addr, *patch_size);
+	wpage_onx64(irql);
+
+	// Construct the jmp instruction to the proxy function
+
+	// 1. Original machine code + jump machine code
+	ori_func = ExAllocatePool2(POOL_FLAG_NON_PAGED_EXECUTE, *patch_size + 14, LIBIHT_KMD_TAG);
+	ASSERT(ori_func != NULL);
+	RtlFillMemory(ori_func, *patch_size + 14, 0x90);
+
+	// 2. Jump to unpatched byte
+	tmpv = (ULONG64)api_addr + *patch_size;
+	RtlCopyMemory(jmp_code_orifunc + 6, &tmpv, 8);
+	RtlCopyMemory((PUCHAR)ori_func, head_n_byte, *patch_size);
+	RtlCopyMemory((PUCHAR)ori_func + *patch_size, jmp_code_orifunc, 14);
+	*ori_api_addr = ori_func;
+
+	// 3. Get proxy address
+	tmpv = (ULONG64)proxy_addr;
+	RtlCopyMemory(jmp_code + 6, &tmpv, 8);
+
+	// 4. Patch the api function address
+	irql = wpage_offx64();
+	RtlFillMemory(api_addr, *patch_size, 0x90);
+	RtlCopyMemory(api_addr, jmp_code, 14);
+	wpage_onx64(irql);
+
+	return head_n_byte;
+}
+
+/*
+ * Unhook kernel api function
+ */
+VOID kernel_api_unhook(PVOID api_addr, PVOID ori_bytes, ULONG patch_size)
+{
+	KIRQL irql;
+
+	irql = wpage_offx64();
+	RtlCopyMemory(api_addr, ori_bytes, patch_size);
+	wpage_onx64(irql);
+
+	ExFreePoolWithTag(ori_bytes, LIBIHT_KMD_TAG);
+	ExFreePoolWithTag(NtCreateUserProcess_original, LIBIHT_KMD_TAG);
 }
 
 /************************************************
@@ -419,9 +501,10 @@ NTSTATUS NtCreateUserProcess_hook(
 	PVOID AttributeList OPTIONAL
 )
 {
+	NTSTATUS status;
 	print_dbg("LIBIHT-KMD: NtCreateUserProcess_hook\n");
 	// TODO: Pre hook steps here
-	return NtCreateUserProcess_original(ProcessHandle, 
+	status = NtCreateUserProcess_original(ProcessHandle, 
 		ThreadHandle, 
 		ProcessDesiredAccess, 
 		ThreadDesiredAccess, 
@@ -431,94 +514,39 @@ NTSTATUS NtCreateUserProcess_hook(
 		ProcessParameters,
 		CreateInfo, 
 		AttributeList);
-}
 
-//TODO: Rewrite the following function
-
-/*
- * Inline hook kernel api function
- */
-PVOID kernel_api_hook(PVOID api_addr, PVOID proxy_addr, OUT PVOID ori_api_addr, OUT ULONG* patch_size)
-{
-	KIRQL irql;
-	UINT64 tmpv;
-	PVOID head_n_byte, ori_func;
-
-	// Save return instruction: JMP QWORD PTR [After this instruction]
-	UCHAR jmp_code[] =
-		"\xFF\x25\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF";
-	// Save original instruction.
-	UCHAR jmp_code_orifunc[] =
-		"\xFF\x25\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF";
-
-	patch_size = 14;
-	return NULL;
+	return status;
 }
 
 /*
  * Helper function to create CreateUserProcess hook
  */
-NTSTATUS hook_create(void)
+NTSTATUS NCUP_hook_create(void)
 {
-	// Locate the NtCreateUserProcess function
-	UNICODE_STRING hooked_func;
-	RtlInitUnicodeString(&hooked_func, L"NtCreateUserProcess");
-	NtCreateUserProcess_original = (NtCreateUserProcess)MmGetSystemRoutineAddress(&hooked_func);
+	PVOID NCUP_addr;
 
-	// Change the memory protection of the function to be writable
-	//NTSTATUS status = change_mem_protect(NtCreateUserProcess_original, 5, PAGE_EXECUTE_READWRITE);
-	//if (!NT_SUCCESS(status))
-	//{
-	//	print_dbg("LIBIHT-KMD: Failed to change memory protection\n");
-	//	return status;
-	//}
+	lde_init();
 
-	// Save the original first 5 bytes of the function
+	// Hook NtCreateUserProcess function
+	// TODO: Try to get correct addr
+	NCUP_addr = (PVOID)((uintptr_t)get_func_addr(L"FsRtlInsertExtraCreateParameter") + 0x240);
 	DbgBreakPoint();
-	RtlCopyMemory(hook_origin_bytes, NtCreateUserProcess_original, 5);
-
-	// Write a JMP instruction to the beginning of the original function
-	// JMP NtCreateUserProcess_hook
-	UCHAR jmp_instr[5] = { 0xE9, 0x00, 0x00, 0x00, 0x00 };
-	LONG jmp_offset = (LONG)((ULONG_PTR)NtCreateUserProcess_hook - (ULONG_PTR)NtCreateUserProcess_original) - 5;
-	RtlCopyMemory(&jmp_instr[1], &jmp_offset, sizeof(jmp_offset));
-	RtlCopyMemory(NtCreateUserProcess_original, jmp_instr, 5);
-
-	// Restore the original memory protection
-	//status = change_mem_protect(NtCreateUserProcess_original, 5, PAGE_EXECUTE_READ);
-	//if (!NT_SUCCESS(status))
-	//{
-	//	print_dbg("LIBIHT-KMD: Failed to change memory protection\n");
-	//	return status;
-	//}
-	
+	NCUP_head_n_byte = kernel_api_hook(NCUP_addr, 
+		(PVOID)NtCreateUserProcess_hook, &(PVOID)NtCreateUserProcess_original, &NCUP_patch_size);
 	return STATUS_SUCCESS;
 }
 
 /*
  * Helper function to remove CreateUserProcess hook
  */
-NTSTATUS hook_remove(void)
+NTSTATUS NCUP_hook_remove(void)
 {
-	// Change the memory protection of the function to be writable
-	NTSTATUS status = change_mem_protect(NtCreateUserProcess_original, 5, PAGE_EXECUTE_READWRITE);
-	if (!NT_SUCCESS(status))
-	{
-		print_dbg("LIBIHT-KMD: Failed to change memory protection\n");
-		return status;
-	}
+	PVOID NCUP_addr;
 
-	// Restore the original first 5 bytes of the function
-	RtlCopyMemory(NtCreateUserProcess_original, hook_origin_bytes, 5);
+	lde_destroy();
 
-	// Restore the original memory protection
-	status = change_mem_protect(NtCreateUserProcess_original, 5, PAGE_EXECUTE_READ);
-	if (!NT_SUCCESS(status))
-	{
-		print_dbg("LIBIHT-KMD: Failed to change memory protection\n");
-		return status;
-	}
-
+	NCUP_addr = (PVOID)((uintptr_t)get_func_addr(L"FsRtlInsertExtraCreateParameter") + 0x240);
+	kernel_api_unhook(NCUP_addr, NCUP_head_n_byte, NCUP_patch_size);
 	return STATUS_SUCCESS;
 }
 
@@ -746,7 +774,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_obj, PUNICODE_STRING reg_path)
 
 	// Register hooks on NtCreateUserProcess system call
 	print_dbg("LIBIHT-KMD: Registering system call hooks...\n");
-	status = hook_create();
+	status = NCUP_hook_create();
 	if (!NT_SUCCESS(status))
 		return status;
 
@@ -780,7 +808,7 @@ NTSTATUS DriverExit(PDRIVER_OBJECT driver_obj)
 		do
 		{
 			prev = curr->prev;
-			ExFreePoolWithTag(curr, LBR_STATE_TAG);
+			ExFreePoolWithTag(curr, LIBIHT_KMD_TAG);
 			curr = prev;
 		} while (curr != lbr_state_list);
 	}
@@ -789,14 +817,14 @@ NTSTATUS DriverExit(PDRIVER_OBJECT driver_obj)
 	print_dbg("LIBIHT-KMD: Disabling LBR for all %d cpus...\n", KeQueryActiveProcessorCount(NULL));
 	KeIpiGenericCall(disable_lbr_wrap, 0);
 
-	// Unregister hooks on context switches.
+	// TODO: Unregister hooks on context switches.
 	print_dbg("LIBIHT-KMD: Unregistering context switch hooks...\n");
-	status = hook_remove();
+
+	// Unregister hooks on NtCreateUserProcess system call
+	print_dbg("LIBIHT-KMD: Unregistering system call hooks...\n");
+	status = NCUP_hook_remove();
 	if (!NT_SUCCESS(status))
 		return status;
-
-	// TODO: Unregister hooks on fork system call
-	print_dbg("LIBIHT-KMD: Unregistering system call hooks...\n");
 
 	// Remove the helper device if exist
 	print_dbg("LIBIHT-KMD: Removing helper device...\n");

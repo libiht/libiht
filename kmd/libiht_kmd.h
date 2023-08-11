@@ -4,7 +4,7 @@
 #include "../commons/debug.h"
 #include "libiht_kmd_lde64.h"
 
-#define LBR_STATE_TAG 'SbrL'
+#define LIBIHT_KMD_TAG 'THIL'
 
 /*
  * I/O Device name
@@ -52,6 +52,19 @@ struct ioctl_request
 /*
  * Function prototypes
  */
+KIPI_BROADCAST_WORKER enable_lbr_wrap;
+KIPI_BROADCAST_WORKER disable_lbr_wrap;
+
+VOID lde_init(void);
+VOID lde_destroy(void);
+ULONG get_full_patch_size(PUCHAR addr);
+
+KIRQL wpage_offx64(void);
+VOID wpage_onx64(KIRQL irql);
+PVOID get_func_addr(PCWSTR func_name);
+PVOID kernel_api_hook(PVOID api_addr, PVOID proxy_addr, OUT PVOID* ori_api_addr, OUT ULONG* patch_size);
+VOID kernel_api_unhook(PVOID api_addr, PVOID ori_api_addr, ULONG patch_size);
+
 NTSTATUS NtCreateUserProcess_hook(
     OUT PHANDLE ProcessHandle,
     OUT PHANDLE ThreadHandle,
@@ -65,16 +78,13 @@ NTSTATUS NtCreateUserProcess_hook(
     PVOID CreateInfo,
     PVOID AttributeList OPTIONAL
 );
-NTSTATUS hook_create(void);
-NTSTATUS hook_remove(void);
+NTSTATUS NCUP_hook_create(void);
+NTSTATUS NCUP_hook_remove(void);
 
 NTSTATUS device_create(PDRIVER_OBJECT driver_obj);
 NTSTATUS device_remove(PDRIVER_OBJECT driver_obj);
 NTSTATUS device_ioctl(PDEVICE_OBJECT device_obj, PIRP Irp);
 NTSTATUS device_default(PDEVICE_OBJECT device_obj, PIRP Irp);
-
-KIPI_BROADCAST_WORKER enable_lbr_wrap;
-KIPI_BROADCAST_WORKER disable_lbr_wrap;
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT driverObject, PUNICODE_STRING regPath);
 NTSTATUS DriverExit(PDRIVER_OBJECT driverObject);
