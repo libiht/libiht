@@ -2,6 +2,7 @@
 #include "../commons/cpu.h"
 #include "../commons/types.h"
 #include "../commons/debug.h"
+#include "libiht_kmd_lde64.h"
 
 #define LBR_STATE_TAG 'SbrL'
 
@@ -51,7 +52,6 @@ struct ioctl_request
 /*
  * Function prototypes
  */
-NTSTATUS change_mem_protect(PVOID address, ULONG size, ULONG new_protection, PULONG old_protection);
 NTSTATUS NtCreateUserProcess_hook(
     OUT PHANDLE ProcessHandle,
     OUT PHANDLE ThreadHandle,

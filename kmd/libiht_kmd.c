@@ -23,6 +23,12 @@ static void print_dbg(const char* format, ...)
 NtCreateUserProcess NtCreateUserProcess_original = NULL;
 UCHAR hook_origin_bytes[5];
 
+
+/************************************************
+ * Cross platform LBR & LBR state related functions
+ ************************************************/
+
+
 /************************************************
  * LBR helper functions
  *
@@ -129,15 +135,8 @@ static void dump_lbr(u32 pid)
 }
 
 /*
- * Enable the LBR feature for the current CPU. *info may be NULL (it is required
- * by on_each_cpu()).
+ * Enable the LBR feature for the current CPU.
  */
-ULONG_PTR enable_lbr_wrap(ULONG_PTR info)
-{
-	UNREFERENCED_PARAMETER(info);
-	enable_lbr();
-	return 0;
-}
 static void enable_lbr()
 {
 	KIRQL oldIrql;
@@ -152,15 +151,8 @@ static void enable_lbr()
 }
 
 /*
- * Disable the LBR feature for the current CPU. *info may be NULL (it is required
- * by on_each_cpu()).
+ * Disable the LBR feature for the current CPU.
  */
-ULONG_PTR disable_lbr_wrap(ULONG_PTR info)
-{
-	UNREFERENCED_PARAMETER(info);
-	disable_lbr();
-	return 0;
-}
 static void disable_lbr(void)
 {
 	KIRQL oldIrql;
@@ -301,29 +293,114 @@ static struct lbr_state* find_lbr_state(u32 pid)
 	return NULL;
 }
 
+
+/************************************************
+ * Platform specific hooking & entry functions
+ ************************************************/
+
+
+/************************************************
+ * Wrapper functions
+ ************************************************/
+
+/*
+ * enable_lbr wrapper worker function
+ */
+ULONG_PTR enable_lbr_wrap(ULONG_PTR info)
+{
+	UNREFERENCED_PARAMETER(info);
+	enable_lbr();
+	return 0;
+}
+
+/*
+ * disable_lbr wrapper worker function
+ */
+ULONG_PTR disable_lbr_wrap(ULONG_PTR info)
+{
+	UNREFERENCED_PARAMETER(info);
+	disable_lbr();
+	return 0;
+}
+
+
+/************************************************
+ * LDE engine helper functions
+ ************************************************/
+
+/*
+ * Initialize the LDE engine
+ */
+VOID lde_init()
+{
+	lde_disasm = ExAllocatePool(NonPagedPool, 12800);
+	memcpy(lde_disasm, sz_shellcode, 12800);
+}
+
+/*
+ * Destroy the LDE engine
+ */
+VOID lde_destroy()
+{
+	ExFreePool(lde_disasm);
+}
+
+/*
+ * Get the full patch size of the instruction in the given address
+ */
+ULONG get_full_patch_size(PUCHAR addr)
+{
+	ULONG len_cnt = 0, len = 0;
+
+	// At least 14 bytes
+	while (len_cnt <= 14)
+	{
+		len = lde_disasm(addr, 64);
+		addr = addr + len;
+		len_cnt = len_cnt + len;
+	}
+	return len_cnt;
+}
+
+
+/*
+ * Helper function to disable memory protection
+ */
+KIRQL wpage_off()
+{
+	KIRQL irql = KeRaiseIrqlToDpcLevel();
+	UINT64 cr0 = __readcr0();
+	cr0 &= 0xfffffffffffeffff;
+	__writecr0(cr0);
+	_disable();
+	return irql;
+}
+
+/*
+ * Helper function to disable memory protection
+ */
+VOID wpage_on(KIRQL irql)
+{
+	UINT64 cr0 = __readcr0();
+	cr0 |= 0x10000;
+	_enable();
+	__writecr0(cr0);
+	KeLowerIrql(irql);
+}
+
+/*
+ * Dynamicly get the address of the function
+ */
+PVOID get_func_addr(PCWSTR func_name)
+{
+	UNICODE_STRING unicode_func_name;
+	RtlInitUnicodeString(&unicode_func_name, func_name);
+	return MmGetSystemRoutineAddress(&unicode_func_name);
+}
+
 /************************************************
  * CreateUserProcess hook functions
  ************************************************/
-
- /*
-  * Helper function to modify memory protection
-  */
-NTSTATUS change_mem_protect(PVOID address, ULONG size, ULONG new_protection, PULONG old_protection)
-{
-	PMDL mdl = IoAllocateMdl(address, size, FALSE, FALSE, NULL);
-	if (!mdl) {
-		return STATUS_UNSUCCESSFUL;
-	}
-
-	MmBuildMdlForNonPagedPool(mdl);
-	NTSTATUS status = MmProtectMdlSystemAddress(mdl, new_protection);
-	if (NT_SUCCESS(status)) {
-		*old_protection = MmProtectMdlSystemAddress(mdl, new_protection);
-	}
-
-	IoFreeMdl(mdl);
-	return status;
-}
 
 /*
  * Hooked CreateUserProcess function
@@ -342,6 +419,7 @@ NTSTATUS NtCreateUserProcess_hook(
 	PVOID AttributeList OPTIONAL
 )
 {
+	print_dbg("LIBIHT-KMD: NtCreateUserProcess_hook\n");
 	// TODO: Pre hook steps here
 	return NtCreateUserProcess_original(ProcessHandle, 
 		ThreadHandle, 
@@ -355,6 +433,28 @@ NTSTATUS NtCreateUserProcess_hook(
 		AttributeList);
 }
 
+//TODO: Rewrite the following function
+
+/*
+ * Inline hook kernel api function
+ */
+PVOID kernel_api_hook(PVOID api_addr, PVOID proxy_addr, OUT PVOID ori_api_addr, OUT ULONG* patch_size)
+{
+	KIRQL irql;
+	UINT64 tmpv;
+	PVOID head_n_byte, ori_func;
+
+	// Save return instruction: JMP QWORD PTR [After this instruction]
+	UCHAR jmp_code[] =
+		"\xFF\x25\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF";
+	// Save original instruction.
+	UCHAR jmp_code_orifunc[] =
+		"\xFF\x25\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF";
+
+	patch_size = 14;
+	return NULL;
+}
+
 /*
  * Helper function to create CreateUserProcess hook
  */
@@ -366,13 +466,15 @@ NTSTATUS hook_create(void)
 	NtCreateUserProcess_original = (NtCreateUserProcess)MmGetSystemRoutineAddress(&hooked_func);
 
 	// Change the memory protection of the function to be writable
-	ULONG old_protection;
-	NTSTATUS status = change_mem_protect(NtCreateUserProcess_original, 5, PAGE_EXECUTE_READWRITE, &old_protection);
-	if (!NT_SUCCESS(status))
-		// TOOD: Handle the error
-		return status;
+	//NTSTATUS status = change_mem_protect(NtCreateUserProcess_original, 5, PAGE_EXECUTE_READWRITE);
+	//if (!NT_SUCCESS(status))
+	//{
+	//	print_dbg("LIBIHT-KMD: Failed to change memory protection\n");
+	//	return status;
+	//}
 
 	// Save the original first 5 bytes of the function
+	DbgBreakPoint();
 	RtlCopyMemory(hook_origin_bytes, NtCreateUserProcess_original, 5);
 
 	// Write a JMP instruction to the beginning of the original function
@@ -383,10 +485,12 @@ NTSTATUS hook_create(void)
 	RtlCopyMemory(NtCreateUserProcess_original, jmp_instr, 5);
 
 	// Restore the original memory protection
-	status = change_mem_protect(NtCreateUserProcess_original, 5, old_protection, &old_protection);
-	if (!NT_SUCCESS(status))
-		// TOOD: Handle the error
-		return status;
+	//status = change_mem_protect(NtCreateUserProcess_original, 5, PAGE_EXECUTE_READ);
+	//if (!NT_SUCCESS(status))
+	//{
+	//	print_dbg("LIBIHT-KMD: Failed to change memory protection\n");
+	//	return status;
+	//}
 	
 	return STATUS_SUCCESS;
 }
@@ -397,20 +501,23 @@ NTSTATUS hook_create(void)
 NTSTATUS hook_remove(void)
 {
 	// Change the memory protection of the function to be writable
-	ULONG old_protection;
-	NTSTATUS status = change_mem_protect(NtCreateUserProcess_original, 5, PAGE_EXECUTE_READWRITE, &old_protection);
+	NTSTATUS status = change_mem_protect(NtCreateUserProcess_original, 5, PAGE_EXECUTE_READWRITE);
 	if (!NT_SUCCESS(status))
-		// TODO: Handle the error
+	{
+		print_dbg("LIBIHT-KMD: Failed to change memory protection\n");
 		return status;
+	}
 
 	// Restore the original first 5 bytes of the function
 	RtlCopyMemory(NtCreateUserProcess_original, hook_origin_bytes, 5);
 
 	// Restore the original memory protection
-	status = change_mem_protect(NtCreateUserProcess_original, 5, old_protection, &old_protection);
+	status = change_mem_protect(NtCreateUserProcess_original, 5, PAGE_EXECUTE_READ);
 	if (!NT_SUCCESS(status))
-		// TODO: Handle the error
+	{
+		print_dbg("LIBIHT-KMD: Failed to change memory protection\n");
 		return status;
+	}
 
 	return STATUS_SUCCESS;
 }
