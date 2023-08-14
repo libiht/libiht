@@ -704,7 +704,9 @@ NTSTATUS DriverExit(PDRIVER_OBJECT driver_obj)
 
 	// Unregister create process notifier
 	print_dbg("LIBIHT-KMD: Unregistering create proc notifier...\n");
-	PsSetCreateProcessNotifyRoutineEx((PCREATE_PROCESS_NOTIFY_ROUTINE_EX)create_proc_notify, TRUE);
+	status = PsSetCreateProcessNotifyRoutineEx((PCREATE_PROCESS_NOTIFY_ROUTINE_EX)create_proc_notify, TRUE);
+	if (!NT_SUCCESS(status))
+		return status;
 
 	// Remove the helper device if exist
 	print_dbg("LIBIHT-KMD: Removing helper device...\n");

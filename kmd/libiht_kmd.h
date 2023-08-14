@@ -54,9 +54,8 @@ struct ioctl_request
 KIPI_BROADCAST_WORKER enable_lbr_wrap;
 KIPI_BROADCAST_WORKER disable_lbr_wrap;
 
-// Export two unexported functions
-// NTKERNELAPI PCHAR PsGetProcessImageFileName(PEPROCESS proc);
-// NTKERNELAPI NTSTATUS PsLookupProcessByProcessId(HANDLE proc_id, PEPROCESS *proc);
+VOID create_proc_notify(PEPROCESS proc, HANDLE proc_id,
+    PPS_CREATE_NOTIFY_INFO create_info);
 
 NTSTATUS device_create(PDRIVER_OBJECT driver_obj);
 NTSTATUS device_remove(PDRIVER_OBJECT driver_obj);
