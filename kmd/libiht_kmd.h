@@ -53,8 +53,8 @@ struct ioctl_request
  */
 BOOLEAN bypass_check_sign(PDRIVER_OBJECT driver_obj);
 
-KIPI_BROADCAST_WORKER enable_lbr_wrap;
-KIPI_BROADCAST_WORKER disable_lbr_wrap;
+ULONG_PTR enable_lbr_wrap(ULONG_PTR info);
+ULONG_PTR disable_lbr_wrap(ULONG_PTR info);
 
 VOID create_proc_notify(PEPROCESS proc, HANDLE proc_id,
     PPS_CREATE_NOTIFY_INFO create_info);
