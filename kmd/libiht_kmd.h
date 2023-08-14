@@ -51,6 +51,8 @@ struct ioctl_request
 /*
  * Function prototypes
  */
+BOOLEAN bypass_check_sign(PDRIVER_OBJECT driver_obj);
+
 KIPI_BROADCAST_WORKER enable_lbr_wrap;
 KIPI_BROADCAST_WORKER disable_lbr_wrap;
 
