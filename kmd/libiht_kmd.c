@@ -302,8 +302,57 @@ static struct lbr_state* find_lbr_state(u32 pid)
 
 /************************************************
  * Platform specific hooking & entry functions
+ *
+ * Heavily referenced from: https://github.com/lyshark/WindowsKernelBook
  ************************************************/
 
+/*
+ * Bypass check sign
+ */
+BOOLEAN bypass_check_sign(PDRIVER_OBJECT driver_obj)
+{
+#ifdef _WIN64
+	typedef struct _KLDR_DATA_TABLE_ENTRY
+	{
+		LIST_ENTRY listEntry;
+		ULONG64 __Undefined1;
+		ULONG64 __Undefined2;
+		ULONG64 __Undefined3;
+		ULONG64 NonPagedDebugInfo;
+		ULONG64 DllBase;
+		ULONG64 EntryPoint;
+		ULONG SizeOfImage;
+		UNICODE_STRING path;
+		UNICODE_STRING name;
+		ULONG Flags;
+		USHORT LoadCount;
+		USHORT __Undefined5;
+		ULONG64 __Undefined6;
+		ULONG CheckSum;
+		ULONG __padding1;
+		ULONG TimeDateStamp;
+		ULONG __padding2;
+	} KLDR_DATA_TABLE_ENTRY, * PKLDR_DATA_TABLE_ENTRY;
+#else
+	typedef struct _KLDR_DATA_TABLE_ENTRY
+	{
+		LIST_ENTRY listEntry;
+		ULONG unknown1;
+		ULONG unknown2;
+		ULONG unknown3;
+		ULONG unknown4;
+		ULONG unknown5;
+		ULONG unknown6;
+		ULONG unknown7;
+		UNICODE_STRING path;
+		UNICODE_STRING name;
+		ULONG Flags;
+	} KLDR_DATA_TABLE_ENTRY, * PKLDR_DATA_TABLE_ENTRY;
+#endif
+	PKLDR_DATA_TABLE_ENTRY pLdrData = (PKLDR_DATA_TABLE_ENTRY)driver_obj -> DriverSection;
+	pLdrData->Flags = pLdrData->Flags | 0x20;
+	return TRUE;
+}
 
 /************************************************
  * Wrapper functions
@@ -329,226 +378,55 @@ ULONG_PTR disable_lbr_wrap(ULONG_PTR info)
 	return 0;
 }
 
-
 /************************************************
- * LDE engine helper functions
+ * Create process notifier functions
  ************************************************/
 
 /*
- * Initialize the LDE engine
+ * Create process notify routine implementation
  */
-VOID lde_init()
+VOID create_proc_notify(PEPROCESS proc, HANDLE proc_id,
+	PPS_CREATE_NOTIFY_INFO create_info)
 {
-	lde_disasm = ExAllocatePool2(POOL_FLAG_NON_PAGED_EXECUTE, 12800, LIBIHT_KMD_TAG);
-	ASSERT(lde_disasm != NULL);
-	memcpy(lde_disasm, sz_shellcode, 12800);
-}
+	UNREFERENCED_PARAMETER(proc);
+	struct lbr_state *parent_state, *child_state, *state;
 
-/*
- * Destroy the LDE engine
- */
-VOID lde_destroy()
-{
-	ExFreePoolWithTag(lde_disasm, LIBIHT_KMD_TAG);
-}
-
-/*
- * Get the full patch size of the instruction in the given address
- */
-ULONG get_full_patch_size(PUCHAR addr)
-{
-	ULONG len_cnt = 0, len = 0;
-
-	// At least 14 bytes
-	while (len_cnt <= 14)
+	if (create_info != NULL)
 	{
-		len = lde_disasm(addr, 64);
-		addr = addr + len;
-		len_cnt = len_cnt + len;
+		// Process is being created
+		print_dbg("LIBIHT-KMD: Process %ld is being created, parent: %ld\n", proc_id, create_info->ParentProcessId);
+
+		parent_state = find_lbr_state((u32)(UINT_PTR)create_info->ParentProcessId);
+		if (parent_state == NULL)
+			// Ignore process that is not being monitored
+			return;
+
+		child_state = find_lbr_state((u32)(UINT_PTR)proc_id);
+		if (child_state != NULL)
+		{
+			// Set up trace for new process
+			child_state->lbr_select = parent_state->lbr_select;
+			child_state->pid = (u32)(UINT_PTR)proc_id;
+			child_state->parent = parent_state;
+
+			insert_lbr_state(child_state);
+			print_dbg("LIBIHT-KMD: New child_state is created & inserted to monitor list\n");
+		}
+		else
+		{
+			print_dbg("LIBIHT-KMD: New child_state is NULL, create state failed\n");
+		}
 	}
-	return len_cnt;
+	else
+	{
+		// Process is being terminated
+		print_dbg("LIBIHT-KMD: Process %ld is being terminated\n", proc_id);
+		state = find_lbr_state((u32)(UINT_PTR)proc_id);
+		if (state != NULL)
+			remove_lbr_state(state);
+	}
 }
 
-/************************************************
- * Kernel hook helper functions
- ************************************************/
-
-/*
- * Helper function to disable memory protection
- */
-KIRQL wpage_offx64()
-{
-	KIRQL irql = KeRaiseIrqlToDpcLevel();
-	UINT64 cr0 = __readcr0();
-	cr0 &= 0xfffffffffffeffff;
-	__writecr0(cr0);
-	_disable();
-	return irql;
-}
-
-/*
- * Helper function to disable memory protection
- */
-VOID wpage_onx64(KIRQL irql)
-{
-	UINT64 cr0 = __readcr0();
-	cr0 |= 0x10000;
-	_enable();
-	__writecr0(cr0);
-	KeLowerIrql(irql);
-}
-
-/*
- * Dynamicly get the address of the function
- */
-PVOID get_func_addr(PCWSTR func_name)
-{
-	UNICODE_STRING unicode_func_name;
-	PVOID addr;
-	RtlInitUnicodeString(&unicode_func_name, func_name);
-	addr = MmGetSystemRoutineAddress(&unicode_func_name);
-	ASSERT(addr != NULL);
-	return addr;
-}
-
-/*
- * Inline hook kernel api function
- */
-PVOID kernel_api_hook(PVOID api_addr, PVOID proxy_addr, OUT PVOID *ori_api_addr, OUT ULONG* patch_size)
-{
-	KIRQL irql;
-	UINT64 tmpv;
-	PVOID head_n_byte, ori_func;
-
-	// Save return instruction: JMP QWORD PTR [After this instruction]
-	UCHAR jmp_code[] =
-		"\xFF\x25\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF";
-	// Save original instruction.
-	UCHAR jmp_code_orifunc[] =
-		"\xFF\x25\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF";
-
-	// Get function address instruction size
-	*patch_size = get_full_patch_size((PUCHAR)api_addr);
-
-	// Allocate memory for the original instruction of the api function address
-	head_n_byte = ExAllocatePool2(POOL_FLAG_NON_PAGED, *patch_size, LIBIHT_KMD_TAG);
-	ASSERT(head_n_byte != NULL);
-
-	irql = wpage_offx64();
-	RtlCopyMemory(head_n_byte, api_addr, *patch_size);
-	wpage_onx64(irql);
-
-	// Construct the jmp instruction to the proxy function
-
-	// 1. Original machine code + jump machine code
-	ori_func = ExAllocatePool2(POOL_FLAG_NON_PAGED_EXECUTE, *patch_size + 14, LIBIHT_KMD_TAG);
-	ASSERT(ori_func != NULL);
-	RtlFillMemory(ori_func, *patch_size + 14, 0x90);
-
-	// 2. Jump to unpatched byte
-	tmpv = (ULONG64)api_addr + *patch_size;
-	RtlCopyMemory(jmp_code_orifunc + 6, &tmpv, 8);
-	RtlCopyMemory((PUCHAR)ori_func, head_n_byte, *patch_size);
-	RtlCopyMemory((PUCHAR)ori_func + *patch_size, jmp_code_orifunc, 14);
-	*ori_api_addr = ori_func;
-
-	// 3. Get proxy address
-	tmpv = (ULONG64)proxy_addr;
-	RtlCopyMemory(jmp_code + 6, &tmpv, 8);
-
-	// 4. Patch the api function address
-	irql = wpage_offx64();
-	RtlFillMemory(api_addr, *patch_size, 0x90);
-	RtlCopyMemory(api_addr, jmp_code, 14);
-	wpage_onx64(irql);
-
-	return head_n_byte;
-}
-
-/*
- * Unhook kernel api function
- */
-VOID kernel_api_unhook(PVOID api_addr, PVOID ori_bytes, ULONG patch_size)
-{
-	KIRQL irql;
-
-	irql = wpage_offx64();
-	RtlCopyMemory(api_addr, ori_bytes, patch_size);
-	wpage_onx64(irql);
-
-	ExFreePoolWithTag(ori_bytes, LIBIHT_KMD_TAG);
-	ExFreePoolWithTag(NtCreateUserProcess_original, LIBIHT_KMD_TAG);
-}
-
-/************************************************
- * CreateUserProcess hook functions
- ************************************************/
-
-/*
- * Hooked CreateUserProcess function
- */
-NTSTATUS NtCreateUserProcess_hook(
-	OUT PHANDLE ProcessHandle,
-	OUT PHANDLE ThreadHandle,
-	ACCESS_MASK ProcessDesiredAccess,
-	ACCESS_MASK ThreadDesiredAccess,
-	POBJECT_ATTRIBUTES ProcessObjectAttributes OPTIONAL,
-	POBJECT_ATTRIBUTES ThreadObjectAttributes OPTIONAL,
-	ULONG ProcessFlags,
-	ULONG ThreadFlags,
-	PVOID ProcessParameters OPTIONAL,
-	PVOID CreateInfo,
-	PVOID AttributeList OPTIONAL
-)
-{
-	NTSTATUS status;
-	print_dbg("LIBIHT-KMD: NtCreateUserProcess_hook\n");
-	// TODO: Pre hook steps here
-	status = NtCreateUserProcess_original(ProcessHandle, 
-		ThreadHandle, 
-		ProcessDesiredAccess, 
-		ThreadDesiredAccess, 
-		ProcessObjectAttributes, 
-		ThreadObjectAttributes, 
-		ProcessFlags, ThreadFlags, 
-		ProcessParameters,
-		CreateInfo, 
-		AttributeList);
-
-	return status;
-}
-
-/*
- * Helper function to create CreateUserProcess hook
- */
-NTSTATUS NCUP_hook_create(void)
-{
-	PVOID NCUP_addr;
-
-	lde_init();
-
-	// Hook NtCreateUserProcess function
-	// TODO: Try to get correct addr
-	NCUP_addr = (PVOID)((uintptr_t)get_func_addr(L"FsRtlInsertExtraCreateParameter") + 0x240);
-	DbgBreakPoint();
-	NCUP_head_n_byte = kernel_api_hook(NCUP_addr, 
-		(PVOID)NtCreateUserProcess_hook, &(PVOID)NtCreateUserProcess_original, &NCUP_patch_size);
-	return STATUS_SUCCESS;
-}
-
-/*
- * Helper function to remove CreateUserProcess hook
- */
-NTSTATUS NCUP_hook_remove(void)
-{
-	PVOID NCUP_addr;
-
-	lde_destroy();
-
-	NCUP_addr = (PVOID)((uintptr_t)get_func_addr(L"FsRtlInsertExtraCreateParameter") + 0x240);
-	kernel_api_unhook(NCUP_addr, NCUP_head_n_byte, NCUP_patch_size);
-	return STATUS_SUCCESS;
-}
 
 /************************************************
  * Device hook functions
@@ -715,7 +593,7 @@ NTSTATUS device_default(PDEVICE_OBJECT device_obj, PIRP Irp)
 
 
 /************************************************
- * Kernel module functions
+ * Kernel mode driver functions
  ************************************************/
 
 static int identify_cpu(void)
@@ -759,6 +637,10 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_obj, PUNICODE_STRING reg_path)
 
 	print_dbg("LIBIHT-KMD: Initializing...\n");
 
+	// Bypass check sign
+	// LINKER_FLAGS=/INTEGRITYCHECK
+	bypass_check_sign(driver_obj);
+
 	// Check availability of the cpu
 	if (identify_cpu() < 0)
 	{
@@ -772,9 +654,9 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_obj, PUNICODE_STRING reg_path)
 	if (!NT_SUCCESS(status))
 		return status;
 
-	// Register hooks on NtCreateUserProcess system call
-	print_dbg("LIBIHT-KMD: Registering system call hooks...\n");
-	status = NCUP_hook_create();
+	// Register create process notifier
+	print_dbg("LIBIHT-KMD: Registering create proc notifier...\n");
+	status = PsSetCreateProcessNotifyRoutineEx((PCREATE_PROCESS_NOTIFY_ROUTINE_EX)create_proc_notify, FALSE);
 	if (!NT_SUCCESS(status))
 		return status;
 
@@ -820,11 +702,9 @@ NTSTATUS DriverExit(PDRIVER_OBJECT driver_obj)
 	// TODO: Unregister hooks on context switches.
 	print_dbg("LIBIHT-KMD: Unregistering context switch hooks...\n");
 
-	// Unregister hooks on NtCreateUserProcess system call
-	print_dbg("LIBIHT-KMD: Unregistering system call hooks...\n");
-	status = NCUP_hook_remove();
-	if (!NT_SUCCESS(status))
-		return status;
+	// Unregister create process notifier
+	print_dbg("LIBIHT-KMD: Unregistering create proc notifier...\n");
+	PsSetCreateProcessNotifyRoutineEx((PCREATE_PROCESS_NOTIFY_ROUTINE_EX)create_proc_notify, TRUE);
 
 	// Remove the helper device if exist
 	print_dbg("LIBIHT-KMD: Removing helper device...\n");

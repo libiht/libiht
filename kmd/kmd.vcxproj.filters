@@ -32,8 +32,5 @@
     <ClInclude Include="libiht_kmd.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="libiht_kmd_lde64.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>

@@ -116,7 +116,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="libiht_kmd.h" />
-    <ClInclude Include="libiht_kmd_lde64.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
