@@ -2,6 +2,7 @@
 #include "../commons/cpu.h"
 #include "../commons/types.h"
 #include "../commons/debug.h"
+#include "libiht_kmd_lde64.h"
 
 #define LIBIHT_KMD_TAG 'THIL'
 
@@ -23,21 +24,9 @@
 #define LIBIHT_KMD_IOC_SELECT_LBR		CTL_CODE(KMD_IOCTL_TYPE, KMD_IOCTL_FUNC + 4, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
 /*
- * The prototype of the original NtCreateUserProcess function prototype
+ * The prototype of the original KiSwapContext function prototype
  */
-typedef NTSTATUS(*NtCreateUserProcess)(
-    OUT PHANDLE ProcessHandle,
-    OUT PHANDLE ThreadHandle,
-    ACCESS_MASK ProcessDesiredAccess,
-    ACCESS_MASK ThreadDesiredAccess,
-    POBJECT_ATTRIBUTES ProcessObjectAttributes OPTIONAL,
-    POBJECT_ATTRIBUTES ThreadObjectAttributes OPTIONAL,
-    ULONG ProcessFlags,
-    ULONG ThreadFlags,
-    PVOID ProcessParameters OPTIONAL,
-    PVOID CreateInfo,
-    PVOID AttributeList OPTIONAL
-);
+typedef VOID(*KiSwapContext)(void);
 
  /*
   * The struct used for I/O control communication
@@ -51,10 +40,10 @@ struct ioctl_request
 /*
  * Function prototypes
  */
-BOOLEAN bypass_check_sign(PDRIVER_OBJECT driver_obj);
-
 ULONG_PTR enable_lbr_wrap(ULONG_PTR info);
 ULONG_PTR disable_lbr_wrap(ULONG_PTR info);
+
+BOOLEAN bypass_check_sign(PDRIVER_OBJECT driver_obj);
 
 VOID create_proc_notify(PEPROCESS proc, HANDLE proc_id,
     PPS_CREATE_NOTIFY_INFO create_info);

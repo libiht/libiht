@@ -25,9 +25,9 @@ static void print_dbg(const char* format, ...)
 /************************************************
  * Global variables
  ************************************************/
-ULONG NCUP_patch_size = 0;
-PUCHAR NCUP_head_n_byte = NULL;
-NtCreateUserProcess NtCreateUserProcess_original = NULL;
+ULONG KSC_patch_size = 0;
+PUCHAR KSC_head_n_byte = NULL;
+KiSwapContext KSC_ori = NULL;
 
 
 /************************************************
@@ -299,12 +299,35 @@ static struct lbr_state* find_lbr_state(u32 pid)
 	return NULL;
 }
 
-
 /************************************************
  * Platform specific hooking & entry functions
  *
  * Heavily referenced from: https://github.com/lyshark/WindowsKernelBook
  ************************************************/
+
+/************************************************
+ * Wrapper functions
+ ************************************************/
+
+/*
+ * enable_lbr wrapper worker function
+ */
+ULONG_PTR enable_lbr_wrap(ULONG_PTR info)
+{
+	UNREFERENCED_PARAMETER(info);
+	enable_lbr();
+	return 0;
+}
+
+/*
+ * disable_lbr wrapper worker function
+ */
+ULONG_PTR disable_lbr_wrap(ULONG_PTR info)
+{
+	UNREFERENCED_PARAMETER(info);
+	disable_lbr();
+	return 0;
+}
 
 /*
  * Bypass check sign
@@ -352,30 +375,6 @@ BOOLEAN bypass_check_sign(PDRIVER_OBJECT driver_obj)
 	PKLDR_DATA_TABLE_ENTRY pLdrData = (PKLDR_DATA_TABLE_ENTRY)driver_obj -> DriverSection;
 	pLdrData->Flags = pLdrData->Flags | 0x20;
 	return TRUE;
-}
-
-/************************************************
- * Wrapper functions
- ************************************************/
-
-/*
- * enable_lbr wrapper worker function
- */
-ULONG_PTR enable_lbr_wrap(ULONG_PTR info)
-{
-	UNREFERENCED_PARAMETER(info);
-	enable_lbr();
-	return 0;
-}
-
-/*
- * disable_lbr wrapper worker function
- */
-ULONG_PTR disable_lbr_wrap(ULONG_PTR info)
-{
-	UNREFERENCED_PARAMETER(info);
-	disable_lbr();
-	return 0;
 }
 
 /************************************************
@@ -427,6 +426,193 @@ VOID create_proc_notify(PEPROCESS proc, HANDLE proc_id,
 	}
 }
 
+/************************************************
+ * LDE engine helper functions
+ ************************************************/
+
+ /*
+  * Initialize the LDE engine
+  */
+VOID lde_init()
+{
+	lde_disasm = ExAllocatePool2(POOL_FLAG_NON_PAGED_EXECUTE, 12800, LIBIHT_KMD_TAG);
+	ASSERT(lde_disasm != NULL);
+	memcpy(lde_disasm, sz_shellcode, 12800);
+}
+
+/*
+ * Destroy the LDE engine
+ */
+VOID lde_destroy()
+{
+	ExFreePoolWithTag(lde_disasm, LIBIHT_KMD_TAG);
+}
+
+/*
+ * Get the full patch size of the instruction in the given address
+ */
+ULONG get_full_patch_size(PUCHAR addr)
+{
+	ULONG len_cnt = 0, len = 0;
+
+	// At least 14 bytes
+	while (len_cnt <= 14)
+	{
+		len = lde_disasm(addr, 64);
+		addr = addr + len;
+		len_cnt = len_cnt + len;
+	}
+	return len_cnt;
+}
+
+/************************************************
+ * Kernel hook helper functions
+ ************************************************/
+
+ /*
+  * Helper function to disable memory protection
+  */
+KIRQL wpage_offx64()
+{
+	KIRQL irql = KeRaiseIrqlToDpcLevel();
+	UINT64 cr0 = __readcr0();
+	cr0 &= 0xfffffffffffeffff;
+	__writecr0(cr0);
+	_disable();
+	return irql;
+}
+
+/*
+ * Helper function to disable memory protection
+ */
+VOID wpage_onx64(KIRQL irql)
+{
+	UINT64 cr0 = __readcr0();
+	cr0 |= 0x10000;
+	_enable();
+	__writecr0(cr0);
+	KeLowerIrql(irql);
+}
+
+/*
+ * Dynamicly get the address of the function
+ */
+PVOID get_func_addr(PCWSTR func_name)
+{
+	UNICODE_STRING unicode_func_name;
+	PVOID addr;
+	RtlInitUnicodeString(&unicode_func_name, func_name);
+	addr = MmGetSystemRoutineAddress(&unicode_func_name);
+	ASSERT(addr != NULL);
+	return addr;
+}
+
+/*
+ * Inline hook kernel api function
+ */
+PVOID kernel_api_hook(PVOID api_addr, PVOID proxy_addr, OUT PVOID* patch_addr, OUT ULONG* patch_size)
+{
+	KIRQL irql;
+	UINT64 tmpv;
+	PVOID ori_bytes, patch_buf;
+
+	// Save return instruction: JMP QWORD PTR [After this instruction]
+	UCHAR jmp_code[] =
+		"\xFF\x25\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF";
+	// Save original instruction.
+	UCHAR jmp_code_orifunc[] =
+		"\xFF\x25\x00\x00\x00\x00\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF";
+
+	// Get function address instruction size
+	*patch_size = get_full_patch_size((PUCHAR)api_addr);
+
+	// Allocate memory for the original instruction of the api function address
+	ori_bytes = ExAllocatePool2(POOL_FLAG_NON_PAGED, *patch_size, LIBIHT_KMD_TAG);
+	ASSERT(ori_bytes != NULL);
+
+	irql = wpage_offx64();
+	RtlCopyMemory(ori_bytes, api_addr, *patch_size);
+	wpage_onx64(irql);
+
+	// Construct the jmp instruction to the proxy function
+
+	// 1. Original machine code + jump machine code
+	patch_buf = ExAllocatePool2(POOL_FLAG_NON_PAGED_EXECUTE, *patch_size + 14, LIBIHT_KMD_TAG);
+	ASSERT(patch_buf != NULL);
+	RtlFillMemory(patch_buf, *patch_size + 14, 0x90);
+
+	// 2. Jump to unpatched byte
+	tmpv = (ULONG64)api_addr + *patch_size;
+	RtlCopyMemory(jmp_code_orifunc + 6, &tmpv, 8);
+	RtlCopyMemory((PUCHAR)patch_buf, ori_bytes, *patch_size);
+	RtlCopyMemory((PUCHAR)patch_buf + *patch_size, jmp_code_orifunc, 14);
+	*patch_addr = patch_buf;
+
+	// 3. Get proxy address
+	tmpv = (ULONG64)proxy_addr;
+	RtlCopyMemory(jmp_code + 6, &tmpv, 8);
+
+	// 4. Patch the api function address
+	irql = wpage_offx64();
+	RtlFillMemory(api_addr, *patch_size, 0x90);
+	RtlCopyMemory(api_addr, jmp_code, 14);
+	wpage_onx64(irql);
+
+	return ori_bytes;
+}
+
+/*
+ * Unhook kernel api function
+ */
+VOID kernel_api_unhook(PVOID api_addr, PVOID ori_bytes, PVOID patch_buf, ULONG patch_size)
+{
+	KIRQL irql;
+
+	irql = wpage_offx64();
+	RtlCopyMemory(api_addr, ori_bytes, patch_size);
+	wpage_onx64(irql);
+
+	ExFreePoolWithTag(ori_bytes, LIBIHT_KMD_TAG);
+	ExFreePoolWithTag(patch_buf, LIBIHT_KMD_TAG);
+}
+
+/************************************************
+ * Swap context hook functions
+ ************************************************/
+
+VOID KSC_proxy()
+{
+	// TODO: Add proxy code here
+	// print_dbg("LIBIHT_KMD: KSC_proxy called\n");
+	KSC_ori();
+}
+
+/*
+ * Helper function to create KiSwapContext hook
+ */
+NTSTATUS KSC_hook_create()
+{
+	// TODO: get the address
+	PVOID KSC_addr = (PVOID)0xfffff80361c3a6e0;
+
+	lde_init();
+
+	KSC_head_n_byte = kernel_api_hook(KSC_addr, KSC_proxy, &(PVOID)KSC_ori, &KSC_patch_size);
+	return STATUS_SUCCESS;
+}
+
+/*
+ * Helper function to remove KiSwapContext hook
+ */
+NTSTATUS KSC_hook_remove()
+{
+	// TODO: get the address
+	PVOID KSC_addr = (PVOID)0xfffff80361c3a6e0;
+
+	lde_destroy();
+	kernel_api_unhook(KSC_addr, KSC_head_n_byte, KSC_ori, KSC_patch_size);
+	return STATUS_SUCCESS;
+}
 
 /************************************************
  * Device hook functions
@@ -662,6 +848,9 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_obj, PUNICODE_STRING reg_path)
 
 	// TODO: Init & Register hooks on context switches
 	print_dbg("LIBIHT-KMD: Initializing & Registering context switch hooks...\n");
+	status = KSC_hook_create();
+	if (!NT_SUCCESS(status))
+		return status;
 
 	// Enable LBR on each cpu (Not yet set the selection filter bit)
 	print_dbg("LIBIHT-KMD: Enabling LBR for all %d cpus...\n", KeQueryActiveProcessorCount(NULL));
@@ -701,6 +890,9 @@ NTSTATUS DriverExit(PDRIVER_OBJECT driver_obj)
 
 	// TODO: Unregister hooks on context switches.
 	print_dbg("LIBIHT-KMD: Unregistering context switch hooks...\n");
+	status = KSC_hook_remove();
+	if (!NT_SUCCESS(status))
+		return status;
 
 	// Unregister create process notifier
 	print_dbg("LIBIHT-KMD: Unregistering create proc notifier...\n");
