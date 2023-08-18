@@ -5,6 +5,14 @@
 #define DEBUG_MSG
 #define ON_INTELx
 
-static void print_dbg(const char *format, ...);
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
+void print_dbg(const char *format, ...);
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
 
 #endif /* _COMMONS_DEBUG_H */

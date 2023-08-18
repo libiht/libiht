@@ -68,24 +68,33 @@ struct lbr_state
 
 /* LBR related extern globals */
 
-static struct lbr_state *lbr_state_list;
-static u64 lbr_capacity;
+struct lbr_state *lbr_state_list;
+u64 lbr_capacity;
 
 /* LBR related function prototypes */
 
-static void flush_lbr(u8 enable);
-static void get_lbr(u32 pid);
-static void put_lbr(u32 pid);
-static void dump_lbr(u32 pid);
-static void enable_lbr(void);
-static void disable_lbr(void);
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
 
-static struct lbr_state *create_lbr_state(void);
-static void insert_lbr_state(struct lbr_state *new_state);
-static void remove_lbr_state(struct lbr_state *old_state);
-static struct lbr_state *find_lbr_state(u32 pid);
+void flush_lbr(u8 enable);
+void get_lbr(u32 pid);
+void put_lbr(u32 pid);
+void dump_lbr(u32 pid);
+void enable_lbr(void);
+void disable_lbr(void);
 
-static void save_lbr(void);
-static void restore_lbr(void);
+struct lbr_state *create_lbr_state(void);
+void insert_lbr_state(struct lbr_state *new_state);
+void remove_lbr_state(struct lbr_state *old_state);
+struct lbr_state *find_lbr_state(u32 pid);
+
+void save_lbr(u32 pid);
+void restore_lbr(u32 pid);
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
+
 
 #endif /* _COMMONS_LBR_H */

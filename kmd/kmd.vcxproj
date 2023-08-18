@@ -111,11 +111,21 @@
     <FilesToPackage Include="$(TargetPath)" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="hde\hde64.cpp" />
+    <ClCompile Include="hook.cpp" />
     <ClCompile Include="libiht_kmd.c" />
+    <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="hde\hde64.h" />
+    <ClInclude Include="hde\pstdint.h" />
+    <ClInclude Include="hde\table64.h" />
+    <ClInclude Include="headers.hpp" />
+    <ClInclude Include="hook.hpp" />
+    <ClInclude Include="imports.hpp" />
     <ClInclude Include="libiht_kmd.h" />
     <ClInclude Include="libiht_kmd_lde64.h" />
+    <ClInclude Include="utils.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

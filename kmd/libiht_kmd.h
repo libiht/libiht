@@ -3,6 +3,7 @@
 #include "../commons/types.h"
 #include "../commons/debug.h"
 #include "libiht_kmd_lde64.h"
+#include "imports.hpp"
 
 #define LIBIHT_KMD_TAG 'THIL'
 
@@ -37,6 +38,8 @@ struct ioctl_request
 	u32 pid;
 };
 
+KSPIN_LOCK lbr_cache_lock;
+
 /*
  * Function prototypes
  */
@@ -53,5 +56,3 @@ NTSTATUS device_remove(PDRIVER_OBJECT driver_obj);
 NTSTATUS device_ioctl(PDEVICE_OBJECT device_obj, PIRP Irp);
 NTSTATUS device_default(PDEVICE_OBJECT device_obj, PIRP Irp);
 
-NTSTATUS DriverEntry(PDRIVER_OBJECT driverObject, PUNICODE_STRING regPath);
-NTSTATUS DriverExit(PDRIVER_OBJECT driverObject);
