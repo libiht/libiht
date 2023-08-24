@@ -26,16 +26,24 @@
 #define LIBIHT_KMD_IOC_DUMP_LBR			CTL_CODE(KMD_IOCTL_TYPE, KMD_IOCTL_FUNC + 3, METHOD_BUFFERED, FILE_ANY_ACCESS)
 #define LIBIHT_KMD_IOC_SELECT_LBR		CTL_CODE(KMD_IOCTL_TYPE, KMD_IOCTL_FUNC + 4, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
- /*
-  * The struct used for I/O control communication
-  */
+/*
+ * The struct used for I/O control communication
+ */
 struct ioctl_request
 {
 	u64 lbr_select;
 	u32 pid;
 };
 
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
 KSPIN_LOCK lbr_cache_lock;
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
 
 /*
  * Function prototypes
