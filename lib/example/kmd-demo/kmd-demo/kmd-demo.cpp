@@ -51,8 +51,29 @@ void func2()
     }
 }
 
+void print_usage()
+{
+	printf("Usage: kmd-demo.exe [pid] [count]\n");
+    printf("pid: the pid of the process want to trace, trace it self if it is 0\n");
+	printf("count: the number of recursive function call\n");
+	printf("Example: kmd-demo.exe 0 10\n");
+    fflush(stdout);
+    exit(-1);
+}
+
 int main(int argc, char* argv[])
 {
+    if (argc != 3)
+        print_usage();
+
+    int pid = atoi(argv[1]);
+    if (pid == 0)
+        pid = GetCurrentProcessId();
+    cnt = atoi(argv[2]);
+    printf("func1's ptr: 0x%p\nfunc2's ptr: 0x%p\n", &func1, &func2);
+    fflush(stdout);
+    Sleep(1000);
+
     HANDLE hDevice = CreateFileA("\\\\.\\libiht-info", GENERIC_READ |
         GENERIC_WRITE, 0,
         NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -66,20 +87,13 @@ int main(int argc, char* argv[])
 
     ioctl_request input, output;
     input.lbr_select = 0;
-    input.pid = GetCurrentProcessId();
+    input.pid = pid;
     memset(&output, 0, sizeof(output));
 
     DWORD ref_len = 0;
 
     DeviceIoControl(hDevice, LIBIHT_KMD_IOC_ENABLE_TRACE, &input, sizeof(input), &output,
         sizeof(output), &ref_len, 0);
-    Sleep(1000);
-
-    if (argc == 2)
-        cnt = atoi(argv[1]);
-
-    printf("func1's ptr: 0x%p\nfunc2's ptr: 0x%p\n", &func1, &func2);
-    fflush(stdout);
     Sleep(1000);
 
     func1();
