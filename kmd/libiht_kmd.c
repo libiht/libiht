@@ -115,6 +115,7 @@ void dump_lbr(u32 pid)
 		return;
 	}
 
+	// TODO: Depend on situation, fetch or not
 	get_lbr(pid);
 
 	print_dbg("PROC_PID:             %d\n", state->pid);
@@ -218,6 +219,8 @@ void insert_lbr_state(struct lbr_state* new_state)
 		head->prev = new_state;
 		new_state->next = head;
 	}
+
+	print_dbg("LIBIHT-KMD: Insert LBR state for pid %d\n", new_state->pid);
 }
 
 /*
@@ -266,12 +269,16 @@ void remove_lbr_state(struct lbr_state* old_state)
 		} while (tmp != lbr_state_list);
 	}
 
+	print_dbg("LIBIHT-KMD: Remove LBR state for pid %d\n", old_state->pid);
+
 	ExFreePoolWithTag(old_state, LIBIHT_KMD_TAG);
 }
 
 /*
  * Find the LBR state by given the pid. (Try to do as fast as possiable)
+ * 
  */
+// TODO: High frequency function, try to optimize for best performance
 struct lbr_state* find_lbr_state(u32 pid)
 {
 	// Perform a backward traversal (typically, newly created processes are

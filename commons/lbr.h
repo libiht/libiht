@@ -68,8 +68,16 @@ struct lbr_state
 
 /* LBR related extern globals */
 
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
 struct lbr_state *lbr_state_list;
 u64 lbr_capacity;
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
 
 /* LBR related function prototypes */
 

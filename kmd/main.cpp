@@ -11,10 +11,6 @@ extern "C" NTSTATUS DriverExit(PDRIVER_OBJECT driverObject);
  * Global variables
  ************************************************/
 
-ULONG KSC_patch_size = 0;
-PUCHAR KSC_head_n_byte = NULL;
-KiSwapContext KSC_ori = NULL;
-
 /************************************************
  * Platform specific hooking & entry functions
  *
@@ -252,15 +248,15 @@ NTSTATUS device_ioctl(PDEVICE_OBJECT device_obj, PIRP Irp)
 	request_size = irp_stack->Parameters.DeviceIoControl.InputBufferLength;
 	request = (struct ioctl_request*)Irp->AssociatedIrp.SystemBuffer; // Input buffer
 
-	if (request_size != sizeof(request))
+	if (request_size != sizeof(ioctl_request))
 	{
-		print_dbg("LIBIHT-KMD: Wrong request size of %ld, expect: %ld\n", request_size, sizeof(request));
+		print_dbg("LIBIHT-KMD: Wrong request size of %ld, expect: %ld\n", request_size, sizeof(ioctl_request));
 		return STATUS_INVALID_DEVICE_REQUEST;
 	}
 
-	print_dbg("LIBIHT-KMD: Got ioctl argument %#x!", ioctl_cmd);
-	print_dbg("LIBIHT-KMD: request select bits: %lld", request->lbr_select);
-	print_dbg("LIBIHT-KMD: request pid: %d", request->pid);
+	print_dbg("LIBIHT-KMD: Got ioctl argument %#x!\n", ioctl_cmd);
+	print_dbg("LIBIHT-KMD: request select bits: %lld\n", request->lbr_select);
+	print_dbg("LIBIHT-KMD: request pid: %d\n", request->pid);
 
 	switch (ioctl_cmd)
 	{
@@ -369,6 +365,7 @@ static int identify_cpu(void)
 	}
 
 	print_dbg("LIBIHT-KMD: DisplayFamily_DisplayModel - %x_%xH\n", family, model);
+	print_dbg("LIBIHT-KMD: LBR capacity - %ld\n", lbr_capacity);
 
 	if (lbr_capacity == -1)
 	{
@@ -414,7 +411,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_obj, PUNICODE_STRING reg_path)
 	if (!NT_SUCCESS(status))
 		return status;
 
-	// TODO: Init & Register hooks on context switches
+	// Init & Register hooks on context switches
 	print_dbg("LIBIHT-KMD: Initializing & Registering context switch hooks...\n");
 	status = infinity_hook_create();
 	if (!NT_SUCCESS(status))
@@ -456,8 +453,8 @@ NTSTATUS DriverExit(PDRIVER_OBJECT driver_obj)
 	print_dbg("LIBIHT-KMD: Disabling LBR for all %d cpus...\n", KeQueryActiveProcessorCount(NULL));
 	KeIpiGenericCall(disable_lbr_wrap, 0);
 
-	// TODO: Unregister hooks on context switches.
-	print_dbg("LIBIHT-KMD: Unregistering context switch hooks...\n");
+	// Unregister hooks on context switches.
+	print_dbg("LIBIHT-KMD: Unregistering context switch hooks (may take around 10s)...\n");
 	status = infinity_hook_remove();
 	if (!NT_SUCCESS(status))
 		return status;

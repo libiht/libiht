@@ -1,8 +1,10 @@
+#ifndef _LIBIHT_KMD_H
+#define _LIBIHT_KMD_H
+
 #include "../commons/lbr.h"
 #include "../commons/cpu.h"
 #include "../commons/types.h"
 #include "../commons/debug.h"
-#include "libiht_kmd_lde64.h"
 #include "imports.hpp"
 
 #define LIBIHT_KMD_TAG 'THIL'
@@ -23,11 +25,6 @@
 #define LIBIHT_KMD_IOC_DISABLE_TRACE    CTL_CODE(KMD_IOCTL_TYPE, KMD_IOCTL_FUNC + 2, METHOD_BUFFERED, FILE_ANY_ACCESS)
 #define LIBIHT_KMD_IOC_DUMP_LBR			CTL_CODE(KMD_IOCTL_TYPE, KMD_IOCTL_FUNC + 3, METHOD_BUFFERED, FILE_ANY_ACCESS)
 #define LIBIHT_KMD_IOC_SELECT_LBR		CTL_CODE(KMD_IOCTL_TYPE, KMD_IOCTL_FUNC + 4, METHOD_BUFFERED, FILE_ANY_ACCESS)
-
-/*
- * The prototype of the original KiSwapContext function prototype
- */
-typedef VOID(*KiSwapContext)(void);
 
  /*
   * The struct used for I/O control communication
@@ -55,4 +52,6 @@ NTSTATUS device_create(PDRIVER_OBJECT driver_obj);
 NTSTATUS device_remove(PDRIVER_OBJECT driver_obj);
 NTSTATUS device_ioctl(PDEVICE_OBJECT device_obj, PIRP Irp);
 NTSTATUS device_default(PDEVICE_OBJECT device_obj, PIRP Irp);
+
+#endif // _LIBIHT_KMD_H
 
