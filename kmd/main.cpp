@@ -147,8 +147,8 @@ VOID create_proc_notify(PEPROCESS proc, HANDLE proc_id,
  ************************************************/
 void __fastcall cswitch_call_back(u32 new_proc, u32 old_proc)
 {
-	// unsigned long long core_idx = KeGetCurrentProcessorNumberEx(NULL);
-	// print_dbg("LIBIHT-KMD: Context switch event on %lld, new_proc: %ld, old_proc: %ld\n", core_idx, new_proc, old_proc);
+	//unsigned long long core_idx = KeGetCurrentProcessorNumberEx(NULL);
+	//print_dbg("LIBIHT-KMD: Context switch event on %lld, new_proc: %ld, old_proc: %ld\n", core_idx, new_proc, old_proc);
 	
 	if (find_lbr_state(new_proc))
 		restore_lbr(new_proc);
@@ -374,7 +374,7 @@ static int identify_cpu(void)
 	{
 		// Model name not found
 		print_dbg("LIBIHT-KMD: CPU model not found\n");
-		// return -1;
+		return -1;
 	}
 
 	return 0;
@@ -422,8 +422,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_obj, PUNICODE_STRING reg_path)
 
 	// Enable LBR on each cpu (Not yet set the selection filter bit)
 	print_dbg("LIBIHT-KMD: Enabling LBR for all %d cpus...\n", KeQueryActiveProcessorCount(NULL));
-	// TODO:
-	// KeIpiGenericCall(enable_lbr_wrap, 0);
+	KeIpiGenericCall(enable_lbr_wrap, 0);
 
 	// Set the state list to NULL after module initialized
 	lbr_state_list = NULL;
@@ -455,8 +454,7 @@ NTSTATUS DriverExit(PDRIVER_OBJECT driver_obj)
 
 	// Disable LBR on each cpu
 	print_dbg("LIBIHT-KMD: Disabling LBR for all %d cpus...\n", KeQueryActiveProcessorCount(NULL));
-	// TODO:
-	// KeIpiGenericCall(disable_lbr_wrap, 0);
+	KeIpiGenericCall(disable_lbr_wrap, 0);
 
 	// TODO: Unregister hooks on context switches.
 	print_dbg("LIBIHT-KMD: Unregistering context switch hooks...\n");
