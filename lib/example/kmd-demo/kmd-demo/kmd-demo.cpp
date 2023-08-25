@@ -35,6 +35,7 @@ void func2(void);
 
 void func1()
 {
+    //printf("func1: %d\n", cnt);
     if (cnt != 0)
     {
         cnt--;
@@ -44,6 +45,7 @@ void func1()
 
 void func2()
 {
+    //printf("func2: %d\n", cnt);
     if (cnt != 0)
     {
         cnt--;
@@ -92,11 +94,12 @@ int main(int argc, char* argv[])
 
     DWORD ref_len = 0;
 
+    // Simulate critical logic
+    func1();
+
     DeviceIoControl(hDevice, LIBIHT_KMD_IOC_ENABLE_TRACE, &input, sizeof(input), &output,
         sizeof(output), &ref_len, 0);
     Sleep(1000);
-
-    func1();
 
     DeviceIoControl(hDevice, LIBIHT_KMD_IOC_DUMP_LBR, &input, sizeof(input), &output,
         sizeof(output), &ref_len, 0);
