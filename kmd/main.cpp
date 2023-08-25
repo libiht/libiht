@@ -147,10 +147,16 @@ void __fastcall cswitch_call_back(u32 new_proc, u32 old_proc)
 	//print_dbg("LIBIHT-KMD: Context switch event on %lld, new_proc: %ld, old_proc: %ld\n", core_idx, new_proc, old_proc);
 	
 	if (find_lbr_state(new_proc))
+	{
+		//DbgBreakPoint();
 		restore_lbr(new_proc);
+	}
 
 	if (find_lbr_state(old_proc))
+	{
+		//DbgBreakPoint();
 		save_lbr(old_proc);
+	}
 }
 
 NTSTATUS infinity_hook_create()
@@ -235,10 +241,10 @@ NTSTATUS device_ioctl(PDEVICE_OBJECT device_obj, PIRP Irp)
 {
 	PIO_STACK_LOCATION irp_stack;
 	ULONG ioctl_cmd;
-	KIRQL oldIrql;
 	struct lbr_state* state;
 	struct ioctl_request* request;
 	u64 request_size;
+	NTSTATUS status = STATUS_SUCCESS;
 
 	UNREFERENCED_PARAMETER(device_obj);
 
@@ -251,7 +257,12 @@ NTSTATUS device_ioctl(PDEVICE_OBJECT device_obj, PIRP Irp)
 	if (request_size != sizeof(ioctl_request))
 	{
 		print_dbg("LIBIHT-KMD: Wrong request size of %ld, expect: %ld\n", request_size, sizeof(ioctl_request));
-		return STATUS_INVALID_DEVICE_REQUEST;
+		status = STATUS_INVALID_DEVICE_REQUEST;
+		Irp->IoStatus.Status = status;
+		Irp->IoStatus.Information = 0;
+		IoCompleteRequest(Irp, IO_NO_INCREMENT);
+
+		return status;
 	}
 
 	print_dbg("LIBIHT-KMD: Got ioctl argument %#x!\n", ioctl_cmd);
@@ -263,11 +274,19 @@ NTSTATUS device_ioctl(PDEVICE_OBJECT device_obj, PIRP Irp)
 	case(LIBIHT_KMD_IOC_ENABLE_TRACE):
 		print_dbg("LIBIHT-KMD: ENABLE_TRACE\n");
 		// Enable trace for assigned process
+		state = find_lbr_state(request->pid);
+		if (state)
+		{
+			print_dbg("LIBIHT-KMD: Process %d already enabled\n", request->pid);
+			status = STATUS_UNSUCCESSFUL;
+			break;
+		}
 		state = create_lbr_state();
 		if (state == NULL)
 		{
 			print_dbg("LIBIHT-KMD: create lbr_state failed\n");
-			return STATUS_UNSUCCESSFUL;
+			status = STATUS_UNSUCCESSFUL;
+			break;
 		}
 
 		// Set the field
@@ -276,9 +295,6 @@ NTSTATUS device_ioctl(PDEVICE_OBJECT device_obj, PIRP Irp)
 		state->parent = NULL;
 
 		insert_lbr_state(state);
-		KeRaiseIrql(DISPATCH_LEVEL, &oldIrql);
-		put_lbr(request->pid);
-		KeLowerIrql(oldIrql);
 		break;
 	case(LIBIHT_KMD_IOC_DISABLE_TRACE):
 		print_dbg("LIBIHT-KMD: DISABLE_TRACE\n");
@@ -287,7 +303,8 @@ NTSTATUS device_ioctl(PDEVICE_OBJECT device_obj, PIRP Irp)
 		if (state == NULL)
 		{
 			print_dbg("LIBIHT-KMD: find lbr_state failed\n");
-			return STATUS_UNSUCCESSFUL;
+			status = STATUS_UNSUCCESSFUL;
+			break;
 		}
 
 		remove_lbr_state(state);
@@ -304,26 +321,25 @@ NTSTATUS device_ioctl(PDEVICE_OBJECT device_obj, PIRP Irp)
 		if (state == NULL)
 		{
 			print_dbg("LIBIHT-KMD: create lbr_state failed\n");
-			return STATUS_UNSUCCESSFUL;
+			status = STATUS_UNSUCCESSFUL;
+			break;
 		}
 
 		state->lbr_select = request->lbr_select;
-		KeRaiseIrql(DISPATCH_LEVEL, &oldIrql);
-		put_lbr(request->pid);
-		KeLowerIrql(oldIrql);
 		break;
 	default:
 		// Error command code
 		print_dbg("LIBIHT-KMD: Error IOCTL command \n");
-		return STATUS_INVALID_DEVICE_REQUEST;
+		status = STATUS_INVALID_DEVICE_REQUEST;
+		break;
 	}
 
 	// Complete the request
-	Irp->IoStatus.Status = STATUS_SUCCESS;
+	Irp->IoStatus.Status = status;
 	Irp->IoStatus.Information = 0;
 	IoCompleteRequest(Irp, IO_NO_INCREMENT);
 
-	return STATUS_SUCCESS;
+	return status;
 }
 
 /*

@@ -94,7 +94,9 @@ void disable_lbr(void);
 
 struct lbr_state *create_lbr_state(void);
 void insert_lbr_state(struct lbr_state *new_state);
+void remove_lbr_state_worker(struct lbr_state *old_state);
 void remove_lbr_state(struct lbr_state *old_state);
+struct lbr_state *find_lbr_state_worker(u32 pid);
 struct lbr_state *find_lbr_state(u32 pid);
 
 void save_lbr(u32 pid);

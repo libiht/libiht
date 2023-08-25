@@ -63,11 +63,15 @@ void get_lbr(u32 pid)
 {
 	int i;
 
-	struct lbr_state* state = find_lbr_state(pid);
+	KIRQL old_irql;
+	KeAcquireSpinLock(&lbr_cache_lock, &old_irql);
+
+	struct lbr_state* state = find_lbr_state_worker(pid);
 	if (state == NULL)
 		return;
 
-	state->lbr_select = __readmsr(MSR_LBR_SELECT);
+	// TODO: Directly read from hardware may contaminated by other process
+	//state->lbr_select = __readmsr(MSR_LBR_SELECT);
 	state->lbr_tos = __readmsr(MSR_LBR_TOS);
 
 	for (i = 0; i < lbr_capacity; i++)
@@ -75,6 +79,8 @@ void get_lbr(u32 pid)
 		state->entries[i].from = __readmsr(MSR_LBR_NHM_FROM + i);
 		state->entries[i].to = __readmsr(MSR_LBR_NHM_TO + i);
 	}
+
+	KeReleaseSpinLock(&lbr_cache_lock, old_irql);
 }
 
 /*
@@ -84,7 +90,10 @@ void put_lbr(u32 pid)
 {
 	int i;
 
-	struct lbr_state* state = find_lbr_state(pid);
+	KIRQL old_irql;
+	KeAcquireSpinLock(&lbr_cache_lock, &old_irql);
+
+	struct lbr_state* state = find_lbr_state_worker(pid);
 	if (state == NULL)
 		return;
 
@@ -96,6 +105,8 @@ void put_lbr(u32 pid)
 		__writemsr(MSR_LBR_NHM_FROM + i, state->entries[i].from);
 		__writemsr(MSR_LBR_NHM_TO + i, state->entries[i].to);
 	}
+
+	KeReleaseSpinLock(&lbr_cache_lock, old_irql);
 }
 
 /*
@@ -107,8 +118,9 @@ void dump_lbr(u32 pid)
 	struct lbr_state* state;
 
 	KIRQL oldIrql;
-	KeRaiseIrql(DISPATCH_LEVEL, &oldIrql);
-	state = find_lbr_state(pid);
+	KeAcquireSpinLock(&lbr_cache_lock, &oldIrql);
+
+	state = find_lbr_state_worker(pid);
 	if (state == NULL)
 	{
 		print_dbg("LIBIHT-KMD: find lbr_state failed\n");
@@ -116,7 +128,7 @@ void dump_lbr(u32 pid)
 	}
 
 	// TODO: Depend on situation, fetch or not
-	get_lbr(pid);
+	//get_lbr(pid);
 
 	print_dbg("PROC_PID:             %d\n", state->pid);
 	print_dbg("MSR_LBR_SELECT:       0x%llx\n", state->lbr_select);
@@ -130,7 +142,7 @@ void dump_lbr(u32 pid)
 
 	print_dbg("LIBIHT-KMD: LBR info for cpuid: %d\n", KeGetCurrentProcessorNumberEx(NULL));
 
-	KeLowerIrql(oldIrql);
+	KeReleaseSpinLock(&lbr_cache_lock, oldIrql);
 }
 
 /*
@@ -205,6 +217,9 @@ void insert_lbr_state(struct lbr_state* new_state)
 		return;
 	}
 
+	KIRQL oldIrql;
+	KeAcquireSpinLock(&lbr_cache_lock, &oldIrql);
+
 	head = lbr_state_list;
 	if (head == NULL)
 	{
@@ -221,13 +236,16 @@ void insert_lbr_state(struct lbr_state* new_state)
 	}
 
 	print_dbg("LIBIHT-KMD: Insert LBR state for pid %d\n", new_state->pid);
+
+	KeReleaseSpinLock(&lbr_cache_lock, oldIrql);
 }
 
 /*
  * Remove old LBR state from the list
  */
-void remove_lbr_state(struct lbr_state* old_state)
+void remove_lbr_state_worker(struct lbr_state* old_state)
 {
+
 	struct lbr_state* head;
 	struct lbr_state* tmp;
 
@@ -264,7 +282,7 @@ void remove_lbr_state(struct lbr_state* old_state)
 		do
 		{
 			if (tmp->parent == old_state)
-				remove_lbr_state(tmp);
+				remove_lbr_state_worker(tmp);
 			tmp = tmp->prev;
 		} while (tmp != lbr_state_list);
 	}
@@ -274,12 +292,22 @@ void remove_lbr_state(struct lbr_state* old_state)
 	ExFreePoolWithTag(old_state, LIBIHT_KMD_TAG);
 }
 
+void remove_lbr_state(struct lbr_state* old_state)
+{
+	KIRQL oldIrql;
+	KeAcquireSpinLock(&lbr_cache_lock, &oldIrql);
+
+	remove_lbr_state_worker(old_state);
+
+	KeReleaseSpinLock(&lbr_cache_lock, oldIrql);
+}
+
 /*
  * Find the LBR state by given the pid. (Try to do as fast as possiable)
  * 
  */
 // TODO: High frequency function, try to optimize for best performance
-struct lbr_state* find_lbr_state(u32 pid)
+struct lbr_state* find_lbr_state_worker(u32 pid)
 {
 	// Perform a backward traversal (typically, newly created processes are
 	// more likely to be find)
@@ -290,12 +318,27 @@ struct lbr_state* find_lbr_state(u32 pid)
 		tmp = lbr_state_list;
 		do {
 			if (tmp->pid == pid)
+			{
 				return tmp;
+			}
 			tmp = tmp->prev;
 		} while (tmp != lbr_state_list);
 	}
 
 	return NULL;
+}
+struct lbr_state* find_lbr_state(u32 pid)
+{
+	struct lbr_state* state;
+
+	KIRQL oldIrql;
+	KeAcquireSpinLock(&lbr_cache_lock, &oldIrql);
+
+	state = find_lbr_state_worker(pid);
+
+	KeReleaseSpinLock(&lbr_cache_lock, oldIrql);
+
+	return state;
 }
 
 /************************************************
@@ -309,11 +352,7 @@ struct lbr_state* find_lbr_state(u32 pid)
   */
 void save_lbr(u32 pid)
 {
-	KIRQL irql;
-
-	KeAcquireSpinLock(&lbr_cache_lock, &irql);
 	get_lbr(pid);
-	KeReleaseSpinLock(&lbr_cache_lock, irql);
 }
 
 /*
@@ -321,10 +360,6 @@ void save_lbr(u32 pid)
  */
 void restore_lbr(u32 pid)
 {
-	KIRQL irql;
-
-	KeAcquireSpinLock(&lbr_cache_lock, &irql);
 	put_lbr(pid);
-	KeReleaseSpinLock(&lbr_cache_lock, irql);
 }
 

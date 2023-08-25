@@ -41,10 +41,6 @@ extern "C" {
 
 KSPIN_LOCK lbr_cache_lock;
 
-#ifdef __cplusplus
-}
-#endif // __cplusplus
-
 /*
  * Function prototypes
  */
@@ -60,6 +56,10 @@ NTSTATUS device_create(PDRIVER_OBJECT driver_obj);
 NTSTATUS device_remove(PDRIVER_OBJECT driver_obj);
 NTSTATUS device_ioctl(PDEVICE_OBJECT device_obj, PIRP Irp);
 NTSTATUS device_default(PDEVICE_OBJECT device_obj, PIRP Irp);
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
 
 #endif // _LIBIHT_KMD_H
 
