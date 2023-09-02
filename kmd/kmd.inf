@@ -1,0 +1,77 @@
+;
+; kmd.inf
+;
+
+[Version]
+Signature="$WINDOWS NT$"
+Class=System ; TODO: specify appropriate Class
+ClassGuid={4d36e97d-e325-11ce-bfc1-08002be10318} ; TODO: specify appropriate ClassGuid
+Provider=%ManufacturerName%
+CatalogFile=kmd.cat
+DriverVer= ; TODO: set DriverVer in stampinf property pages
+PnpLockdown=1
+
+[DestinationDirs]
+DefaultDestDir = 12
+kmd_Device_CoInstaller_CopyFiles = 11
+
+[SourceDisksNames]
+1 = %DiskName%,,,""
+
+[SourceDisksFiles]
+kmd.sys  = 1,,
+WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll=1 ; make sure the number matches with SourceDisksNames
+
+;*****************************************
+; Install Section
+;*****************************************
+
+[Manufacturer]
+%ManufacturerName%=Standard,NT$ARCH$
+
+[Standard.NT$ARCH$]
+%kmd.DeviceDesc%=kmd_Device, Root\kmd ; TODO: edit hw-id
+
+[kmd_Device.NT]
+CopyFiles=Drivers_Dir
+
+[Drivers_Dir]
+kmd.sys
+
+;-------------- Service installation
+[kmd_Device.NT.Services]
+AddService = kmd,%SPSVCINST_ASSOCSERVICE%, kmd_Service_Inst
+
+; -------------- kmd driver install sections
+[kmd_Service_Inst]
+DisplayName    = %kmd.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_DEMAND_START
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\kmd.sys
+
+;
+;--- kmd_Device Coinstaller installation ------
+;
+
+[kmd_Device.NT.CoInstallers]
+AddReg=kmd_Device_CoInstaller_AddReg
+CopyFiles=kmd_Device_CoInstaller_CopyFiles
+
+[kmd_Device_CoInstaller_AddReg]
+HKR,,CoInstallers32,0x00010000, "WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll,WdfCoInstaller"
+
+[kmd_Device_CoInstaller_CopyFiles]
+WdfCoInstaller$KMDFCOINSTALLERVERSION$.dll
+
+[kmd_Device.NT.Wdf]
+KmdfService =  kmd, kmd_wdfsect
+[kmd_wdfsect]
+KmdfLibraryVersion = $KMDFVERSION$
+
+[Strings]
+SPSVCINST_ASSOCSERVICE= 0x00000002
+ManufacturerName="<Your manufacturer name>" ;TODO: Replace with your manufacturer name
+DiskName = "kmd Installation Disk"
+kmd.DeviceDesc = "kmd Device"
+kmd.SVCDESC = "kmd Service"

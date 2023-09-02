@@ -1,4 +1,8 @@
-# Kernel module compiling files
+# Windows Kernel Mode Driver build files
+.vs/
+x64/
+
+# Linux Kernel module build files
 *.cmd
 *.o
 *.d
