@@ -5,7 +5,7 @@
 #include "../commons/cpu.h"
 #include "../commons/types.h"
 #include "../commons/debug.h"
-#include "imports.hpp"
+#include "infinity_hook/imports.hpp"
 
 /* cpp cross compile handler */
 #ifdef __cplusplus
