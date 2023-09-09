@@ -7,6 +7,11 @@
 #include "../commons/debug.h"
 #include "imports.hpp"
 
+/* cpp cross compile handler */
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
 #define LIBIHT_KMD_TAG 'THIL'
 
 /*
@@ -34,10 +39,6 @@ struct ioctl_request
 	u64 lbr_select;
 	u32 pid;
 };
-
-#ifdef __cplusplus
-extern "C" {
-#endif // __cplusplus
 
 KSPIN_LOCK lbr_cache_lock;
 

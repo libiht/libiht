@@ -68,7 +68,7 @@ BOOLEAN bypass_check_sign(PDRIVER_OBJECT driver_obj)
 		ULONG TimeDateStamp;
 		ULONG __padding2;
 	} KLDR_DATA_TABLE_ENTRY, * PKLDR_DATA_TABLE_ENTRY;
-#else
+#else // _WIN32
 	typedef struct _KLDR_DATA_TABLE_ENTRY
 	{
 		LIST_ENTRY listEntry;

@@ -3,6 +3,11 @@
 
 #include "types.h"
 
+/* cpp cross compile handler */
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
 /* LBR MSR register and config definitions */
 
 #ifndef MSR_IA32_DEBUGCTLMSR
@@ -68,22 +73,10 @@ struct lbr_state
 
 /* LBR related extern globals */
 
-#ifdef __cplusplus
-extern "C" {
-#endif // __cplusplus
-
 struct lbr_state *lbr_state_list;
 u64 lbr_capacity;
 
-#ifdef __cplusplus
-}
-#endif // __cplusplus
-
 /* LBR related function prototypes */
-
-#ifdef __cplusplus
-extern "C" {
-#endif // __cplusplus
 
 void flush_lbr(u8 enable);
 void get_lbr(u32 pid);
@@ -105,6 +98,5 @@ void restore_lbr(u32 pid);
 #ifdef __cplusplus
 }
 #endif // __cplusplus
-
 
 #endif /* _COMMONS_LBR_H */
