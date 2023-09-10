@@ -1,13 +1,4 @@
-#include <ntifs.h>
-#include <ntddk.h>
-#include <wdm.h>
-#include <windef.h>
-#include <intrin.h>
-
 #include "libiht_kmd.h"
-
-#pragma intrinsic(_disable)
-#pragma intrinsic(_enable)
 
 void print_dbg(const char* format, ...)
 #ifdef DEBUG_MSG

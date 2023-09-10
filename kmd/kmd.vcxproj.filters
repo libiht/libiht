@@ -19,6 +19,9 @@
     <Filter Include="infinity_hook\hde">
       <UniqueIdentifier>{fe4712d8-0a92-4f62-8bb8-c67e2efca5e7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="commons">
+      <UniqueIdentifier>{7ad72d73-dfea-44d8-9e8d-62f92963a24f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <Inf Include="kmd.inf">
@@ -37,6 +40,18 @@
     </ClCompile>
     <ClCompile Include="infinity_hook\hde\hde64.cpp">
       <Filter>infinity_hook\hde</Filter>
+    </ClCompile>
+    <ClCompile Include="..\commons\cpu.c">
+      <Filter>commons</Filter>
+    </ClCompile>
+    <ClCompile Include="..\commons\debug.c">
+      <Filter>commons</Filter>
+    </ClCompile>
+    <ClCompile Include="..\commons\lbr.c">
+      <Filter>commons</Filter>
+    </ClCompile>
+    <ClCompile Include="..\commons\xplat.c">
+      <Filter>commons</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -63,6 +78,21 @@
     </ClInclude>
     <ClInclude Include="infinity_hook\hde\table64.h">
       <Filter>infinity_hook\hde</Filter>
+    </ClInclude>
+    <ClInclude Include="..\commons\cpu.h">
+      <Filter>commons</Filter>
+    </ClInclude>
+    <ClInclude Include="..\commons\debug.h">
+      <Filter>commons</Filter>
+    </ClInclude>
+    <ClInclude Include="..\commons\lbr.h">
+      <Filter>commons</Filter>
+    </ClInclude>
+    <ClInclude Include="..\commons\types.h">
+      <Filter>commons</Filter>
+    </ClInclude>
+    <ClInclude Include="..\commons\xplat.h">
+      <Filter>commons</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
