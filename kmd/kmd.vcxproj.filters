@@ -50,8 +50,8 @@
     <ClCompile Include="..\commons\lbr.c">
       <Filter>commons</Filter>
     </ClCompile>
-    <ClCompile Include="..\commons\xplat.c">
-      <Filter>commons</Filter>
+    <ClCompile Include="xplat_kmd.c">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

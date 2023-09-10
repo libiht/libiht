@@ -4,10 +4,10 @@
 #include "types.h"
 #include "debug.h"
 
-///* cpp cross compile handler */
-//#ifdef __cplusplus
-//extern "C" {
-//#endif // __cplusplus
+/* cpp cross compile handler */
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
 
 /* Define all cross flatform function prototype pointers */
 typedef void*	(*xmalloc_t)		(u64 size);
@@ -43,15 +43,16 @@ void	xlock_core(void);
 void	xrelease_core(void);
 void	xwrmsr(u32 msr, u64 val);
 u64		xrdmsr(u32 msr);
+void	xinit_lock(void *lock);
 void	xacquire_lock(void *lock);
 void	xrelease_lock(void *lock);
 u32		xcoreid(void);
-void	xcpuid(u32 cpuinfo[4], u32 func_id);
+void	xcpuid(u32 func_id, u32 *eax, u32 *ebx, u32 *ecx, u32 *edx);
 
 u32		xplat_load(void);
 
-//#ifdef __cplusplus
-//}
-//#endif // __cplusplus
+#ifdef __cplusplus
+}
+#endif // __cplusplus
 
 #endif // _XPLAT_H

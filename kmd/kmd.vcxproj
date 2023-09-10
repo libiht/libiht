@@ -114,11 +114,11 @@
     <ClCompile Include="..\commons\cpu.c" />
     <ClCompile Include="..\commons\debug.c" />
     <ClCompile Include="..\commons\lbr.c" />
-    <ClCompile Include="..\commons\xplat.c" />
     <ClCompile Include="infinity_hook\hde\hde64.cpp" />
     <ClCompile Include="infinity_hook\hook.cpp" />
     <ClCompile Include="libiht_kmd.c" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="xplat_kmd.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\commons\cpu.h" />
