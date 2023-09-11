@@ -126,6 +126,7 @@
     <ClInclude Include="..\commons\lbr.h" />
     <ClInclude Include="..\commons\types.h" />
     <ClInclude Include="..\commons\xplat.h" />
+    <ClInclude Include="headers_kmd.h" />
     <ClInclude Include="infinity_hook\hde\hde64.h" />
     <ClInclude Include="infinity_hook\hde\pstdint.h" />
     <ClInclude Include="infinity_hook\hde\table64.h" />

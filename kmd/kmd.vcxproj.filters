@@ -94,5 +94,8 @@
     <ClInclude Include="..\commons\xplat.h">
       <Filter>commons</Filter>
     </ClInclude>
+    <ClInclude Include="headers_kmd.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

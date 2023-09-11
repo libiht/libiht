@@ -1,5 +1,5 @@
 #include "../commons/xplat.h"
-#include "infinity_hook/imports.hpp"
+#include "headers_kmd.h"
 
 /* Cross platform globals (used for lock, irql) */
 KIRQL g_irql;
@@ -10,9 +10,14 @@ void* xmalloc(u64 size)
 	return ExAllocatePool2(POOL_FLAG_NON_PAGED, size, g_tag);
 }
 
-void xfree(void* ptr)
+void xfree(void *ptr)
 {
 	ExFreePool(ptr);
+}
+
+void xmemset(void* ptr, s32 c, u64 cnt)
+{
+	memset(ptr, c, cnt);
 }
 
 void xlock_core(void)
@@ -35,17 +40,17 @@ u64 xrdmsr(u32 msr)
 	return __readmsr(msr);
 }
 
-void xinit_lock(void* lock)
+void xinit_lock(void *lock)
 {
 	KeInitializeSpinLock((PKSPIN_LOCK)lock);
 }
 
-void xacquire_lock(void* lock)
+void xacquire_lock(void *lock)
 {
 	KeAcquireSpinLock((PKSPIN_LOCK)lock, &g_irql);
 }
 
-void xrelease_lock(void* lock)
+void xrelease_lock(void *lock)
 {
 	KeReleaseSpinLock((PKSPIN_LOCK)lock, g_irql);
 }
@@ -65,7 +70,10 @@ void xcpuid(u32 func_id, u32 *eax, u32 *ebx, u32 *ecx, u32 *edx)
 	*edx = regs[3];
 }
 
-u32 xplat_load(void)
+void xprintdbg(const char *format, ...)
 {
-	return 0;
+	va_list args;
+	_crt_va_start(args, format);
+	vDbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, format, args);
 }
+

@@ -95,6 +95,9 @@ struct lbr_state *find_lbr_state(u32 pid);
 void save_lbr(u32 pid);
 void restore_lbr(u32 pid);
 
+u32 lbr_init(void);
+u32 lbr_exit(void);
+
 #ifdef __cplusplus
 }
 #endif // __cplusplus
