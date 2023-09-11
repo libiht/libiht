@@ -29,12 +29,6 @@
     </Inf>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="libiht_kmd.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="main.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="infinity_hook\hook.cpp">
       <Filter>infinity_hook</Filter>
     </ClCompile>
@@ -50,14 +44,17 @@
     <ClCompile Include="..\commons\lbr.c">
       <Filter>commons</Filter>
     </ClCompile>
-    <ClCompile Include="xplat_kmd.c">
+    <ClCompile Include="src\libiht_kmd.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\xplat_kmd.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="libiht_kmd.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="infinity_hook\headers.hpp">
       <Filter>infinity_hook</Filter>
     </ClInclude>
@@ -94,7 +91,10 @@
     <ClInclude Include="..\commons\xplat.h">
       <Filter>commons</Filter>
     </ClInclude>
-    <ClInclude Include="headers_kmd.h">
+    <ClInclude Include="include\headers_kmd.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\libiht_kmd.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

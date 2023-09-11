@@ -1,6 +1,9 @@
 #include "lbr.h"
 #include "xplat.h"
 
+// TODO: Fix this, just use for successful compile
+void* lock;
+
 /************************************************
  * LBR helper functions
  *

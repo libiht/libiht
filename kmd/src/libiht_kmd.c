@@ -1,4 +1,4 @@
-#include "libiht_kmd.h"
+#include "../include/libiht_kmd.h"
 
 void print_dbg(const char* format, ...)
 #ifdef DEBUG_MSG

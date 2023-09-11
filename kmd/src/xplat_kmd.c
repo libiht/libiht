@@ -1,5 +1,5 @@
-#include "../commons/xplat.h"
-#include "headers_kmd.h"
+#include "../../commons/xplat.h"
+#include "../include/headers_kmd.h"
 
 /* Cross platform globals (used for lock, irql) */
 KIRQL g_irql;

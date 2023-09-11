@@ -1,11 +1,11 @@
 #ifndef _LIBIHT_KMD_H
 #define _LIBIHT_KMD_H
 
-#include "../commons/lbr.h"
-#include "../commons/cpu.h"
-#include "../commons/types.h"
-#include "../commons/debug.h"
-#include "infinity_hook/imports.hpp"
+#include "../../commons/lbr.h"
+#include "../../commons/cpu.h"
+#include "../../commons/types.h"
+#include "../../commons/debug.h"
+#include "../infinity_hook/imports.hpp"
 
 /* cpp cross compile handler */
 #ifdef __cplusplus

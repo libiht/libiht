@@ -1,7 +1,7 @@
 #pragma warning(disable : 4201 4819 4311 4302 4996)
-#include "infinity_hook/hook.hpp"
-#include "infinity_hook/imports.hpp"
-#include "libiht_kmd.h"
+#include "../infinity_hook/hook.hpp"
+#include "../infinity_hook/imports.hpp"
+#include "../include/libiht_kmd.h"
 
 
 extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT driverObject, PUNICODE_STRING regPath);

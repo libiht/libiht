@@ -116,9 +116,9 @@
     <ClCompile Include="..\commons\lbr.c" />
     <ClCompile Include="infinity_hook\hde\hde64.cpp" />
     <ClCompile Include="infinity_hook\hook.cpp" />
-    <ClCompile Include="libiht_kmd.c" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="xplat_kmd.c" />
+    <ClCompile Include="src\libiht_kmd.c" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\xplat_kmd.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\commons\cpu.h" />
@@ -126,7 +126,8 @@
     <ClInclude Include="..\commons\lbr.h" />
     <ClInclude Include="..\commons\types.h" />
     <ClInclude Include="..\commons\xplat.h" />
-    <ClInclude Include="headers_kmd.h" />
+    <ClInclude Include="include\headers_kmd.h" />
+    <ClInclude Include="include\libiht_kmd.h" />
     <ClInclude Include="infinity_hook\hde\hde64.h" />
     <ClInclude Include="infinity_hook\hde\pstdint.h" />
     <ClInclude Include="infinity_hook\hde\table64.h" />
@@ -134,7 +135,6 @@
     <ClInclude Include="infinity_hook\hook.hpp" />
     <ClInclude Include="infinity_hook\imports.hpp" />
     <ClInclude Include="infinity_hook\utils.hpp" />
-    <ClInclude Include="libiht_kmd.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
