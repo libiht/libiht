@@ -35,7 +35,7 @@ static const struct cpu_to_lbr cpu_lbr_maps[] = {
     {0x36, 8}};
 
 /* CPU related function prototypes */
-static s32 identify_cpu(void);
+s32 identify_cpu(void);
 
 #ifdef __cplusplus
 }

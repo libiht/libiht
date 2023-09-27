@@ -10,7 +10,7 @@ extern "C" {
 #define DEBUG_MSG
 #define ON_INTELx
 
-void print_dbg(const char *format, ...);
+void xprintdbg(const char *format, ...);
 
 #ifdef __cplusplus
 }

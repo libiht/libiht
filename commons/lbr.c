@@ -1,9 +1,6 @@
 #include "lbr.h"
 #include "xplat.h"
 
-// TODO: Fix this, just use for successful compile
-void* lock;
-
 /************************************************
  * LBR helper functions
  *
@@ -41,7 +38,7 @@ void get_lbr(u32 pid)
 	int i;
 
 	xlock_core();
-	xacquire_lock(lock);
+	xacquire_lock(lbr_state_lock);
 
 	struct lbr_state *state = find_lbr_state_worker(pid);
 	if (state == NULL)
@@ -57,7 +54,7 @@ void get_lbr(u32 pid)
 		state->entries[i].to = xrdmsr(MSR_LBR_NHM_TO + i);
 	}
 
-	xrelease_lock(lock);
+	xrelease_lock(lbr_state_lock);
 	xrelease_core();
 }
 
@@ -69,7 +66,7 @@ void put_lbr(u32 pid)
 	int i;
 
 	xlock_core();
-	xacquire_lock(lock);
+	xacquire_lock(lbr_state_lock);
 
 	struct lbr_state* state = find_lbr_state_worker(pid);
 	if (state == NULL)
@@ -84,7 +81,7 @@ void put_lbr(u32 pid)
 		xwrmsr(MSR_LBR_NHM_TO + i, state->entries[i].to);
 	}
 
-	xrelease_lock(lock);
+	xrelease_lock(lbr_state_lock);
 	xrelease_core();
 }
 
@@ -97,7 +94,7 @@ void dump_lbr(u32 pid)
 	struct lbr_state* state;
 
 	xlock_core();
-	xacquire_lock(lock);
+	xacquire_lock(lbr_state_lock);
 
 	state = find_lbr_state_worker(pid);
 	if (state == NULL)
@@ -121,7 +118,7 @@ void dump_lbr(u32 pid)
 
 	xprintdbg("LIBIHT-COM: LBR info for cpuid: %d\n", xcoreid());
 
-	xrelease_lock(lock);
+	xrelease_lock(lbr_state_lock);
 	xrelease_core();
 }
 
@@ -131,14 +128,14 @@ void dump_lbr(u32 pid)
 void enable_lbr(void)
 {
 	xlock_core();
-	xacquire_lock(lock);
+	xacquire_lock(lbr_state_lock);
 
 	xprintdbg("LIBIHT-COM: Enable LBR on cpu core: %d...\n", xcoreid());
 
 	/* Flush the LBR and enable it */
 	flush_lbr(TRUE);
 
-	xrelease_lock(lock);
+	xrelease_lock(lbr_state_lock);
 	xrelease_core();
 }
 
@@ -148,7 +145,7 @@ void enable_lbr(void)
 void disable_lbr(void)
 {
 	xlock_core();
-	xacquire_lock(lock);
+	xacquire_lock(lbr_state_lock);
 
 	xprintdbg("LIBIHT-COM: Disable LBR on cpu core: %d...\n", xcoreid());
 
@@ -158,7 +155,7 @@ void disable_lbr(void)
 	/* Flush the LBR and disable it */
 	flush_lbr(FALSE);
 
-	xrelease_lock(lock);
+	xrelease_lock(lbr_state_lock);
 	xrelease_core();
 }
 
@@ -200,7 +197,7 @@ void insert_lbr_state(struct lbr_state* new_state)
 	}
 
 	xlock_core();
-	xacquire_lock(lock);
+	xacquire_lock(lbr_state_lock);
 
 	head = lbr_state_list;
 	if (head == NULL)
@@ -219,7 +216,7 @@ void insert_lbr_state(struct lbr_state* new_state)
 
 	xprintdbg("LIBIHT-COM: Insert LBR state for pid %d\n", new_state->pid);
 
-	xrelease_lock(lock);
+	xrelease_lock(lbr_state_lock);
 	xrelease_core();
 }
 
@@ -278,11 +275,11 @@ void remove_lbr_state_worker(struct lbr_state* old_state)
 void remove_lbr_state(struct lbr_state* old_state)
 {
 	xlock_core();
-	xacquire_lock(lock);
+	xacquire_lock(lbr_state_lock);
 
 	remove_lbr_state_worker(old_state);
 
-	xrelease_lock(lock);
+	xrelease_lock(lbr_state_lock);
 	xrelease_core();
 }
 
@@ -316,11 +313,11 @@ struct lbr_state* find_lbr_state(u32 pid)
 	struct lbr_state* state;
 
 	xlock_core();
-	xacquire_lock(lock);
+	xacquire_lock(lbr_state_lock);
 
 	state = find_lbr_state_worker(pid);
 
-	xrelease_lock(lock);
+	xrelease_lock(lbr_state_lock);
 	xrelease_core();
 
 	return state;
@@ -348,15 +345,42 @@ void restore_lbr(u32 pid)
 	put_lbr(pid);
 }
 
-u32 lbr_init(void)
+s32 lbr_init(void)
 {
-	// TODO: Finish this function
+	// Initialize the LBR state lock
+	lbr_state_lock = xmalloc(0x100);
+	if (lbr_state_lock == NULL)
+		return -1;
+	xinit_lock(lbr_state_lock);
+
+	// Enable LBR on each cpu (Not yet set the selection filter bit)
+	xon_each_cpu(enable_lbr);
+
+	// Set the state list to NULL after module initialized
+	lbr_state_list = NULL;
 	return 0;
 }
 
-u32 lbr_exit(void)
+s32 lbr_exit(void)
 {
-	// TODO: Finish this function
+	struct lbr_state* curr, * prev;
+
+	// Free all LBR state
+	xprintdbg("LIBIHT-KMD: Freeing LBR state list...\n");
+	if (lbr_state_list != NULL)
+	{
+		curr = lbr_state_list;
+		do
+		{
+			prev = curr->prev;
+			xfree(curr);
+			curr = prev;
+		} while (curr != lbr_state_list);
+	}
+
+	// Disable LBR on each cpu
+	xprintdbg("LIBIHT-KMD: Disabling LBR for all cpus...\n");
+	xon_each_cpu(disable_lbr);
 	return 0;
 }
 

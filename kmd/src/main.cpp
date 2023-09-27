@@ -1,6 +1,5 @@
 #pragma warning(disable : 4201 4819 4311 4302 4996)
 #include "../infinity_hook/hook.hpp"
-#include "../infinity_hook/imports.hpp"
 #include "../include/libiht_kmd.h"
 
 
@@ -21,25 +20,25 @@ extern "C" NTSTATUS DriverExit(PDRIVER_OBJECT driverObject);
  * Wrapper functions
  ************************************************/
 
-/*
- * enable_lbr wrapper worker function
- */
-ULONG_PTR enable_lbr_wrap(ULONG_PTR info)
-{
-	UNREFERENCED_PARAMETER(info);
-	enable_lbr();
-	return 0;
-}
-
-/*
- * disable_lbr wrapper worker function
- */
-ULONG_PTR disable_lbr_wrap(ULONG_PTR info)
-{
-	UNREFERENCED_PARAMETER(info);
-	disable_lbr();
-	return 0;
-}
+///*
+// * enable_lbr wrapper worker function
+// */
+//ULONG_PTR enable_lbr_wrap(ULONG_PTR info)
+//{
+//	UNREFERENCED_PARAMETER(info);
+//	enable_lbr();
+//	return 0;
+//}
+//
+///*
+// * disable_lbr wrapper worker function
+// */
+//ULONG_PTR disable_lbr_wrap(ULONG_PTR info)
+//{
+//	UNREFERENCED_PARAMETER(info);
+//	disable_lbr();
+//	return 0;
+//}
 
 /*
  * Bypass check sign
@@ -105,7 +104,7 @@ VOID create_proc_notify(PEPROCESS proc, HANDLE proc_id,
 	if (create_info != NULL)
 	{
 		// Process is being created
-		print_dbg("LIBIHT-KMD: Process %ld is being created, parent: %ld\n", proc_id, create_info->ParentProcessId);
+		xprintdbg("LIBIHT-KMD: Process %ld is being created, parent: %ld\n", proc_id, create_info->ParentProcessId);
 
 		parent_state = find_lbr_state((u32)(UINT_PTR)create_info->ParentProcessId);
 		if (parent_state == NULL)
@@ -121,17 +120,17 @@ VOID create_proc_notify(PEPROCESS proc, HANDLE proc_id,
 			child_state->parent = parent_state;
 
 			insert_lbr_state(child_state);
-			print_dbg("LIBIHT-KMD: New child_state is created & inserted to monitor list\n");
+			xprintdbg("LIBIHT-KMD: New child_state is created & inserted to monitor list\n");
 		}
 		else
 		{
-			print_dbg("LIBIHT-KMD: New child_state is NULL, create state failed\n");
+			xprintdbg("LIBIHT-KMD: New child_state is NULL, create state failed\n");
 		}
 	}
 	else
 	{
 		// Process is being terminated
-		print_dbg("LIBIHT-KMD: Process %ld is being terminated\n", proc_id);
+		xprintdbg("LIBIHT-KMD: Process %ld is being terminated\n", proc_id);
 		state = find_lbr_state((u32)(UINT_PTR)proc_id);
 		if (state != NULL)
 			remove_lbr_state(state);
@@ -205,7 +204,7 @@ NTSTATUS device_create(PDRIVER_OBJECT driver_obj)
 	RtlInitUnicodeString(&device_name, DEVICE_NAME);
 	status = IoCreateDevice(driver_obj, 0, &device_name, FILE_DEVICE_UNKNOWN, FILE_DEVICE_SECURE_OPEN, FALSE, &device_obj);
 	if (!NT_SUCCESS(status)) {
-		print_dbg("Failed to create device object\n");
+		xprintdbg("Failed to create device object\n");
 		return status;
 	}
 
@@ -256,7 +255,7 @@ NTSTATUS device_ioctl(PDEVICE_OBJECT device_obj, PIRP Irp)
 
 	if (request_size != sizeof(ioctl_request))
 	{
-		print_dbg("LIBIHT-KMD: Wrong request size of %ld, expect: %ld\n", request_size, sizeof(ioctl_request));
+		xprintdbg("LIBIHT-KMD: Wrong request size of %ld, expect: %ld\n", request_size, sizeof(ioctl_request));
 		status = STATUS_INVALID_DEVICE_REQUEST;
 		Irp->IoStatus.Status = status;
 		Irp->IoStatus.Information = 0;
@@ -265,26 +264,26 @@ NTSTATUS device_ioctl(PDEVICE_OBJECT device_obj, PIRP Irp)
 		return status;
 	}
 
-	print_dbg("LIBIHT-KMD: Got ioctl argument %#x!\n", ioctl_cmd);
-	print_dbg("LIBIHT-KMD: request select bits: %lld\n", request->lbr_select);
-	print_dbg("LIBIHT-KMD: request pid: %d\n", request->pid);
+	xprintdbg("LIBIHT-KMD: Got ioctl argument %#x!\n", ioctl_cmd);
+	xprintdbg("LIBIHT-KMD: request select bits: %lld\n", request->lbr_select);
+	xprintdbg("LIBIHT-KMD: request pid: %d\n", request->pid);
 
 	switch (ioctl_cmd)
 	{
 	case(LIBIHT_KMD_IOC_ENABLE_TRACE):
-		print_dbg("LIBIHT-KMD: ENABLE_TRACE\n");
+		xprintdbg("LIBIHT-KMD: ENABLE_TRACE\n");
 		// Enable trace for assigned process
 		state = find_lbr_state(request->pid);
 		if (state)
 		{
-			print_dbg("LIBIHT-KMD: Process %d already enabled\n", request->pid);
+			xprintdbg("LIBIHT-KMD: Process %d already enabled\n", request->pid);
 			status = STATUS_UNSUCCESSFUL;
 			break;
 		}
 		state = create_lbr_state();
 		if (state == NULL)
 		{
-			print_dbg("LIBIHT-KMD: create lbr_state failed\n");
+			xprintdbg("LIBIHT-KMD: create lbr_state failed\n");
 			status = STATUS_UNSUCCESSFUL;
 			break;
 		}
@@ -297,12 +296,12 @@ NTSTATUS device_ioctl(PDEVICE_OBJECT device_obj, PIRP Irp)
 		insert_lbr_state(state);
 		break;
 	case(LIBIHT_KMD_IOC_DISABLE_TRACE):
-		print_dbg("LIBIHT-KMD: DISABLE_TRACE\n");
+		xprintdbg("LIBIHT-KMD: DISABLE_TRACE\n");
 		// Disable trace for assigned process (and its children)
 		state = find_lbr_state(request->pid);
 		if (state == NULL)
 		{
-			print_dbg("LIBIHT-KMD: find lbr_state failed\n");
+			xprintdbg("LIBIHT-KMD: find lbr_state failed\n");
 			status = STATUS_UNSUCCESSFUL;
 			break;
 		}
@@ -310,17 +309,17 @@ NTSTATUS device_ioctl(PDEVICE_OBJECT device_obj, PIRP Irp)
 		remove_lbr_state(state);
 		break;
 	case(LIBIHT_KMD_IOC_DUMP_LBR):
-		print_dbg("LIBIHT-KMD: DUMP_LBR\n");
+		xprintdbg("LIBIHT-KMD: DUMP_LBR\n");
 		// Dump LBR info for assigned process
 		dump_lbr(request->pid);
 		break;
 	case(LIBIHT_KMD_IOC_SELECT_LBR):
-		print_dbg("LIBIHT-KMD: SELECT_LBR\n");
+		xprintdbg("LIBIHT-KMD: SELECT_LBR\n");
 		// Update the select bits for assigned process
 		state = create_lbr_state();
 		if (state == NULL)
 		{
-			print_dbg("LIBIHT-KMD: create lbr_state failed\n");
+			xprintdbg("LIBIHT-KMD: create lbr_state failed\n");
 			status = STATUS_UNSUCCESSFUL;
 			break;
 		}
@@ -329,7 +328,7 @@ NTSTATUS device_ioctl(PDEVICE_OBJECT device_obj, PIRP Irp)
 		break;
 	default:
 		// Error command code
-		print_dbg("LIBIHT-KMD: Error IOCTL command \n");
+		xprintdbg("LIBIHT-KMD: Error IOCTL command \n");
 		status = STATUS_INVALID_DEVICE_REQUEST;
 		break;
 	}
@@ -358,40 +357,40 @@ NTSTATUS device_default(PDEVICE_OBJECT device_obj, PIRP Irp)
  * Kernel mode driver functions
  ************************************************/
 
-static int identify_cpu(void)
-{
-	s32 cpuinfo[4] = { 0 };
-	u32 family, model;
-	int i;
-
-	__cpuid(cpuinfo, 1);
-
-	family = ((cpuinfo[0] >> 8) & 0xF) + ((cpuinfo[0] >> 20) & 0xFF);
-	model = ((cpuinfo[0] >> 4) & 0xF) | ((cpuinfo[0] >> 12) & 0xF0);
-
-	// Identify CPU model
-	lbr_capacity = (u64)-1;
-	for (i = 0; i < sizeof(cpu_lbr_maps) / sizeof(cpu_lbr_maps[0]); ++i)
-	{
-		if (model == cpu_lbr_maps[i].model)
-		{
-			lbr_capacity = cpu_lbr_maps[i].lbr_capacity;
-			break;
-		}
-	}
-
-	print_dbg("LIBIHT-KMD: DisplayFamily_DisplayModel - %x_%xH\n", family, model);
-	print_dbg("LIBIHT-KMD: LBR capacity - %ld\n", lbr_capacity);
-
-	if (lbr_capacity == -1)
-	{
-		// Model name not found
-		print_dbg("LIBIHT-KMD: CPU model not found\n");
-		return -1;
-	}
-
-	return 0;
-}
+//static int identify_cpu(void)
+//{
+//	s32 cpuinfo[4] = { 0 };
+//	u32 family, model;
+//	int i;
+//
+//	__cpuid(cpuinfo, 1);
+//
+//	family = ((cpuinfo[0] >> 8) & 0xF) + ((cpuinfo[0] >> 20) & 0xFF);
+//	model = ((cpuinfo[0] >> 4) & 0xF) | ((cpuinfo[0] >> 12) & 0xF0);
+//
+//	// Identify CPU model
+//	lbr_capacity = (u64)-1;
+//	for (i = 0; i < sizeof(cpu_lbr_maps) / sizeof(cpu_lbr_maps[0]); ++i)
+//	{
+//		if (model == cpu_lbr_maps[i].model)
+//		{
+//			lbr_capacity = cpu_lbr_maps[i].lbr_capacity;
+//			break;
+//		}
+//	}
+//
+//	xprintdbg("LIBIHT-KMD: DisplayFamily_DisplayModel - %x_%xH\n", family, model);
+//	xprintdbg("LIBIHT-KMD: LBR capacity - %ld\n", lbr_capacity);
+//
+//	if (lbr_capacity == -1)
+//	{
+//		// Model name not found
+//		xprintdbg("LIBIHT-KMD: CPU model not found\n");
+//		return -1;
+//	}
+//
+//	return 0;
+//}
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT driver_obj, PUNICODE_STRING reg_path)
 {
@@ -399,7 +398,7 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_obj, PUNICODE_STRING reg_path)
 	UNREFERENCED_PARAMETER(reg_path);
 	driver_obj->DriverUnload = (PDRIVER_UNLOAD)DriverExit;
 
-	print_dbg("LIBIHT-KMD: Initializing...\n");
+	xprintdbg("LIBIHT-KMD: Initializing...\n");
 
 	// Bypass check sign
 	// LINKER_FLAGS=/INTEGRITYCHECK
@@ -411,36 +410,42 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_obj, PUNICODE_STRING reg_path)
 	// Check availability of the cpu
 	if (identify_cpu() < 0)
 	{
-		print_dbg("LIBIHT-KMD: Identify CPU failed\n");
+		xprintdbg("LIBIHT-KMD: Identify CPU failed\n");
 		return STATUS_UNSUCCESSFUL;
 	}
 
 	// Create user interactive helper device
-	print_dbg("LIBIHT-KMD: Creating helper device...\n");
+	xprintdbg("LIBIHT-KMD: Creating helper device...\n");
 	status = device_create(driver_obj);
 	if (!NT_SUCCESS(status))
 		return status;
 
 	// Register create process notifier
-	print_dbg("LIBIHT-KMD: Registering create proc notifier...\n");
+	xprintdbg("LIBIHT-KMD: Registering create proc notifier...\n");
 	status = PsSetCreateProcessNotifyRoutineEx((PCREATE_PROCESS_NOTIFY_ROUTINE_EX)create_proc_notify, FALSE);
 	if (!NT_SUCCESS(status))
 		return status;
 
 	// Init & Register hooks on context switches
-	print_dbg("LIBIHT-KMD: Initializing & Registering context switch hooks...\n");
+	xprintdbg("LIBIHT-KMD: Initializing & Registering context switch hooks...\n");
 	status = infinity_hook_create();
 	if (!NT_SUCCESS(status))
 		return status;
 
-	// Enable LBR on each cpu (Not yet set the selection filter bit)
-	print_dbg("LIBIHT-KMD: Enabling LBR for all %d cpus...\n", KeQueryActiveProcessorCount(NULL));
-	KeIpiGenericCall(enable_lbr_wrap, 0);
+	//// Enable LBR on each cpu (Not yet set the selection filter bit)
+	//print_dbg("LIBIHT-KMD: Enabling LBR for all %d cpus...\n", KeQueryActiveProcessorCount(NULL));
+	//KeIpiGenericCall(enable_lbr_wrap, 0);
 
-	// Set the state list to NULL after module initialized
-	lbr_state_list = NULL;
+	//// Set the state list to NULL after module initialized
+	//lbr_state_list = NULL;
 
-	print_dbg("LIBIHT-KMD: Initialized\n");
+	if (lbr_init() < 0)
+	{
+		xprintdbg("LIBIHT-KMD: LBR init failed\n");
+		return STATUS_UNSUCCESSFUL;
+	}
+
+	xprintdbg("LIBIHT-KMD: Initialized\n");
 	return STATUS_SUCCESS;
 }
 
@@ -448,45 +453,47 @@ NTSTATUS DriverExit(PDRIVER_OBJECT driver_obj)
 {
 	NTSTATUS status;
 	UNREFERENCED_PARAMETER(driver_obj);
-	struct lbr_state* curr, * prev;
+	//struct lbr_state* curr, * prev;
 
-	print_dbg("LIBIHT-KMD: Exiting...\n");
+	xprintdbg("LIBIHT-KMD: Exiting...\n");
 
-	// Free the LBR state list
-	print_dbg("LIBIHT-KMD: Freeing LBR state list...\n");
-	if (lbr_state_list != NULL)
-	{
-		curr = lbr_state_list;
-		do
-		{
-			prev = curr->prev;
-			ExFreePoolWithTag(curr, LIBIHT_KMD_TAG);
-			curr = prev;
-		} while (curr != lbr_state_list);
-	}
+	//// Free the LBR state list
+	//print_dbg("LIBIHT-KMD: Freeing LBR state list...\n");
+	//if (lbr_state_list != NULL)
+	//{
+	//	curr = lbr_state_list;
+	//	do
+	//	{
+	//		prev = curr->prev;
+	//		ExFreePoolWithTag(curr, LIBIHT_KMD_TAG);
+	//		curr = prev;
+	//	} while (curr != lbr_state_list);
+	//}
 
-	// Disable LBR on each cpu
-	print_dbg("LIBIHT-KMD: Disabling LBR for all %d cpus...\n", KeQueryActiveProcessorCount(NULL));
-	KeIpiGenericCall(disable_lbr_wrap, 0);
+	//// Disable LBR on each cpu
+	//print_dbg("LIBIHT-KMD: Disabling LBR for all %d cpus...\n", KeQueryActiveProcessorCount(NULL));
+	//KeIpiGenericCall(disable_lbr_wrap, 0);
+
+	lbr_exit();
 
 	// Unregister hooks on context switches.
-	print_dbg("LIBIHT-KMD: Unregistering context switch hooks (may take around 10s)...\n");
+	xprintdbg("LIBIHT-KMD: Unregistering context switch hooks (may take around 10s)...\n");
 	status = infinity_hook_remove();
 	if (!NT_SUCCESS(status))
 		return status;
 
 	// Unregister create process notifier
-	print_dbg("LIBIHT-KMD: Unregistering create proc notifier...\n");
+	xprintdbg("LIBIHT-KMD: Unregistering create proc notifier...\n");
 	status = PsSetCreateProcessNotifyRoutineEx((PCREATE_PROCESS_NOTIFY_ROUTINE_EX)create_proc_notify, TRUE);
 	if (!NT_SUCCESS(status))
 		return status;
 
 	// Remove the helper device if exist
-	print_dbg("LIBIHT-KMD: Removing helper device...\n");
+	xprintdbg("LIBIHT-KMD: Removing helper device...\n");
 	status = device_remove(driver_obj);
 	if (!NT_SUCCESS(status))
 		return status;
 
-	print_dbg("LIBIHT-KMD: Exit complete\n");
+	xprintdbg("LIBIHT-KMD: Exit complete\n");
 	return STATUS_SUCCESS;
 }

@@ -40,15 +40,20 @@ extern "C" {
 void*	xmalloc(u64 size);
 void	xfree(void *ptr);
 void	xmemset(void *ptr, s32 c, u64 cnt);
+
 void	xlock_core(void);
 void	xrelease_core(void);
+
 void	xwrmsr(u32 msr, u64 val);
 u64		xrdmsr(u32 msr);
+
 void	xinit_lock(void *lock);
 void	xacquire_lock(void *lock);
 void	xrelease_lock(void *lock);
+
 u32		xcoreid(void);
 void	xcpuid(u32 func_id, u32 *eax, u32 *ebx, u32 *ecx, u32 *edx);
+void	xon_each_cpu(void (*func)(void));
 void	xprintdbg(const char *format, ...);
 
 //u32		xplat_load(void);

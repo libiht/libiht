@@ -70,6 +70,11 @@ void xcpuid(u32 func_id, u32 *eax, u32 *ebx, u32 *ecx, u32 *edx)
 	*edx = regs[3];
 }
 
+void xon_each_cpu(void (*func)(void))
+{
+	KeIpiGenericCall((PKIPI_BROADCAST_WORKER)func, 0);
+}
+
 void xprintdbg(const char *format, ...)
 {
 	va_list args;
