@@ -1,7 +1,7 @@
 .PHONY: all clean insert remove mesg
 
 all:
-	@$(MAKE) -C lib
+	#@$(MAKE) -C lib
 	@$(MAKE) -C lkm
 
 clean:

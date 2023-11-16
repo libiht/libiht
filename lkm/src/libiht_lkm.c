@@ -65,7 +65,7 @@ static struct kprobe kp = {
 static spinlock_t lbr_cache_lock;
 static struct proc_dir_entry *proc_entry;
 
-static void print_dbg(const char *format, ...)
+void print_dbg(const char *format, ...)
 #ifdef DEBUG_MSG
 {
     va_list args;
@@ -88,7 +88,7 @@ static void print_dbg(const char *format, ...)
  * Flush the LBR registers. Caller should ensure this function run on
  * single cpu (by wrapping get_cpu() and put_cpu())
  */
-static void flush_lbr(u8 enable)
+void flush_lbr(u8 enable)
 {
     int i;
 
@@ -110,7 +110,7 @@ static void flush_lbr(u8 enable)
 /*
  * Store the LBR registers to kernel maintained datastructure
  */
-static void get_lbr(u32 pid)
+void get_lbr(u32 pid)
 {
     int i;
 
@@ -132,7 +132,7 @@ static void get_lbr(u32 pid)
 /*
  * Write the LBR registers from kernel maintained datastructure
  */
-static void put_lbr(u32 pid)
+void put_lbr(u32 pid)
 {
     int i;
 
@@ -153,7 +153,7 @@ static void put_lbr(u32 pid)
 /*
  * Dump out the LBR registers to kernel message
  */
-static void dump_lbr(u32 pid)
+void dump_lbr(u32 pid)
 {
     int i;
     struct lbr_state *state;
@@ -187,12 +187,12 @@ static void dump_lbr(u32 pid)
  * Enable the LBR feature for the current CPU. *info may be NULL (it is required
  * by on_each_cpu()).
  */
-static void enable_lbr_wrap(void *info)
+void enable_lbr_wrap(void *info)
 {
     enable_lbr();
 }
 
-static void enable_lbr(void)
+void enable_lbr(void)
 {
 
     get_cpu();
@@ -209,12 +209,12 @@ static void enable_lbr(void)
  * Disable the LBR feature for the current CPU. *info may be NULL (it is required
  * by on_each_cpu()).
  */
-static void diable_lbr_wrap(void *info)
+void diable_lbr_wrap(void *info)
 {
     disable_lbr();
 }
 
-static void disable_lbr(void)
+void disable_lbr(void)
 {
 
     get_cpu();
@@ -239,7 +239,7 @@ static void disable_lbr(void)
 /*
  * Create a new empty LBR state
  */
-static struct lbr_state *create_lbr_state(void)
+struct lbr_state *create_lbr_state(void)
 {
     struct lbr_state *state;
     int state_size = sizeof(struct lbr_state) +
@@ -257,7 +257,7 @@ static struct lbr_state *create_lbr_state(void)
 /*
  * Insert new LBR state into the back of the list
  */
-static void insert_lbr_state(struct lbr_state *new_state)
+void insert_lbr_state(struct lbr_state *new_state)
 {
     struct lbr_state *head;
 
@@ -283,7 +283,7 @@ static void insert_lbr_state(struct lbr_state *new_state)
     }
 }
 
-static void remove_lbr_state(struct lbr_state *old_state)
+void remove_lbr_state(struct lbr_state *old_state)
 {
     struct lbr_state *head;
     struct lbr_state *tmp;
@@ -332,7 +332,7 @@ static void remove_lbr_state(struct lbr_state *old_state)
 /*
  * Find the LBR state by given the pid. (Try to do as fast as possiable)
  */
-static struct lbr_state *find_lbr_state(u32 pid)
+struct lbr_state *find_lbr_state(u32 pid)
 {
     // Perform a backward traversal (typically, newly created processes are
     // more likely to be find)
@@ -361,7 +361,7 @@ static struct lbr_state *find_lbr_state(u32 pid)
 /*
  * Save LBR
  */
-static void save_lbr(void)
+void save_lbr(u32 pid)
 {
     unsigned long lbr_cache_flags;
     struct lbr_state *state;
@@ -380,7 +380,7 @@ static void save_lbr(void)
 /*
  * Restore LBR
  */
-static void restore_lbr(void)
+void restore_lbr(u32 pid)
 {
     unsigned long lbr_cache_flags;
     struct lbr_state *state;
@@ -405,7 +405,7 @@ static void restore_lbr(void)
  */
 static void sched_in(struct preempt_notifier *pn, int cpu)
 {
-    restore_lbr();
+    restore_lbr(current->pid);
 }
 
 /*
@@ -413,7 +413,7 @@ static void sched_in(struct preempt_notifier *pn, int cpu)
  */
 static void sched_out(struct preempt_notifier *pn, struct task_struct *next)
 {
-    save_lbr();
+    save_lbr(current->pid);
 }
 
 /************************************************
