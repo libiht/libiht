@@ -9,9 +9,9 @@ obj-m += $(MODULE).o
 $(MODULE)-objs := $(OBJS)
 
 all:
-	make -C /lib/modules/$(KVERSION)/build M=$(PWD) modules
+	make -C /lib/modules/$(KVERSION)/build M=$(PWD)/lkm modules
 clean:
-	make -C /lib/modules/$(KVERSION)/build M=$(PWD) clean
+	make -C /lib/modules/$(KVERSION)/build M=$(PWD)/lkm clean
 
 insert: all
 	sudo insmod libiht_lkm.ko
