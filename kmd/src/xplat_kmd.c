@@ -1,8 +1,9 @@
 #include "../../commons/xplat.h"
 #include "../include/headers_kmd.h"
 
-/* Cross platform globals (used for lock, irql) */
-KIRQL g_irql;
+// TODO: add comments/documentation
+
+/* Cross platform globals (used for lock, allocation, etc.) */
 const unsigned long g_tag = 'XPLT';
 
 void* xmalloc(u64 size)
@@ -20,14 +21,14 @@ void xmemset(void* ptr, s32 c, u64 cnt)
 	memset(ptr, c, cnt);
 }
 
-void xlock_core(void)
+void xlock_core(void *old_irql)
 {
-	KeRaiseIrql(DISPATCH_LEVEL, &g_irql);
+	KeRaiseIrql(DISPATCH_LEVEL, (PKIRQL)old_irql);
 }
 
-void xrelease_core(void)
+void xrelease_core(void *new_irql)
 {
-	KeLowerIrql(g_irql);
+	KeLowerIrql(*(PKIRQL)new_irql);
 }
 
 void xwrmsr(u32 msr, u64 val)
@@ -35,9 +36,9 @@ void xwrmsr(u32 msr, u64 val)
 	__writemsr(msr, val);
 }
 
-u64 xrdmsr(u32 msr)
+void xrdmsr(u32 msr, u64 *val)
 {
-	return __readmsr(msr);
+	*val = __readmsr(msr);
 }
 
 void xinit_lock(void *lock)
@@ -45,14 +46,14 @@ void xinit_lock(void *lock)
 	KeInitializeSpinLock((PKSPIN_LOCK)lock);
 }
 
-void xacquire_lock(void *lock)
+void xacquire_lock(void *lock, void *old_irql)
 {
-	KeAcquireSpinLock((PKSPIN_LOCK)lock, &g_irql);
+	KeAcquireSpinLock((PKSPIN_LOCK)lock, (PKIRQL)old_irql);
 }
 
-void xrelease_lock(void *lock)
+void xrelease_lock(void *lock, void *new_irql)
 {
-	KeReleaseSpinLock((PKSPIN_LOCK)lock, g_irql);
+	KeReleaseSpinLock((PKSPIN_LOCK)lock, *(PKIRQL)new_irql);
 }
 
 u32 xcoreid(void)

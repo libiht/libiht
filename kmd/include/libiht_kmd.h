@@ -45,6 +45,7 @@ KSPIN_LOCK lbr_cache_lock;
 /*
  * Function prototypes
  */
+// TODO: consider remove this
 ULONG_PTR enable_lbr_wrap(ULONG_PTR info);
 ULONG_PTR disable_lbr_wrap(ULONG_PTR info);
 

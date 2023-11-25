@@ -7,6 +7,9 @@
  * Help to manage LBR stack/registers
  ************************************************/
 
+// TODO: Need to check if the lock_core function is necessary in this file.
+// I think most of the get lock and release lock functions will also do the same thing
+
  /*
   * Flush the LBR registers. Caller should ensure this function run on
   * single cpu (by wrapping KeRaiseIrql() and KeLowerIrql())
@@ -36,26 +39,27 @@ void flush_lbr(u8 enable)
 void get_lbr(u32 pid)
 {
 	int i;
+	char irql_flag[MAX_IRQL_LEN];
 
-	xlock_core();
-	xacquire_lock(lbr_state_lock);
+	//xlock_core((void *)irql_flag);
+	xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
 	struct lbr_state *state = find_lbr_state_worker(pid);
 	if (state == NULL)
 		return;
 
 	// TODO: Directly read from hardware may contaminated by other process
-	//state->lbr_select = __readmsr(MSR_LBR_SELECT);
-	state->lbr_tos = xrdmsr(MSR_LBR_TOS);
+	//xrdmsr(MSR_LBR_SELECT, &state->lbr_select);
+	xrdmsr(MSR_LBR_TOS, &state->lbr_tos);
 
 	for (i = 0; i < lbr_capacity; i++)
 	{
-		state->entries[i].from = xrdmsr(MSR_LBR_NHM_FROM + i);
-		state->entries[i].to = xrdmsr(MSR_LBR_NHM_TO + i);
+		xrdmsr(MSR_LBR_NHM_FROM + i, &state->entries[i].from);
+		xrdmsr(MSR_LBR_NHM_TO + i, &state->entries[i].to);
 	}
 
-	xrelease_lock(lbr_state_lock);
-	xrelease_core();
+	xrelease_lock(lbr_state_lock, (void *)irql_flag);
+	//xrelease_core(irql_flag);
 }
 
 /*
@@ -64,9 +68,10 @@ void get_lbr(u32 pid)
 void put_lbr(u32 pid)
 {
 	int i;
+	char irql_flag[MAX_IRQL_LEN];
 
-	xlock_core();
-	xacquire_lock(lbr_state_lock);
+	//xlock_core((void *)irql_flag);
+	xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
 	struct lbr_state* state = find_lbr_state_worker(pid);
 	if (state == NULL)
@@ -81,8 +86,8 @@ void put_lbr(u32 pid)
 		xwrmsr(MSR_LBR_NHM_TO + i, state->entries[i].to);
 	}
 
-	xrelease_lock(lbr_state_lock);
-	xrelease_core();
+	xrelease_lock(lbr_state_lock, (void *)irql_flag);
+	//xrelease_core((void *)irql_flag);
 }
 
 /*
@@ -92,9 +97,10 @@ void dump_lbr(u32 pid)
 {
 	int i;
 	struct lbr_state* state;
+	char irql_flag[MAX_IRQL_LEN];
 
-	xlock_core();
-	xacquire_lock(lbr_state_lock);
+	//xlock_core((void *)irql_flag);
+	xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
 	state = find_lbr_state_worker(pid);
 	if (state == NULL)
@@ -118,8 +124,8 @@ void dump_lbr(u32 pid)
 
 	xprintdbg("LIBIHT-COM: LBR info for cpuid: %d\n", xcoreid());
 
-	xrelease_lock(lbr_state_lock);
-	xrelease_core();
+	xrelease_lock(lbr_state_lock, (void *)irql_flag);
+	//xrelease_core((void *)irql_flag);
 }
 
 /*
@@ -127,16 +133,18 @@ void dump_lbr(u32 pid)
  */
 void enable_lbr(void)
 {
-	xlock_core();
-	xacquire_lock(lbr_state_lock);
+	char irql_flag[MAX_IRQL_LEN];
+
+	//xlock_core((void *)irql_flag);
+	xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
 	xprintdbg("LIBIHT-COM: Enable LBR on cpu core: %d...\n", xcoreid());
 
 	/* Flush the LBR and enable it */
 	flush_lbr(TRUE);
 
-	xrelease_lock(lbr_state_lock);
-	xrelease_core();
+	xrelease_lock(lbr_state_lock, (void *)irql_flag);
+	//xrelease_core((void *)irql_flag);
 }
 
 /*
@@ -144,8 +152,10 @@ void enable_lbr(void)
  */
 void disable_lbr(void)
 {
-	xlock_core();
-	xacquire_lock(lbr_state_lock);
+	char irql_flag[MAX_IRQL_LEN];
+
+	//xlock_core((void *)irql_flag);
+	xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
 	xprintdbg("LIBIHT-COM: Disable LBR on cpu core: %d...\n", xcoreid());
 
@@ -155,8 +165,8 @@ void disable_lbr(void)
 	/* Flush the LBR and disable it */
 	flush_lbr(FALSE);
 
-	xrelease_lock(lbr_state_lock);
-	xrelease_core();
+	xrelease_lock(lbr_state_lock, (void *)irql_flag);
+	//xrelease_core((void *)irql_flag);
 }
 
 /************************************************
@@ -189,6 +199,7 @@ struct lbr_state* create_lbr_state(void)
 void insert_lbr_state(struct lbr_state* new_state)
 {
 	struct lbr_state* head;
+	char irql_flag[MAX_IRQL_LEN];
 
 	if (new_state == NULL)
 	{
@@ -196,8 +207,8 @@ void insert_lbr_state(struct lbr_state* new_state)
 		return;
 	}
 
-	xlock_core();
-	xacquire_lock(lbr_state_lock);
+	//xlock_core((void *)irql_flag);
+	xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
 	head = lbr_state_list;
 	if (head == NULL)
@@ -216,8 +227,8 @@ void insert_lbr_state(struct lbr_state* new_state)
 
 	xprintdbg("LIBIHT-COM: Insert LBR state for pid %d\n", new_state->pid);
 
-	xrelease_lock(lbr_state_lock);
-	xrelease_core();
+	xrelease_lock(lbr_state_lock, (void *)irql_flag);
+	//xrelease_core((void *)irql_flag);
 }
 
 /*
@@ -274,13 +285,15 @@ void remove_lbr_state_worker(struct lbr_state* old_state)
 
 void remove_lbr_state(struct lbr_state* old_state)
 {
-	xlock_core();
-	xacquire_lock(lbr_state_lock);
+	char irql_flag[MAX_IRQL_LEN];
+
+	//xlock_core((void *)irql_flag);
+	xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
 	remove_lbr_state_worker(old_state);
 
-	xrelease_lock(lbr_state_lock);
-	xrelease_core();
+	xrelease_lock(lbr_state_lock, (void *)irql_flag);
+	//xrelease_core((void *)irql_flag);
 }
 
 /*
@@ -311,14 +324,15 @@ struct lbr_state* find_lbr_state_worker(u32 pid)
 struct lbr_state* find_lbr_state(u32 pid)
 {
 	struct lbr_state* state;
+	char irql_flag[MAX_IRQL_LEN];
 
-	xlock_core();
-	xacquire_lock(lbr_state_lock);
+	//xlock_core((void *)irql_flag);
+	xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
 	state = find_lbr_state_worker(pid);
 
-	xrelease_lock(lbr_state_lock);
-	xrelease_core();
+	xrelease_lock(lbr_state_lock, (void *)irql_flag);
+	//xrelease_core((void *)irql_flag);
 
 	return state;
 }
@@ -348,9 +362,9 @@ void restore_lbr(u32 pid)
 s32 lbr_init(void)
 {
 	// Initialize the LBR state lock
-	lbr_state_lock = xmalloc(0x100);
-	if (lbr_state_lock == NULL)
-		return -1;
+	//lbr_state_lock = xmalloc(0x100);
+	//if (lbr_state_lock == NULL)
+	//	return -1;
 	xinit_lock(lbr_state_lock);
 
 	// Enable LBR on each cpu (Not yet set the selection filter bit)
@@ -380,8 +394,8 @@ s32 lbr_exit(void)
 	}
 
 	// Free the LBR state lock
-	xfree(lbr_state_lock);
-	lbr_state_lock = NULL;
+	//xfree(lbr_state_lock);
+	//lbr_state_lock = NULL;
 
 	// Disable LBR on each cpu
 	xprintdbg("LIBIHT-KMD: Disabling LBR for all cpus...\n");

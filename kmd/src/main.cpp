@@ -20,6 +20,7 @@ extern "C" NTSTATUS DriverExit(PDRIVER_OBJECT driverObject);
  * Wrapper functions
  ************************************************/
 
+// TODO: consider remove this
 ///*
 // * enable_lbr wrapper worker function
 // */
@@ -357,6 +358,7 @@ NTSTATUS device_default(PDEVICE_OBJECT device_obj, PIRP Irp)
  * Kernel mode driver functions
  ************************************************/
 
+// TODO: consider remove this
 //static int identify_cpu(void)
 //{
 //	s32 cpuinfo[4] = { 0 };
@@ -432,8 +434,9 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_obj, PUNICODE_STRING reg_path)
 	if (!NT_SUCCESS(status))
 		return status;
 
+	// TODO: consider remove this, duplicate of lbr_init()
 	//// Enable LBR on each cpu (Not yet set the selection filter bit)
-	//print_dbg("LIBIHT-KMD: Enabling LBR for all %d cpus...\n", KeQueryActiveProcessorCount(NULL));
+	//xprintdbg("LIBIHT-KMD: Enabling LBR for all %d cpus...\n", KeQueryActiveProcessorCount(NULL));
 	//KeIpiGenericCall(enable_lbr_wrap, 0);
 
 	//// Set the state list to NULL after module initialized
@@ -457,6 +460,7 @@ NTSTATUS DriverExit(PDRIVER_OBJECT driver_obj)
 
 	xprintdbg("LIBIHT-KMD: Exiting...\n");
 
+	// TODO: consider remove this, duplicate of lbr_exit()
 	//// Free the LBR state list
 	//print_dbg("LIBIHT-KMD: Freeing LBR state list...\n");
 	//if (lbr_state_list != NULL)
@@ -471,7 +475,7 @@ NTSTATUS DriverExit(PDRIVER_OBJECT driver_obj)
 	//}
 
 	//// Disable LBR on each cpu
-	//print_dbg("LIBIHT-KMD: Disabling LBR for all %d cpus...\n", KeQueryActiveProcessorCount(NULL));
+	//xprintdbg("LIBIHT-KMD: Disabling LBR for all %d cpus...\n", KeQueryActiveProcessorCount(NULL));
 	//KeIpiGenericCall(disable_lbr_wrap, 0);
 
 	lbr_exit();

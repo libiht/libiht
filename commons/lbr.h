@@ -2,6 +2,7 @@
 #define _COMMONS_LBR_H
 
 #include "types.h"
+#include "xplat.h"
 
 /* cpp cross compile handler */
 #ifdef __cplusplus
@@ -76,7 +77,7 @@ struct lbr_state
 struct lbr_state *lbr_state_list;
 u64 lbr_capacity;
 // TODO: Check to see if it works
-void* lbr_state_lock;
+char lbr_state_lock[MAX_LOCK_LEN];
 
 /* LBR related function prototypes */
 
