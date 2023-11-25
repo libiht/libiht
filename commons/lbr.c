@@ -354,6 +354,7 @@ s32 lbr_init(void)
 	xinit_lock(lbr_state_lock);
 
 	// Enable LBR on each cpu (Not yet set the selection filter bit)
+	xprintdbg("LIBIHT-COM: Enabling LBR for all cpus...\n");
 	xon_each_cpu(enable_lbr);
 
 	// Set the state list to NULL after module initialized
@@ -377,6 +378,10 @@ s32 lbr_exit(void)
 			curr = prev;
 		} while (curr != lbr_state_list);
 	}
+
+	// Free the LBR state lock
+	xfree(lbr_state_lock);
+	lbr_state_lock = NULL;
 
 	// Disable LBR on each cpu
 	xprintdbg("LIBIHT-KMD: Disabling LBR for all cpus...\n");
