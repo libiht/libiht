@@ -20,27 +20,6 @@ extern "C" NTSTATUS DriverExit(PDRIVER_OBJECT driverObject);
  * Wrapper functions
  ************************************************/
 
-// TODO: consider remove this
-///*
-// * enable_lbr wrapper worker function
-// */
-//ULONG_PTR enable_lbr_wrap(ULONG_PTR info)
-//{
-//	UNREFERENCED_PARAMETER(info);
-//	enable_lbr();
-//	return 0;
-//}
-//
-///*
-// * disable_lbr wrapper worker function
-// */
-//ULONG_PTR disable_lbr_wrap(ULONG_PTR info)
-//{
-//	UNREFERENCED_PARAMETER(info);
-//	disable_lbr();
-//	return 0;
-//}
-
 /*
  * Bypass check sign
  */
@@ -358,42 +337,6 @@ NTSTATUS device_default(PDEVICE_OBJECT device_obj, PIRP Irp)
  * Kernel mode driver functions
  ************************************************/
 
-// TODO: consider remove this
-//static int identify_cpu(void)
-//{
-//	s32 cpuinfo[4] = { 0 };
-//	u32 family, model;
-//	int i;
-//
-//	__cpuid(cpuinfo, 1);
-//
-//	family = ((cpuinfo[0] >> 8) & 0xF) + ((cpuinfo[0] >> 20) & 0xFF);
-//	model = ((cpuinfo[0] >> 4) & 0xF) | ((cpuinfo[0] >> 12) & 0xF0);
-//
-//	// Identify CPU model
-//	lbr_capacity = (u64)-1;
-//	for (i = 0; i < sizeof(cpu_lbr_maps) / sizeof(cpu_lbr_maps[0]); ++i)
-//	{
-//		if (model == cpu_lbr_maps[i].model)
-//		{
-//			lbr_capacity = cpu_lbr_maps[i].lbr_capacity;
-//			break;
-//		}
-//	}
-//
-//	xprintdbg("LIBIHT-KMD: DisplayFamily_DisplayModel - %x_%xH\n", family, model);
-//	xprintdbg("LIBIHT-KMD: LBR capacity - %ld\n", lbr_capacity);
-//
-//	if (lbr_capacity == -1)
-//	{
-//		// Model name not found
-//		xprintdbg("LIBIHT-KMD: CPU model not found\n");
-//		return -1;
-//	}
-//
-//	return 0;
-//}
-
 NTSTATUS DriverEntry(PDRIVER_OBJECT driver_obj, PUNICODE_STRING reg_path)
 {
 	NTSTATUS status;
@@ -434,19 +377,8 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_obj, PUNICODE_STRING reg_path)
 	if (!NT_SUCCESS(status))
 		return status;
 
-	// TODO: consider remove this, duplicate of lbr_init()
-	//// Enable LBR on each cpu (Not yet set the selection filter bit)
-	//xprintdbg("LIBIHT-KMD: Enabling LBR for all %d cpus...\n", KeQueryActiveProcessorCount(NULL));
-	//KeIpiGenericCall(enable_lbr_wrap, 0);
-
-	//// Set the state list to NULL after module initialized
-	//lbr_state_list = NULL;
-
-	if (lbr_init() < 0)
-	{
-		xprintdbg("LIBIHT-KMD: LBR init failed\n");
-		return STATUS_UNSUCCESSFUL;
-	}
+	// Init LBR
+	lbr_init();
 
 	xprintdbg("LIBIHT-KMD: Initialized\n");
 	return STATUS_SUCCESS;
@@ -460,24 +392,7 @@ NTSTATUS DriverExit(PDRIVER_OBJECT driver_obj)
 
 	xprintdbg("LIBIHT-KMD: Exiting...\n");
 
-	// TODO: consider remove this, duplicate of lbr_exit()
-	//// Free the LBR state list
-	//print_dbg("LIBIHT-KMD: Freeing LBR state list...\n");
-	//if (lbr_state_list != NULL)
-	//{
-	//	curr = lbr_state_list;
-	//	do
-	//	{
-	//		prev = curr->prev;
-	//		ExFreePoolWithTag(curr, LIBIHT_KMD_TAG);
-	//		curr = prev;
-	//	} while (curr != lbr_state_list);
-	//}
-
-	//// Disable LBR on each cpu
-	//xprintdbg("LIBIHT-KMD: Disabling LBR for all %d cpus...\n", KeQueryActiveProcessorCount(NULL));
-	//KeIpiGenericCall(disable_lbr_wrap, 0);
-
+	// Exit LBR
 	lbr_exit();
 
 	// Unregister hooks on context switches.

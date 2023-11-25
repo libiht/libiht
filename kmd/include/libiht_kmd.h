@@ -45,10 +45,7 @@ KSPIN_LOCK lbr_cache_lock;
 /*
  * Function prototypes
  */
-// TODO: consider remove this
-ULONG_PTR enable_lbr_wrap(ULONG_PTR info);
-ULONG_PTR disable_lbr_wrap(ULONG_PTR info);
-
+// TODO: Determine if this function are necessary
 BOOLEAN bypass_check_sign(PDRIVER_OBJECT driver_obj);
 
 VOID create_proc_notify(PEPROCESS proc, HANDLE proc_id,

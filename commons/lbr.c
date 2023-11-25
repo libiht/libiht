@@ -7,9 +7,6 @@
  * Help to manage LBR stack/registers
  ************************************************/
 
-// TODO: Need to check if the lock_core function is necessary in this file.
-// I think most of the get lock and release lock functions will also do the same thing
-
  /*
   * Flush the LBR registers. Caller should ensure this function run on
   * single cpu (by wrapping KeRaiseIrql() and KeLowerIrql())
@@ -41,7 +38,6 @@ void get_lbr(u32 pid)
 	int i;
 	char irql_flag[MAX_IRQL_LEN];
 
-	//xlock_core((void *)irql_flag);
 	xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
 	struct lbr_state *state = find_lbr_state_worker(pid);
@@ -59,7 +55,6 @@ void get_lbr(u32 pid)
 	}
 
 	xrelease_lock(lbr_state_lock, (void *)irql_flag);
-	//xrelease_core(irql_flag);
 }
 
 /*
@@ -70,7 +65,6 @@ void put_lbr(u32 pid)
 	int i;
 	char irql_flag[MAX_IRQL_LEN];
 
-	//xlock_core((void *)irql_flag);
 	xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
 	struct lbr_state* state = find_lbr_state_worker(pid);
@@ -87,7 +81,6 @@ void put_lbr(u32 pid)
 	}
 
 	xrelease_lock(lbr_state_lock, (void *)irql_flag);
-	//xrelease_core((void *)irql_flag);
 }
 
 /*
@@ -99,7 +92,6 @@ void dump_lbr(u32 pid)
 	struct lbr_state* state;
 	char irql_flag[MAX_IRQL_LEN];
 
-	//xlock_core((void *)irql_flag);
 	xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
 	state = find_lbr_state_worker(pid);
@@ -125,7 +117,6 @@ void dump_lbr(u32 pid)
 	xprintdbg("LIBIHT-COM: LBR info for cpuid: %d\n", xcoreid());
 
 	xrelease_lock(lbr_state_lock, (void *)irql_flag);
-	//xrelease_core((void *)irql_flag);
 }
 
 /*
@@ -135,7 +126,6 @@ void enable_lbr(void)
 {
 	char irql_flag[MAX_IRQL_LEN];
 
-	//xlock_core((void *)irql_flag);
 	xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
 	xprintdbg("LIBIHT-COM: Enable LBR on cpu core: %d...\n", xcoreid());
@@ -144,7 +134,6 @@ void enable_lbr(void)
 	flush_lbr(TRUE);
 
 	xrelease_lock(lbr_state_lock, (void *)irql_flag);
-	//xrelease_core((void *)irql_flag);
 }
 
 /*
@@ -154,7 +143,6 @@ void disable_lbr(void)
 {
 	char irql_flag[MAX_IRQL_LEN];
 
-	//xlock_core((void *)irql_flag);
 	xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
 	xprintdbg("LIBIHT-COM: Disable LBR on cpu core: %d...\n", xcoreid());
@@ -166,7 +154,6 @@ void disable_lbr(void)
 	flush_lbr(FALSE);
 
 	xrelease_lock(lbr_state_lock, (void *)irql_flag);
-	//xrelease_core((void *)irql_flag);
 }
 
 /************************************************
@@ -207,7 +194,6 @@ void insert_lbr_state(struct lbr_state* new_state)
 		return;
 	}
 
-	//xlock_core((void *)irql_flag);
 	xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
 	head = lbr_state_list;
@@ -228,7 +214,6 @@ void insert_lbr_state(struct lbr_state* new_state)
 	xprintdbg("LIBIHT-COM: Insert LBR state for pid %d\n", new_state->pid);
 
 	xrelease_lock(lbr_state_lock, (void *)irql_flag);
-	//xrelease_core((void *)irql_flag);
 }
 
 /*
@@ -287,13 +272,11 @@ void remove_lbr_state(struct lbr_state* old_state)
 {
 	char irql_flag[MAX_IRQL_LEN];
 
-	//xlock_core((void *)irql_flag);
 	xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
 	remove_lbr_state_worker(old_state);
 
 	xrelease_lock(lbr_state_lock, (void *)irql_flag);
-	//xrelease_core((void *)irql_flag);
 }
 
 /*
@@ -326,13 +309,11 @@ struct lbr_state* find_lbr_state(u32 pid)
 	struct lbr_state* state;
 	char irql_flag[MAX_IRQL_LEN];
 
-	//xlock_core((void *)irql_flag);
 	xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
 	state = find_lbr_state_worker(pid);
 
 	xrelease_lock(lbr_state_lock, (void *)irql_flag);
-	//xrelease_core((void *)irql_flag);
 
 	return state;
 }
@@ -362,9 +343,6 @@ void restore_lbr(u32 pid)
 s32 lbr_init(void)
 {
 	// Initialize the LBR state lock
-	//lbr_state_lock = xmalloc(0x100);
-	//if (lbr_state_lock == NULL)
-	//	return -1;
 	xinit_lock(lbr_state_lock);
 
 	// Enable LBR on each cpu (Not yet set the selection filter bit)
@@ -392,10 +370,6 @@ s32 lbr_exit(void)
 			curr = prev;
 		} while (curr != lbr_state_list);
 	}
-
-	// Free the LBR state lock
-	//xfree(lbr_state_lock);
-	//lbr_state_lock = NULL;
 
 	// Disable LBR on each cpu
 	xprintdbg("LIBIHT-KMD: Disabling LBR for all cpus...\n");

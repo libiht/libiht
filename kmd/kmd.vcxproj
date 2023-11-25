@@ -116,7 +116,6 @@
     <ClCompile Include="..\commons\lbr.c" />
     <ClCompile Include="infinity_hook\hde\hde64.cpp" />
     <ClCompile Include="infinity_hook\hook.cpp" />
-    <ClCompile Include="src\libiht_kmd.c" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\xplat_kmd.c" />
   </ItemGroup>

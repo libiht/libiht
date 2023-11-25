@@ -76,7 +76,6 @@ struct lbr_state
 
 struct lbr_state *lbr_state_list;
 u64 lbr_capacity;
-// TODO: Check to see if it works
 char lbr_state_lock[MAX_LOCK_LEN];
 
 /* LBR related function prototypes */
