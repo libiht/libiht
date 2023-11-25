@@ -12,8 +12,6 @@
 extern "C" {
 #endif // __cplusplus
 
-#define LIBIHT_KMD_TAG 'THIL'
-
 /*
  * I/O Device name
  */
