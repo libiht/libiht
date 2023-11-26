@@ -51,15 +51,6 @@ void xwrmsr(u32 msr, u64 val);
 void xrdmsr(u32 msr, u64 *val);
 // Cross platform read msr function.
 
-void xinit_lock(void *lock);
-// Cross platform init lock function.
-
-void xacquire_lock(void *lock, void *old_irql);
-// Cross platform acquire lock function.
-
-void xrelease_lock(void *lock, void *new_irql);
-// Cross platform release lock function.
-
 u32  xcoreid(void);
 // Cross platform get core id function.
 
@@ -68,6 +59,15 @@ void xcpuid(u32 func_id, u32 *eax, u32 *ebx, u32 *ecx, u32 *edx);
 
 void xon_each_cpu(void (*func)(void));
 // Cross platform on each cpu dispatch function.
+
+void xinit_lock(void *lock);
+// Cross platform init lock function.
+
+void xacquire_lock(void *lock, void *old_irql);
+// Cross platform acquire lock function.
+
+void xrelease_lock(void *lock, void *new_irql);
+// Cross platform release lock function.
 
 void xprintdbg(const char *format, ...);
 // Cross platform print kernel debug message function.
