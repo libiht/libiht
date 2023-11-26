@@ -22,9 +22,6 @@ extern "C" {
 #define DBG_MAX_LEVEL       (1 << 5)
 #define DEFAULT_DBG_LEVEL   (DBG_ERROR_LEVEL | DBG_WARNING_LEVEL | DBG_INFO_LEVEL | DBG_OUTPUT_LEVEL)
 
-
-void xprintdbg(const char *format, ...);
-
 #ifdef __cplusplus
 }
 #endif // __cplusplus

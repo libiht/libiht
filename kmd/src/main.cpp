@@ -128,13 +128,13 @@ void __fastcall cswitch_call_back(u32 new_proc, u32 old_proc)
 	if (find_lbr_state(new_proc))
 	{
 		//DbgBreakPoint();
-		restore_lbr(new_proc);
+		put_lbr(new_proc);
 	}
 
 	if (find_lbr_state(old_proc))
 	{
 		//DbgBreakPoint();
-		save_lbr(old_proc);
+		get_lbr(old_proc);
 	}
 }
 
