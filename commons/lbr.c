@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 //  File           : commons/lbr.c
-//  Description    : This is the implementation of the LBR stack for the
+//  Description    : This is the implementation of the LBR feature for the
 //                   libiht library. See associated documentation for more
 //					 information.
 //
