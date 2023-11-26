@@ -41,6 +41,8 @@ extern "C" {
 
 //
 // Type definitions
+
+// IOCTL request structure
 struct ioctl_request
 {
     u64 lbr_select; // LBR selection bit
