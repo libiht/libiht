@@ -149,4 +149,4 @@ s32 lbr_exit(void);
 }
 #endif // __cplusplus
 
-#endif /* _COMMONS_LBR_H */
+#endif // _COMMONS_LBR_H
