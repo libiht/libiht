@@ -101,7 +101,7 @@ char lbr_state_lock[MAX_LOCK_LEN];
 // The lock for lbr_state_list.
 
 //
-// Functional Prototypes
+// Function Prototypes
 
 void flush_lbr(u8 enable);
 // Flush the LBR.
