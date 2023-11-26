@@ -49,18 +49,18 @@ extern "C" {
 #define DEBUGCTLMSR_LBR			0x00000001 
 #endif
 
-/* Bit Field    Bit Offset  Access  Description
+/* Bit Field  Bit Offset  Access  Description
  *
- * CPL_EQ_0         0   R/W     When set, do not capture branches ending in ring 0
- * CPL_NEQ_0        1   R/W     When set, do not capture branches ending in ring >0
- * JCC              2   R/W     When set, do not capture conditional branches
- * NEAR_REL_CALL    3   R/W     When set, do not capture near relative calls
- * NEAR_IND_CALL    4   R/W     When set, do not capture near indirect calls
- * NEAR_RET         5   R/W     When set, do not capture near returns
- * NEAR_IND_JMP     6   R/W     When set, do not capture near indirect jumps
- * NEAR_REL_JMP     7   R/W     When set, do not capture near relative jumps
- * FAR_BRANCH       8   R/W     When set, do not capture far branches
- * Reserved         63:9        Must be zero
+ * CPL_EQ_0      0   R/W     When set, do not capture branches ending in ring 0
+ * CPL_NEQ_0     1   R/W     When set, do not capture branches ending in ring >0
+ * JCC           2   R/W     When set, do not capture conditional branches
+ * NEAR_REL_CALL 3   R/W     When set, do not capture near relative calls
+ * NEAR_IND_CALL 4   R/W     When set, do not capture near indirect calls
+ * NEAR_RET      5   R/W     When set, do not capture near returns
+ * NEAR_IND_JMP  6   R/W     When set, do not capture near indirect jumps
+ * NEAR_REL_JMP  7   R/W     When set, do not capture near relative jumps
+ * FAR_BRANCH    8   R/W     When set, do not capture far branches
+ * Reserved      63:9        Must be zero
  *
  * Default selection bit set to:
  * 0x1 = 00000001   --> capture branches occuring in ring >0
