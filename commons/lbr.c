@@ -3,7 +3,7 @@
 //  File           : commons/lbr.c
 //  Description    : This is the implementation of the LBR feature for the
 //                   libiht library. See associated documentation for more
-//					 information.
+//                   information.
 //
 //   Author        : Thomason Zhao
 //   Last Modified : Nov 25, 2023
