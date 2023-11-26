@@ -49,7 +49,7 @@ static const struct cpu_to_lbr cpu_lbr_maps[] = {
 // Function prototypes
 
 s32 identify_cpu(void);
-// Identify CPU model and its LBR capacity
+// Identify CPU model and its LBR capacity.
 
 #ifdef __cplusplus
 }
