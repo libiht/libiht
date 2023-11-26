@@ -28,7 +28,17 @@ Please refer to the article on [loading a Windows kernel driver](https://www.ire
 
 ## Driver APIs
 
-The KMD component of LIBIHT provides the following APIs for user space components to access the raw hardware trace information:
+IOCTLs are used to communicate with the KMD component of LIBIHT. Request format as follows:
+
+```c
+struct ioctl_request
+{
+    u64 lbr_select; // LBR selection bit
+    u32 pid;        // Process ID
+};
+```
+
+The KMD component of LIBIHT provides the following IOCTLs for user space components to access the raw hardware trace information:
 
 - `LIBIHT_KMD_IOC_ENABLE_TRACE` - Enable hardware trace capabilities for the assigned process id (PID) and all its child processes.
 - `LIBIHT_KMD_IOC_DISABLE_TRACE` - Disable hardware trace capabilities for the assigned process id (PID) and all its child processes.
