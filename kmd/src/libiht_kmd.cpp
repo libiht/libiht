@@ -17,27 +17,7 @@
 #include "../infinity_hook/hook.hpp"
 #include "../include/libiht_kmd.h"
 
-
-//
-// Function Prototypes
-
-extern "C" NTSTATUS DriverEntry(PDRIVER_OBJECT driverObject, PUNICODE_STRING regPath);
-extern "C" NTSTATUS DriverExit(PDRIVER_OBJECT driverObject);
-
-/************************************************
- * Global variables
- ************************************************/
-
-/************************************************
- * Platform specific hooking & entry functions
- *
- * Heavily referenced from: https://github.com/lyshark/WindowsKernelBook
- ************************************************/
-
-/************************************************
- * Wrapper functions
- ************************************************/
-
+// TODO: Determine if this function are necessary, skip make description for now
 /*
  * Bypass check sign
  */
@@ -86,13 +66,24 @@ BOOLEAN bypass_check_sign(PDRIVER_OBJECT driver_obj)
     return TRUE;
 }
 
-/************************************************
- * Create process notifier functions
- ************************************************/
+//
+// Infinity Hook related context manipulation functions
 
-/*
- * Create process notify routine implementation
- */
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : create_proc_notify
+// Description  : This function is used to create a process notifier. It will
+//                be called when a process is created or terminated. If the
+//                process is created by a parent in the `lbr_state_list`, the
+//                child will also be added to the `lbr_state_list`. If the
+//                process is terminated, it will be removed from the LBR
+//                monitor list.
+//
+// Inputs       : proc - the process object
+//                proc_id - the process id
+//                create_info - the created process info
+// Outputs      : void
+
 VOID create_proc_notify(PEPROCESS proc, HANDLE proc_id,
     PPS_CREATE_NOTIFY_INFO create_info)
 {
@@ -135,26 +126,41 @@ VOID create_proc_notify(PEPROCESS proc, HANDLE proc_id,
     }
 }
 
-/************************************************
- * Context switch event hook functions
- ************************************************/
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : cswitch_call_back
+// Description  : This function is used to hook the context switch. It will be
+//                called when a context switch happens. If the new process is
+//                in the `lbr_state_list`, it will be set up to monitor the LBR
+//                of the new process. If the old process is in the
+//                `lbr_state_list`, it will be removed from the LBR monitor
+//                list.
+//
+// Inputs       : new_proc - the new process id to be switched to
+//                old_proc - the old process id to be switched from
+// Outputs      : void
+
 void __fastcall cswitch_call_back(u32 new_proc, u32 old_proc)
 {
-    //unsigned long long core_idx = KeGetCurrentProcessorNumberEx(NULL);
-    //print_dbg("LIBIHT-KMD: Context switch event on %lld, new_proc: %ld, old_proc: %ld\n", core_idx, new_proc, old_proc);
-
     if (find_lbr_state(new_proc))
     {
-        //DbgBreakPoint();
         put_lbr(new_proc);
     }
 
     if (find_lbr_state(old_proc))
     {
-        //DbgBreakPoint();
         get_lbr(old_proc);
     }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : infinity_hook_create
+// Description  : This function is used to initialize and start the context
+//                switch hook.
+//
+// Inputs       : void
+// Outputs      : NTSTATUS - the status of the hook
 
 NTSTATUS infinity_hook_create()
 {
@@ -162,12 +168,23 @@ NTSTATUS infinity_hook_create()
     return k_hook::initialize(cswitch_call_back) && k_hook::start() ? STATUS_SUCCESS : STATUS_UNSUCCESSFUL;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : infinity_hook_remove
+// Description  : This function is used to stop and remove the context switch
+//                hook.
+//
+// Inputs       : void
+// Outputs      : NTSTATUS - the status of the hook
+
 NTSTATUS infinity_hook_remove()
 {
     k_hook::stop();
 
-    // Here you need to make sure that the execution point of the system is no longer in the current driver
-    // For example, the current driver is unloaded, but the MyNtCreateFile you hooked is still executing the for operation, of course, the blue screen
+    // Here you need to make sure that the execution point of the system is no
+    // longer in the current driver
+    // For example, the current driver is unloaded, but the MyNtCreateFile you
+    // hooked is still executing the for operation, of course, the blue screen
     // The sleep 10 second method here can be directly improved
     LARGE_INTEGER integer{ 0 };
     integer.QuadPart = -10000;
@@ -177,15 +194,18 @@ NTSTATUS infinity_hook_remove()
     return STATUS_SUCCESS;
 }
 
-/************************************************
- * Device hook functions
- *
- * Maintain functionality of the libiht-info helper process
- ************************************************/
+//
+// Device related manipulation functions
 
- /*
-  * Helper function to create user interactive helper device
-  */
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : device_create
+// Description  : This function is used to create a device object and a
+//                symbolic link for user interactive helper.
+//
+// Inputs       : driver_obj - the driver object
+// Outputs      : NTSTATUS - the status of the device creation
+
 NTSTATUS device_create(PDRIVER_OBJECT driver_obj)
 {
     NTSTATUS status;
@@ -218,9 +238,15 @@ NTSTATUS device_create(PDRIVER_OBJECT driver_obj)
     return STATUS_SUCCESS;
 }
 
-/*
- * Helper function to remove user interactive helper device
- */
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : device_remove
+// Description  : This function is used to remove the device object and the
+//                symbolic link for user interactive helper.
+//
+// Inputs       : driver_obj - the driver object
+// Outputs      : NTSTATUS - the status of the device removal
+
 NTSTATUS device_remove(PDRIVER_OBJECT driver_obj)
 {
     PDEVICE_OBJECT device_obj = driver_obj->DeviceObject;
@@ -231,9 +257,16 @@ NTSTATUS device_remove(PDRIVER_OBJECT driver_obj)
     return STATUS_SUCCESS;
 }
 
-/*
- * Hooks for I/O controling the device
- */
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : device_ioctl
+// Description  : This function is used to handle the ioctl request from user
+//                interactive helper.
+//
+// Inputs       : device_obj - the device object
+//                Irp - the I/O request packet
+// Outputs      : NTSTATUS - the status of the ioctl request
+
 NTSTATUS device_ioctl(PDEVICE_OBJECT device_obj, PIRP Irp)
 {
     PIO_STACK_LOCATION irp_stack;
@@ -339,9 +372,16 @@ NTSTATUS device_ioctl(PDEVICE_OBJECT device_obj, PIRP Irp)
     return status;
 }
 
-/*
- * Device dispatch function
- */
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : device_default
+// Description  : This function is used to handle the default request from user
+//                interactive helper.
+//
+// Inputs       : device_obj - the device object
+//                Irp - the I/O request packet
+// Outputs      : NTSTATUS - the status of the default request
+
 NTSTATUS device_default(PDEVICE_OBJECT device_obj, PIRP Irp)
 {
     UNREFERENCED_PARAMETER(device_obj);
@@ -350,10 +390,18 @@ NTSTATUS device_default(PDEVICE_OBJECT device_obj, PIRP Irp)
     return STATUS_SUCCESS;
 }
 
+//
+// Driver manipulation functions
 
-/************************************************
- * Kernel mode driver functions
- ************************************************/
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : DriverEntry
+// Description  : This function is the main entry point for the driver. It will
+//                initialize the driver and register all the required services.
+//
+// Inputs       : driver_obj - the driver object
+//                reg_path - the registry path
+// Outputs      : NTSTATUS - the status of the driver initialization
 
 NTSTATUS DriverEntry(PDRIVER_OBJECT driver_obj, PUNICODE_STRING reg_path)
 {
@@ -401,6 +449,16 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_obj, PUNICODE_STRING reg_path)
     xprintdbg("LIBIHT-KMD: Initialized\n");
     return STATUS_SUCCESS;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : DriverExit
+// Description  : This function is the main exit point for the driver. It will
+//                unregister all the registered services and clean up the
+//                driver.
+//
+// Inputs       : driver_obj - the driver object
+// Outputs      : NTSTATUS - the status of the driver exit
 
 NTSTATUS DriverExit(PDRIVER_OBJECT driver_obj)
 {
