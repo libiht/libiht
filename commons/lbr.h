@@ -79,12 +79,12 @@ struct lbr_stack_entry
 // Define LBR state
 struct lbr_state
 {
-    u64 lbr_select;                 // MSR_LBR_SELECT
-    u64 lbr_tos;                    // MSR_LBR_TOS
-    u32 pid;                        // process id
-    struct lbr_state *prev;         // previous state
-    struct lbr_state *next;         // next state
-    struct lbr_state *parent;       // parent state
+    u64 lbr_select;                   // MSR_LBR_SELECT
+    u64 lbr_tos;                      // MSR_LBR_TOS
+    u32 pid;                          // process id
+    struct lbr_state *prev;           // previous state
+    struct lbr_state *next;           // next state
+    struct lbr_state *parent;         // parent state
     struct lbr_stack_entry entries[]; // flexible array member
 };
 
