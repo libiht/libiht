@@ -1,12 +1,26 @@
 #ifndef _COMMONS_TYPES_H
 #define _COMMONS_TYPES_H
 
-/* cpp cross compile handler */
+////////////////////////////////////////////////////////////////////////////////
+//
+//  File           : commons/types.h
+//  Description    : This is the header file for the common types for the 
+//                   libiht library.  
+//                   
+//
+//   Author        : Thomason Zhao
+//   Last Modified : Nov 25, 2023
+//
+
+// cpp cross compile handler
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
 
-/* Redefine types that works for both linux and windows platform */
+//
+// Type definitions
+
+// Redefine types that works for both linux and windows platform
 typedef signed      char        s8;
 typedef unsigned    char        u8;
 typedef signed      short       s16;
@@ -33,4 +47,4 @@ typedef unsigned    long long   u64;
 #endif // __cplusplus
 
 
-#endif /* _COMMONS_TYPES_H */
+#endif // _COMMONS_TYPES_H
