@@ -2,6 +2,12 @@
 #define _COMMONS_LBR_H
 
 #include "types.h"
+#include "xplat.h"
+
+/* cpp cross compile handler */
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
 
 /* LBR MSR register and config definitions */
 
@@ -68,22 +74,11 @@ struct lbr_state
 
 /* LBR related extern globals */
 
-#ifdef __cplusplus
-extern "C" {
-#endif // __cplusplus
-
 struct lbr_state *lbr_state_list;
 u64 lbr_capacity;
-
-#ifdef __cplusplus
-}
-#endif // __cplusplus
+char lbr_state_lock[MAX_LOCK_LEN];
 
 /* LBR related function prototypes */
-
-#ifdef __cplusplus
-extern "C" {
-#endif // __cplusplus
 
 void flush_lbr(u8 enable);
 void get_lbr(u32 pid);
@@ -102,9 +97,11 @@ struct lbr_state *find_lbr_state(u32 pid);
 void save_lbr(u32 pid);
 void restore_lbr(u32 pid);
 
+s32 lbr_init(void);
+s32 lbr_exit(void);
+
 #ifdef __cplusplus
 }
 #endif // __cplusplus
-
 
 #endif /* _COMMONS_LBR_H */

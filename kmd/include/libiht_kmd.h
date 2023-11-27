@@ -1,13 +1,16 @@
 #ifndef _LIBIHT_KMD_H
 #define _LIBIHT_KMD_H
 
-#include "../commons/lbr.h"
-#include "../commons/cpu.h"
-#include "../commons/types.h"
-#include "../commons/debug.h"
-#include "imports.hpp"
+#include "../../commons/lbr.h"
+#include "../../commons/cpu.h"
+#include "../../commons/types.h"
+#include "../../commons/debug.h"
+#include "../infinity_hook/imports.hpp"
 
-#define LIBIHT_KMD_TAG 'THIL'
+/* cpp cross compile handler */
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
 
 /*
  * I/O Device name
@@ -35,18 +38,12 @@ struct ioctl_request
 	u32 pid;
 };
 
-#ifdef __cplusplus
-extern "C" {
-#endif // __cplusplus
-
 KSPIN_LOCK lbr_cache_lock;
 
 /*
  * Function prototypes
  */
-ULONG_PTR enable_lbr_wrap(ULONG_PTR info);
-ULONG_PTR disable_lbr_wrap(ULONG_PTR info);
-
+// TODO: Determine if this function are necessary
 BOOLEAN bypass_check_sign(PDRIVER_OBJECT driver_obj);
 
 VOID create_proc_notify(PEPROCESS proc, HANDLE proc_id,

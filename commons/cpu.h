@@ -3,6 +3,11 @@
 
 #include "types.h"
 
+/* cpp cross compile handler */
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
 /*
  * The struct represent the mapping between CPU model and its corrosponding
  * LBR entries (if exist)
@@ -30,6 +35,10 @@ static const struct cpu_to_lbr cpu_lbr_maps[] = {
     {0x36, 8}};
 
 /* CPU related function prototypes */
-static s32 identify_cpu(void);
+s32 identify_cpu(void);
+
+#ifdef __cplusplus
+}
+#endif // __cplusplus
 
 #endif /* _COMMONS_CPU_H */

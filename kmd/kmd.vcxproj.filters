@@ -13,8 +13,14 @@
       <UniqueIdentifier>{8E41214B-6785-4CFE-B992-037D68949A14}</UniqueIdentifier>
       <Extensions>inf;inv;inx;mof;mc;</Extensions>
     </Filter>
-    <Filter Include="hde">
-      <UniqueIdentifier>{a34ed296-fcc1-432a-915f-169a62f17566}</UniqueIdentifier>
+    <Filter Include="infinity_hook">
+      <UniqueIdentifier>{3d8c4aca-5005-4d15-b674-d9f471518595}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="infinity_hook\hde">
+      <UniqueIdentifier>{fe4712d8-0a92-4f62-8bb8-c67e2efca5e7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="commons">
+      <UniqueIdentifier>{7ad72d73-dfea-44d8-9e8d-62f92963a24f}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -23,45 +29,69 @@
     </Inf>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="libiht_kmd.c">
+    <ClCompile Include="infinity_hook\hook.cpp">
+      <Filter>infinity_hook</Filter>
+    </ClCompile>
+    <ClCompile Include="infinity_hook\hde\hde64.cpp">
+      <Filter>infinity_hook\hde</Filter>
+    </ClCompile>
+    <ClCompile Include="..\commons\cpu.c">
+      <Filter>commons</Filter>
+    </ClCompile>
+    <ClCompile Include="..\commons\debug.c">
+      <Filter>commons</Filter>
+    </ClCompile>
+    <ClCompile Include="..\commons\lbr.c">
+      <Filter>commons</Filter>
+    </ClCompile>
+    <ClCompile Include="src\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="hde\hde64.cpp">
-      <Filter>hde</Filter>
-    </ClCompile>
-    <ClCompile Include="hook.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="main.cpp">
+    <ClCompile Include="src\xplat_kmd.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="libiht_kmd.h">
+    <ClInclude Include="infinity_hook\headers.hpp">
+      <Filter>infinity_hook</Filter>
+    </ClInclude>
+    <ClInclude Include="infinity_hook\hook.hpp">
+      <Filter>infinity_hook</Filter>
+    </ClInclude>
+    <ClInclude Include="infinity_hook\imports.hpp">
+      <Filter>infinity_hook</Filter>
+    </ClInclude>
+    <ClInclude Include="infinity_hook\utils.hpp">
+      <Filter>infinity_hook</Filter>
+    </ClInclude>
+    <ClInclude Include="infinity_hook\hde\hde64.h">
+      <Filter>infinity_hook\hde</Filter>
+    </ClInclude>
+    <ClInclude Include="infinity_hook\hde\pstdint.h">
+      <Filter>infinity_hook\hde</Filter>
+    </ClInclude>
+    <ClInclude Include="infinity_hook\hde\table64.h">
+      <Filter>infinity_hook\hde</Filter>
+    </ClInclude>
+    <ClInclude Include="..\commons\cpu.h">
+      <Filter>commons</Filter>
+    </ClInclude>
+    <ClInclude Include="..\commons\debug.h">
+      <Filter>commons</Filter>
+    </ClInclude>
+    <ClInclude Include="..\commons\lbr.h">
+      <Filter>commons</Filter>
+    </ClInclude>
+    <ClInclude Include="..\commons\types.h">
+      <Filter>commons</Filter>
+    </ClInclude>
+    <ClInclude Include="..\commons\xplat.h">
+      <Filter>commons</Filter>
+    </ClInclude>
+    <ClInclude Include="include\headers_kmd.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="libiht_kmd_lde64.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="hde\hde64.h">
-      <Filter>hde</Filter>
-    </ClInclude>
-    <ClInclude Include="hde\pstdint.h">
-      <Filter>hde</Filter>
-    </ClInclude>
-    <ClInclude Include="hde\table64.h">
-      <Filter>hde</Filter>
-    </ClInclude>
-    <ClInclude Include="headers.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="hook.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="imports.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="utils.hpp">
+    <ClInclude Include="include\libiht_kmd.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

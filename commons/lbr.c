@@ -1,31 +1,5 @@
-#include <ntifs.h>
-#include <ntddk.h>
-#include <wdm.h>
-#include <windef.h>
-#include <intrin.h>
-
-#include "libiht_kmd.h"
-
-#pragma intrinsic(_disable)
-#pragma intrinsic(_enable)
-
-void print_dbg(const char* format, ...)
-#ifdef DEBUG_MSG
-{
-	va_list args;
-	_crt_va_start(args, format);
-	vDbgPrintEx(DPFLTR_IHVDRIVER_ID, DPFLTR_ERROR_LEVEL, format, args);
-}
-#else
-{
-	return;
-}
-#endif // DEBUG_MSG
-
-/************************************************
- * Cross platform LBR & LBR state related functions
- ************************************************/
-
+#include "lbr.h"
+#include "xplat.h"
 
 /************************************************
  * LBR helper functions
@@ -41,19 +15,19 @@ void flush_lbr(u8 enable)
 {
 	int i;
 
-	__writemsr(MSR_LBR_SELECT, 0);
-	__writemsr(MSR_LBR_TOS, 0);
+	xwrmsr(MSR_LBR_SELECT, 0);
+	xwrmsr(MSR_LBR_TOS, 0);
 
 	for (i = 0; i < lbr_capacity; i++)
 	{
-		__writemsr(MSR_LBR_NHM_FROM + i, 0);
-		__writemsr(MSR_LBR_NHM_TO + i, 0);
+		xwrmsr(MSR_LBR_NHM_FROM + i, 0);
+		xwrmsr(MSR_LBR_NHM_TO + i, 0);
 	}
 
 	if (enable)
-		__writemsr(MSR_IA32_DEBUGCTLMSR, DEBUGCTLMSR_LBR);
+		xwrmsr(MSR_IA32_DEBUGCTLMSR, DEBUGCTLMSR_LBR);
 	else
-		__writemsr(MSR_IA32_DEBUGCTLMSR, 0);
+		xwrmsr(MSR_IA32_DEBUGCTLMSR, 0);
 }
 
 /*
@@ -62,25 +36,25 @@ void flush_lbr(u8 enable)
 void get_lbr(u32 pid)
 {
 	int i;
+	char irql_flag[MAX_IRQL_LEN];
 
-	KIRQL old_irql;
-	KeAcquireSpinLock(&lbr_cache_lock, &old_irql);
+	xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
-	struct lbr_state* state = find_lbr_state_worker(pid);
+	struct lbr_state *state = find_lbr_state_worker(pid);
 	if (state == NULL)
 		return;
 
 	// TODO: Directly read from hardware may contaminated by other process
-	//state->lbr_select = __readmsr(MSR_LBR_SELECT);
-	state->lbr_tos = __readmsr(MSR_LBR_TOS);
+	//xrdmsr(MSR_LBR_SELECT, &state->lbr_select);
+	xrdmsr(MSR_LBR_TOS, &state->lbr_tos);
 
 	for (i = 0; i < lbr_capacity; i++)
 	{
-		state->entries[i].from = __readmsr(MSR_LBR_NHM_FROM + i);
-		state->entries[i].to = __readmsr(MSR_LBR_NHM_TO + i);
+		xrdmsr(MSR_LBR_NHM_FROM + i, &state->entries[i].from);
+		xrdmsr(MSR_LBR_NHM_TO + i, &state->entries[i].to);
 	}
 
-	KeReleaseSpinLock(&lbr_cache_lock, old_irql);
+	xrelease_lock(lbr_state_lock, (void *)irql_flag);
 }
 
 /*
@@ -89,24 +63,24 @@ void get_lbr(u32 pid)
 void put_lbr(u32 pid)
 {
 	int i;
+	char irql_flag[MAX_IRQL_LEN];
 
-	KIRQL old_irql;
-	KeAcquireSpinLock(&lbr_cache_lock, &old_irql);
+	xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
 	struct lbr_state* state = find_lbr_state_worker(pid);
 	if (state == NULL)
 		return;
 
-	__writemsr(MSR_LBR_SELECT, state->lbr_select);
-	__writemsr(MSR_LBR_TOS, state->lbr_tos);
+	xwrmsr(MSR_LBR_SELECT, state->lbr_select);
+	xwrmsr(MSR_LBR_TOS, state->lbr_tos);
 
 	for (i = 0; i < lbr_capacity; i++)
 	{
-		__writemsr(MSR_LBR_NHM_FROM + i, state->entries[i].from);
-		__writemsr(MSR_LBR_NHM_TO + i, state->entries[i].to);
+		xwrmsr(MSR_LBR_NHM_FROM + i, state->entries[i].from);
+		xwrmsr(MSR_LBR_NHM_TO + i, state->entries[i].to);
 	}
 
-	KeReleaseSpinLock(&lbr_cache_lock, old_irql);
+	xrelease_lock(lbr_state_lock, (void *)irql_flag);
 }
 
 /*
@@ -116,49 +90,50 @@ void dump_lbr(u32 pid)
 {
 	int i;
 	struct lbr_state* state;
+	char irql_flag[MAX_IRQL_LEN];
 
-	KIRQL oldIrql;
-	KeAcquireSpinLock(&lbr_cache_lock, &oldIrql);
+	xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
 	state = find_lbr_state_worker(pid);
 	if (state == NULL)
 	{
-		print_dbg("LIBIHT-KMD: find lbr_state failed\n");
+		xprintdbg("LIBIHT-COM: find lbr_state failed\n");
 		return;
 	}
 
 	// TODO: Depend on situation, fetch or not
 	//get_lbr(pid);
 
-	print_dbg("PROC_PID:             %d\n", state->pid);
-	print_dbg("MSR_LBR_SELECT:       0x%llx\n", state->lbr_select);
-	print_dbg("MSR_LBR_TOS:          %lld\n", state->lbr_tos);
+	xprintdbg("PROC_PID:             %d\n", state->pid);
+	xprintdbg("MSR_LBR_SELECT:       0x%llx\n", state->lbr_select);
+	xprintdbg("MSR_LBR_TOS:          %lld\n", state->lbr_tos);
 
 	for (i = 0; i < lbr_capacity; i++)
 	{
-		print_dbg("MSR_LBR_NHM_FROM[%2d]: 0x%llx\n", i, state->entries[i].from);
-		print_dbg("MSR_LBR_NHM_TO  [%2d]: 0x%llx\n", i, state->entries[i].to);
+		xprintdbg("MSR_LBR_NHM_FROM[%2d]: 0x%llx\n", i, state->entries[i].from);
+		xprintdbg("MSR_LBR_NHM_TO  [%2d]: 0x%llx\n", i, state->entries[i].to);
 	}
 
-	print_dbg("LIBIHT-KMD: LBR info for cpuid: %d\n", KeGetCurrentProcessorNumberEx(NULL));
+	xprintdbg("LIBIHT-COM: LBR info for cpuid: %d\n", xcoreid());
 
-	KeReleaseSpinLock(&lbr_cache_lock, oldIrql);
+	xrelease_lock(lbr_state_lock, (void *)irql_flag);
 }
 
 /*
  * Enable the LBR feature for the current CPU.
  */
-void enable_lbr()
+void enable_lbr(void)
 {
-	KIRQL oldIrql;
-	KeRaiseIrql(DISPATCH_LEVEL, &oldIrql);
+	char irql_flag[MAX_IRQL_LEN];
 
-	print_dbg("LIBIHT-KMD: Enable LBR on cpu core: %d...\n", KeGetCurrentProcessorNumberEx(NULL));
+	xacquire_lock(lbr_state_lock, (void *)irql_flag);
+
+	xprintdbg("LIBIHT-COM: Enable LBR on cpu core: %d...\n", xcoreid());
 
 	/* Flush the LBR and enable it */
 	flush_lbr(TRUE);
 
-	KeLowerIrql(oldIrql);
+	xrelease_lock(lbr_state_lock, (void *)irql_flag);
 }
 
 /*
@@ -166,10 +141,11 @@ void enable_lbr()
  */
 void disable_lbr(void)
 {
-	KIRQL oldIrql;
-	KeRaiseIrql(DISPATCH_LEVEL, &oldIrql);
+	char irql_flag[MAX_IRQL_LEN];
 
-	print_dbg("LIBIHT-KMD: Disable LBR on cpu core: %d...\n", KeGetCurrentProcessorNumberEx(NULL));
+	xacquire_lock(lbr_state_lock, (void *)irql_flag);
+
+	xprintdbg("LIBIHT-COM: Disable LBR on cpu core: %d...\n", xcoreid());
 
 	/* Remove the filter */
 	__writemsr(MSR_LBR_SELECT, 0);
@@ -177,7 +153,7 @@ void disable_lbr(void)
 	/* Flush the LBR and disable it */
 	flush_lbr(FALSE);
 
-	KeLowerIrql(oldIrql);
+	xrelease_lock(lbr_state_lock, (void *)irql_flag);
 }
 
 /************************************************
@@ -195,11 +171,11 @@ struct lbr_state* create_lbr_state(void)
 	u64 state_size = sizeof(struct lbr_state) +
 		lbr_capacity * sizeof(struct lbr_stack_entry);
 
-	state = ExAllocatePool2(POOL_FLAG_NON_PAGED, state_size, LIBIHT_KMD_TAG);
+	state = xmalloc(state_size);
 	if (state == NULL)
 		return NULL;
 
-	memset(state, 0, state_size);
+	xmemset(state, 0, state_size);
 
 	return state;
 }
@@ -210,15 +186,15 @@ struct lbr_state* create_lbr_state(void)
 void insert_lbr_state(struct lbr_state* new_state)
 {
 	struct lbr_state* head;
+	char irql_flag[MAX_IRQL_LEN];
 
 	if (new_state == NULL)
 	{
-		print_dbg("LIBIHT-KMD: Insert new state param is NULL\n");
+		xprintdbg("LIBIHT-COM: Insert new state param is NULL\n");
 		return;
 	}
 
-	KIRQL oldIrql;
-	KeAcquireSpinLock(&lbr_cache_lock, &oldIrql);
+	xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
 	head = lbr_state_list;
 	if (head == NULL)
@@ -235,9 +211,9 @@ void insert_lbr_state(struct lbr_state* new_state)
 		new_state->next = head;
 	}
 
-	print_dbg("LIBIHT-KMD: Insert LBR state for pid %d\n", new_state->pid);
+	xprintdbg("LIBIHT-COM: Insert LBR state for pid %d\n", new_state->pid);
 
-	KeReleaseSpinLock(&lbr_cache_lock, oldIrql);
+	xrelease_lock(lbr_state_lock, (void *)irql_flag);
 }
 
 /*
@@ -251,14 +227,14 @@ void remove_lbr_state_worker(struct lbr_state* old_state)
 
 	if (old_state == NULL)
 	{
-		print_dbg("LIBIHT-KMD: Remove old state param is NULL\n");
+		xprintdbg("LIBIHT-COM: Remove old state param is NULL\n");
 		return;
 	}
 
 	head = lbr_state_list;
 	if (head == NULL)
 	{
-		print_dbg("LIBIHT-KMD: Remove old state list head is NULL\n");
+		xprintdbg("LIBIHT-COM: Remove old state list head is NULL\n");
 		return;
 	}
 
@@ -287,19 +263,20 @@ void remove_lbr_state_worker(struct lbr_state* old_state)
 		} while (tmp != lbr_state_list);
 	}
 
-	print_dbg("LIBIHT-KMD: Remove LBR state for pid %d\n", old_state->pid);
+	xprintdbg("LIBIHT-COM: Remove LBR state for pid %d\n", old_state->pid);
 
-	ExFreePoolWithTag(old_state, LIBIHT_KMD_TAG);
+	xfree(old_state);
 }
 
 void remove_lbr_state(struct lbr_state* old_state)
 {
-	KIRQL oldIrql;
-	KeAcquireSpinLock(&lbr_cache_lock, &oldIrql);
+	char irql_flag[MAX_IRQL_LEN];
+
+	xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
 	remove_lbr_state_worker(old_state);
 
-	KeReleaseSpinLock(&lbr_cache_lock, oldIrql);
+	xrelease_lock(lbr_state_lock, (void *)irql_flag);
 }
 
 /*
@@ -330,13 +307,13 @@ struct lbr_state* find_lbr_state_worker(u32 pid)
 struct lbr_state* find_lbr_state(u32 pid)
 {
 	struct lbr_state* state;
+	char irql_flag[MAX_IRQL_LEN];
 
-	KIRQL oldIrql;
-	KeAcquireSpinLock(&lbr_cache_lock, &oldIrql);
+	xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
 	state = find_lbr_state_worker(pid);
 
-	KeReleaseSpinLock(&lbr_cache_lock, oldIrql);
+	xrelease_lock(lbr_state_lock, (void *)irql_flag);
 
 	return state;
 }
@@ -361,5 +338,42 @@ void save_lbr(u32 pid)
 void restore_lbr(u32 pid)
 {
 	put_lbr(pid);
+}
+
+s32 lbr_init(void)
+{
+	// Initialize the LBR state lock
+	xinit_lock(lbr_state_lock);
+
+	// Enable LBR on each cpu (Not yet set the selection filter bit)
+	xprintdbg("LIBIHT-COM: Enabling LBR for all cpus...\n");
+	xon_each_cpu(enable_lbr);
+
+	// Set the state list to NULL after module initialized
+	lbr_state_list = NULL;
+	return 0;
+}
+
+s32 lbr_exit(void)
+{
+	struct lbr_state* curr, * prev;
+
+	// Free all LBR state
+	xprintdbg("LIBIHT-KMD: Freeing LBR state list...\n");
+	if (lbr_state_list != NULL)
+	{
+		curr = lbr_state_list;
+		do
+		{
+			prev = curr->prev;
+			xfree(curr);
+			curr = prev;
+		} while (curr != lbr_state_list);
+	}
+
+	// Disable LBR on each cpu
+	xprintdbg("LIBIHT-KMD: Disabling LBR for all cpus...\n");
+	xon_each_cpu(disable_lbr);
+	return 0;
 }
 
