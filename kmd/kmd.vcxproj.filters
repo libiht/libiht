@@ -44,7 +44,7 @@
     <ClCompile Include="..\commons\lbr.c">
       <Filter>commons</Filter>
     </ClCompile>
-    <ClCompile Include="src\main.cpp">
+    <ClCompile Include="src\libiht_kmd.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\xplat_kmd.c">
