@@ -424,7 +424,7 @@ s32 lbr_exit(void)
     struct lbr_state* curr, * prev;
 
     // Free all LBR state
-    xprintdbg("LIBIHT-KMD: Freeing LBR state list...\n");
+    xprintdbg("LIBIHT-COM: Freeing LBR state list...\n");
     if (lbr_state_list != NULL)
     {
         curr = lbr_state_list;
@@ -437,7 +437,7 @@ s32 lbr_exit(void)
     }
 
     // Disable LBR on each cpu
-    xprintdbg("LIBIHT-KMD: Disabling LBR for all cpus...\n");
+    xprintdbg("LIBIHT-COM: Disabling LBR for all cpus...\n");
     xon_each_cpu(disable_lbr);
     return 0;
 }
