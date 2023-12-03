@@ -91,13 +91,13 @@ struct lbr_state
 //
 // Global variables
 
-struct lbr_state *lbr_state_list;
+extern struct lbr_state *lbr_state_list;
 // The head of the lbr_state_list.
 
-u64 lbr_capacity;
+extern u64 lbr_capacity;
 // The capacity of the LBR.
 
-char lbr_state_lock[MAX_LOCK_LEN];
+extern char lbr_state_lock[MAX_LOCK_LEN];
 // The lock for lbr_state_list.
 
 //

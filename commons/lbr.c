@@ -14,6 +14,18 @@
 #include "xplat.h"
 
 //
+// Global Variables
+
+struct lbr_state *lbr_state_list;
+// The head of the lbr_state_list.
+
+u64 lbr_capacity;
+// The capacity of the LBR.
+
+char lbr_state_lock[MAX_LOCK_LEN];
+// The lock for lbr_state_list.
+
+//
 // Low level LBR stack and registers access
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,10 +69,11 @@ void get_lbr(u32 pid)
 {
     int i;
     char irql_flag[MAX_IRQL_LEN];
+    struct lbr_state *state;
 
     xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
-    struct lbr_state *state = find_lbr_state_worker(pid);
+    state = find_lbr_state_worker(pid);
     if (state == NULL)
         return;
 
@@ -87,10 +100,11 @@ void put_lbr(u32 pid)
 {
     int i;
     char irql_flag[MAX_IRQL_LEN];
+    struct lbr_state *state;
 
     xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
-    struct lbr_state* state = find_lbr_state_worker(pid);
+    state = find_lbr_state_worker(pid);
     if (state == NULL)
         return;
 
@@ -188,7 +202,7 @@ void disable_lbr(void)
     xprintdbg("LIBIHT-COM: Disable LBR on cpu core: %d...\n", xcoreid());
 
     // Remove the selection mask
-    __writemsr(MSR_LBR_SELECT, 0);
+    xwrmsr(MSR_LBR_SELECT, 0);
 
     // Flush the LBR and disable it
     flush_lbr(FALSE);
