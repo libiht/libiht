@@ -3,6 +3,7 @@
 x64/
 
 # Linux Kernel module build files
+.vscode/
 *.cmd
 *.o
 *.d
