@@ -142,7 +142,7 @@ u32 xcoreid(void)
 
 void xcpuid(u32 func_id, u32 *eax, u32 *ebx, u32 *ecx, u32 *edx)
 {
-    cpuid(func_id, *eax, *ebx, *ecx, *edx);
+    cpuid(func_id, eax, ebx, ecx, edx);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -156,7 +156,7 @@ void xcpuid(u32 func_id, u32 *eax, u32 *ebx, u32 *ecx, u32 *edx)
 
 void xon_each_cpu(void (*func)(void))
 {
-    on_each_cpu(func, NULL, 1);
+    on_each_cpu((void *)(void *)func, NULL, 1);
 }
 
 //
