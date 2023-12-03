@@ -1,24 +1,21 @@
-# Kernel module compile process
-KVERSION = $(shell uname -r)
-MODULE = libiht_lkm
-SRC_DIR = ./src/
-# OBJS can add more helper files in it
-OBJS = $(SRC_DIR)libiht_lkm.o
+# Makefile for lkm directory
 
-obj-m += $(MODULE).o
-$(MODULE)-objs := $(OBJS)
+# Path to the Linux Kernel build system
+KERNEL_DIR ?= /lib/modules/$(shell uname -r)/build
 
+# Module name
+obj-m += libiht_lkm.o
+
+# Source files
+libiht_lkm-objs := src/libiht_lkm.o src/xplat_lkm.o ../commons/cpu.o ../commons/debug.o ../commons/lbr.o
+
+# Include paths
+ccflags-y := -I$(PWD)/include -I$(PWD)/../commons
+
+# Targets for make
 all:
-	make -C /lib/modules/$(KVERSION)/build M=$(PWD)/lkm modules
+	$(MAKE) -C $(KERNEL_DIR) M=$(PWD) modules
+
 clean:
-	make -C /lib/modules/$(KVERSION)/build M=$(PWD)/lkm clean
-
-insert: all
-	sudo insmod libiht_lkm.ko
-
-remove:
-	sudo rmmod libiht_lkm
-
-# For test use
-dump:
-	objdump -M intel -d libiht_lkm.ko > libiht_lkm.asm
+	$(MAKE) -C $(KERNEL_DIR) M=$(PWD) clean
+	$(MAKE) -C $(PWD)/../commons clean
