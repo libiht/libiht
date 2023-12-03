@@ -14,7 +14,12 @@ MODULE_NAME := libiht_lkm
 obj-m += $(MODULE_NAME).o
 
 # Source files
-libiht_lkm-objs := $(SRC_DIR)/libiht_lkm.o $(SRC_DIR)/xplat_lkm.o $(COMMON_DIR)/cpu.o $(COMMON_DIR)/debug.o $(COMMON_DIR)/lbr.o
+libiht_lkm-objs := \
+					$(COMMON_DIR)/cpu.o \
+					$(COMMON_DIR)/debug.o \
+					$(COMMON_DIR)/lbr.o \
+					$(SRC_DIR)/xplat_lkm.o \
+					$(SRC_DIR)/libiht_lkm.o \
 
 # Include paths
 ccflags-y := -I$(INC_DIR) -I$(COMMON_DIR)
