@@ -34,19 +34,19 @@ extern "C" {
 #endif
 
 #ifndef MSR_LBR_TOS
-#define MSR_LBR_TOS		        0x000001c9
+#define MSR_LBR_TOS             0x000001c9
 #endif
 
 #ifndef MSR_LBR_NHM_FROM
-#define MSR_LBR_NHM_FROM	    0x00000680
+#define MSR_LBR_NHM_FROM        0x00000680
 #endif
 
 #ifndef MSR_LBR_NHM_TO
-#define MSR_LBR_NHM_TO		    0x000006c0
+#define MSR_LBR_NHM_TO          0x000006c0
 #endif
 
 #ifndef DEBUGCTLMSR_LBR
-#define DEBUGCTLMSR_LBR			0x00000001 
+#define DEBUGCTLMSR_LBR         0x00000001 
 #endif
 
 /* Bit Field  Bit Offset  Access  Description
