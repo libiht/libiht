@@ -75,7 +75,10 @@ void get_lbr(u32 pid)
 
     state = find_lbr_state_worker(pid);
     if (state == NULL)
+    {
+        xrelease_lock(lbr_state_lock, (void *)irql_flag);
         return;
+    }
 
     xrdmsr(MSR_LBR_TOS, &state->lbr_tos);
 
@@ -106,7 +109,10 @@ void put_lbr(u32 pid)
 
     state = find_lbr_state_worker(pid);
     if (state == NULL)
+    {
+        xrelease_lock(lbr_state_lock, (void *)irql_flag);
         return;
+    }
 
     xwrmsr(MSR_LBR_SELECT, state->lbr_select);
     xwrmsr(MSR_LBR_TOS, state->lbr_tos);
@@ -140,6 +146,7 @@ void dump_lbr(u32 pid)
     if (state == NULL)
     {
         xprintdbg("LIBIHT-COM: find lbr_state failed\n");
+        xrelease_lock(lbr_state_lock, (void *)irql_flag);
         return;
     }
 
