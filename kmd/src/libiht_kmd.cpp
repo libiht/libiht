@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-//  File           : kmd/src/main.cpp
+//  File           : kmd/src/libiht_kmd.cpp
 //  Description    : This is the main implementation for the kernel mode driver 
 //                   of libiht. This driver is used to capture the last branch
 //                   records of a given process. This file is very platform
@@ -414,9 +414,6 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_obj, PUNICODE_STRING reg_path)
     // Bypass check sign
     // LINKER_FLAGS=/INTEGRITYCHECK
     bypass_check_sign(driver_obj);
-
-    // Init global lock for LBR cache
-    KeInitializeSpinLock(&lbr_cache_lock);
 
     // Check availability of the cpu
     if (identify_cpu() < 0)

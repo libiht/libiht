@@ -49,8 +49,6 @@ struct ioctl_request
     u32 pid;        // Process ID
 };
 
-KSPIN_LOCK lbr_cache_lock;
-
 //
 // Function Prototypes
 
