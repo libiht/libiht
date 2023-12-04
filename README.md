@@ -31,6 +31,8 @@ They mainly provide the following functionalities:
 
 Please refer to the README files in the [`kmd`](./kmd/README.md), [`lkm`](./lkm/README.md), and [`lib`](./lib/README.md) directories for instructions on building the components of LIBIHT.
 
+**WARNING:** **DO NOT** use the `libiht` components in production environments (especially on you working PC). The `libiht` components are still under active development and have not been thoroughly tested. Use at your own risk.
+
 ## Contributing
 
 We welcome contributions to the LIBIHT project. Here's how you can help:
