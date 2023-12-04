@@ -1,3 +1,15 @@
+////////////////////////////////////////////////////////////////////////////////
+//
+//  File           : lkm/src/libiht_lkm.c
+//  Description    : This is the main implementation for the Linux kernel module
+//                   of libiht. This module is used to capture the last branch
+//                   records of a given process. This file is very platform
+//                   specific.
+//
+//   Author        : Thomason Zhao
+//   Last Modified : Dec 03, 2023
+//
+
 #include "../include/libiht_lkm.h"
 
 //
@@ -22,9 +34,9 @@ MODULE_DESCRIPTION("Intel Hardware Trace Library - Linux Kernel Module");
 
 void sched_in_handler(struct preempt_notifier *notifier, int cpu)
 {
-    xprintdbg(KERN_INFO "LIBIHT_LKM: sched_in_handler, pid: %d\n",
-                current->pid);
-    get_lbr(current->pid);
+    xprintdbg(KERN_INFO "LIBIHT_LKM: sched_in_handler, pid: %d, cpu: %d\n",
+                current->pid, smp_processor_id());
+    // get_lbr(current->pid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -40,9 +52,9 @@ void sched_in_handler(struct preempt_notifier *notifier, int cpu)
 void sched_out_handler(struct preempt_notifier *notifier, 
                         struct task_struct *next)
 {
-    xprintdbg(KERN_INFO "LIBIHT_LKM: sched_out_handler, pid: %d\n",
-                current->pid);
-    put_lbr(current->pid);
+    xprintdbg(KERN_INFO "LIBIHT_LKM: sched_out_handler, pid: %d, cpu: %d\n",
+                current->pid, smp_processor_id());
+    // put_lbr(current->pid);
 }
 
 //
@@ -61,8 +73,8 @@ void sched_out_handler(struct preempt_notifier *notifier,
 int __kprobes pre_fork_handler(struct kprobe *probe, struct pt_regs *regs)
 {
     // Reserved for future use
-    xprintdbg(KERN_INFO "LIBIHT_LKM: pre_fork_handler, pid: %d\n",
-                current->pid);
+    // xprintdbg(KERN_INFO "LIBIHT_LKM: pre_fork_handler, pid: %d\n",
+    //             current->pid);
     return 0;
 }
 
@@ -80,7 +92,38 @@ int __kprobes pre_fork_handler(struct kprobe *probe, struct pt_regs *regs)
 void __kprobes post_fork_handler(struct kprobe *prob, struct pt_regs *regs,
                                     unsigned long flags)
 {
-    // TODO: Implement this function
+    struct task_struct *task;
+    struct list_head *list;
+    struct lbr_state *parent_state, *child_state;
+
+    // xprintdbg(KERN_INFO "LIBIHT_LKM: post_fork_handler, pid: %d\n",
+    //             current->pid);
+
+    // Examine parent process
+    parent_state = find_lbr_state(current->pid);
+    if (parent_state == NULL)
+        return;
+    
+    xprintdbg(KERN_INFO "LIBIHT_LKM: parent pid: %d\n", parent_state->pid);
+
+    // Examine child process
+    task = current;
+    list = task->children.next;
+    while (list != &task->children)
+    {
+        task = list_entry(list, struct task_struct, sibling);
+        list = task->sibling.next;
+
+        child_state = find_lbr_state(task->pid);
+        if (child_state == NULL)
+            continue;
+
+        xprintdbg(KERN_INFO "LIBIHT_LKM: child pid: %d\n", child_state->pid);
+
+        // Set the field
+        child_state->lbr_select = parent_state->lbr_select;
+        child_state->parent = parent_state;
+    }
 }
 
 //
@@ -306,7 +349,7 @@ int __init libiht_lkm_init(void)
     // Init & Register hooks on context switches
     xprintdbg(KERN_INFO "LIBIHT_LKM: Registering context switch hooks...\n");
     preempt_notifier_init(&cswitch_notifier, &cswitch_ops);
-    preempt_notifier_inc();
+    // preempt_notifier_inc();
     preempt_notifier_register(&cswitch_notifier);
 
     // Init LBR
