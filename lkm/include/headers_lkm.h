@@ -29,14 +29,10 @@
 #include <linux/smp.h>
 #include <linux/spinlock.h>
 #include <linux/uaccess.h>
+#include <linux/version.h>
 
 #include <asm/msr.h>
 #include <asm/msr-index.h>
 #include <asm/processor.h>
-
-// TODO: Check if these are necessary
-#include <linux/fs.h>
-#include <linux/version.h>
-#include <linux/ioctl.h>
 
 #endif // _HEADERS_LKM_H
