@@ -1,9 +1,11 @@
-# Windows Kernel Mode Driver build files
+# IDE Config files
 .vs/
+.vscode/
+
+# Windows Kernel Mode Driver build files
 x64/
 
 # Linux Kernel module build files
-.vscode/
 *.cmd
 *.o
 *.d
@@ -13,7 +15,7 @@ x64/
 *.symvers
 *.order
 
-# Some debugging file
+# Some debugging files
 *.asm
 *.swp
 *.~
