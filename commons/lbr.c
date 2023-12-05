@@ -3,10 +3,14 @@
 //  File           : commons/lbr.c
 //  Description    : This is the implementation of the LBR feature for the
 //                   libiht library. See associated documentation for more
-//                   information.
+//                   information. The implementation is largely based on the
+//                   LBR manipulation of PathArmor project.
+//
+//                   Reference: 
+//                   https://github.com/vusec/patharmor/blob/master/lkm/lbr.c
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Nov 25, 2023
+//   Last Modified : Dec 05, 2023
 //
 
 // Include Files

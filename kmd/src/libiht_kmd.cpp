@@ -6,6 +6,7 @@
 //                   records of a given process. This file is very platform
 //                   specific and thanks to lyshark for sharing the book
 //                   "Windows Kernel Programming" and the code on github.
+//
 //                   Reference: https://github.com/lyshark/WindowsKernelBook
 //
 //   Author        : Thomason Zhao
