@@ -41,7 +41,7 @@ We welcome contributions to the LIBIHT project. Here's how you can help:
 
 - **Improving the code:** If you'd like to fix a bug or implement a new feature, feel free to fork the repository and submit a pull request. Please make sure your code follows the existing style for consistency.
 
-- **Improving the documentation:** The user space components are currently marked as 'TODO'. If you have used these components and can provide more information, your contributions to the documentation would be greatly appreciated.
+- **Improving the documentation:** The user space components are currently marked as `TODO`. If you have used these components and can provide more information, your contributions to the documentation would be greatly appreciated.
 
 - **Testing on different platforms:** The library supports Windows 10 and above, and Linux kernel version 5.0 and above. If you have access to other platforms or versions, your help in testing the library would be very valuable.
 
@@ -59,12 +59,12 @@ A: The library supports Intel processors with hardware trace (Intel Processor Tr
 
 **Q: How can I contribute to this project?**
 
-A: Please refer to the 'Contributing' section of this README for guidelines on how to contribute.
+A: Please refer to the [Contributing](#contributing) section of this README for guidelines on how to contribute.
 
 **Q: I encountered an error while using the library. Where can I get help?**
 
-A: You can raise an issue on the project's GitHub page. Please include as much detail as possible in your issue description.
+A: You can raise an issue on the project's GitHub page. Please refer to the [Contributing](#contributing) section of this README for guidelines on how to raise an issue.
 
 **Q: Is there any documentation available for the APIs?**
 
-A: Yes, you can find the API documentation in the 'docs' directory of the repository.
+A: Yes, you can find the API documentation in [`kmd`](./kmd/README.md), [`lkm`](./lkm/README.md), and [`lib`](./lib/README.md) directories.

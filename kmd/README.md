@@ -22,7 +22,7 @@ To use the KMD component of LIBIHT, you will need to load the driver into the Wi
 sc create libiht type= kernel binPath= <path-to-kmd.sys>
 ```
 
-Once the driver is loaded, you can use the `libiht` user library to access the raw hardware trace information.
+Once the driver is loaded, you can use the IOCTL to interact with Windows file device `\\\\.\\libiht-info` to access the raw hardware trace information.
 
 Please refer to the article on [loading a Windows kernel driver](https://www.ired.team/miscellaneous-reversing-forensics/windows-kernel-internals/loading-a-windows-kernel-driver-osr-driver-loader-debugging-with-source-code) for more detailed instructions on loading the KMD component of LIBIHT.
 
