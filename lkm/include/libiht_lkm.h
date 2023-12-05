@@ -58,6 +58,13 @@ void sched_out_handler(struct preempt_notifier *notifier,
                         struct task_struct *next);
 // Function hook for task scheduling out.
 
+int __kprobes pre_cswitch_handler(struct kprobe *probe, struct pt_regs *regs);
+// Function hook before context switch.
+
+void __kprobes post_cswitch_handler(struct kprobe *probe, struct pt_regs *regs,
+                                        unsigned long flags);
+// Function hook after context switch.
+
 int __kprobes pre_fork_handler(struct kprobe *probe, struct pt_regs *regs);
 // Function hook before forking a new process.
 
@@ -108,16 +115,41 @@ static struct file_operations libiht_ops = {
     .unlocked_ioctl = device_ioctl};
 #endif
 
+// TODO: Only one struct will be used, so delete the other one.
 // Structures for installing the context switch hooks.
 static struct preempt_notifier cswitch_notifier;
 static struct preempt_ops cswitch_ops = {
     .sched_in = sched_in_handler,
     .sched_out = sched_out_handler};
 
+// Structures for installing the context switch hooks.
+static struct kprobe cswitch_kprobe = {
+    .symbol_name = "context_switch",
+    .pre_handler = pre_cswitch_handler,
+    .post_handler = post_cswitch_handler};
+
 // Structures for installing the syscall (fork) hooks.
 static struct kprobe fork_kprobe = {
-    .symbol_name = "kernel_clone",
+    .symbol_name = "__do_sys_fork",
     .pre_handler = pre_fork_handler,
     .post_handler = post_fork_handler};
+
+struct tracepoint_table
+{
+    const char *name;
+    void *func;
+    struct tracepoint *tp;
+};
+
+void tp_sched_switch_handler(void *data, bool preempt,
+                                    struct task_struct *prev,
+                                    struct task_struct *next);
+void tp_new_task_handler(void *data, struct task_struct *task);
+
+struct tracepoint_table traces[] = {
+    {.name = "sched_switch", .func = tp_sched_switch_handler},
+    {.name = "task_newtask", .func = tp_new_task_handler}
+};
+
 
 #endif // _LIBIHT_LKM_H

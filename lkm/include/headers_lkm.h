@@ -28,6 +28,7 @@
 #include <linux/slab.h>
 #include <linux/smp.h>
 #include <linux/spinlock.h>
+#include <linux/tracepoint.h>
 #include <linux/uaccess.h>
 #include <linux/version.h>
 
