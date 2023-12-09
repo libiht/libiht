@@ -133,9 +133,6 @@ void remove_lbr_state_worker(struct lbr_state *old_state);
 void remove_lbr_state(struct lbr_state *old_state);
 // Remove a lbr_state from the lbr_state_list.
 
-struct lbr_state *find_lbr_state_worker(u32 pid);
-// Find a lbr_state from the lbr_state_list.
-
 struct lbr_state *find_lbr_state(u32 pid);
 // Find a lbr_state from the lbr_state_list.
 

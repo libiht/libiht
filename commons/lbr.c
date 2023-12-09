@@ -75,14 +75,11 @@ void get_lbr(u32 pid)
     char irql_flag[MAX_IRQL_LEN];
     struct lbr_state *state;
 
-    xacquire_lock(lbr_state_lock, (void *)irql_flag);
-
-    state = find_lbr_state_worker(pid);
+    state = find_lbr_state(pid);
     if (state == NULL)
-    {
-        xrelease_lock(lbr_state_lock, (void *)irql_flag);
         return;
-    }
+
+    xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
     xrdmsr(MSR_LBR_TOS, &state->lbr_tos);
 
@@ -109,14 +106,11 @@ void put_lbr(u32 pid)
     char irql_flag[MAX_IRQL_LEN];
     struct lbr_state *state;
 
-    xacquire_lock(lbr_state_lock, (void *)irql_flag);
-
-    state = find_lbr_state_worker(pid);
+    state = find_lbr_state(pid);
     if (state == NULL)
-    {
-        xrelease_lock(lbr_state_lock, (void *)irql_flag);
         return;
-    }
+
+    xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
     xwrmsr(MSR_LBR_SELECT, state->lbr_select);
     xwrmsr(MSR_LBR_TOS, state->lbr_tos);
@@ -144,15 +138,19 @@ void dump_lbr(u32 pid)
     struct lbr_state* state;
     char irql_flag[MAX_IRQL_LEN];
 
-    xacquire_lock(lbr_state_lock, (void *)irql_flag);
-
-    state = find_lbr_state_worker(pid);
+    state = find_lbr_state(pid);
     if (state == NULL)
-    {
-        xprintdbg("LIBIHT-COM: find lbr_state failed\n");
-        xrelease_lock(lbr_state_lock, (void *)irql_flag);
         return;
+
+    // Examine if the current process is the owner of the LBR state
+    if (pid == xgetcurrent_pid()) 
+    {
+        xprintdbg("LIBIHT-COM: Dump LBR for current process\n");
+        // Get fresh LBR info
+        get_lbr(pid);
     }
+
+    xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
     // Dump the LBR state
     xprintdbg("PROC_PID:             %d\n", state->pid);
@@ -365,35 +363,6 @@ void remove_lbr_state(struct lbr_state* old_state)
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Function     : find_lbr_state_worker
-// Description  : Find the LBR state for the given process id. This worker
-//				  function is called with the `lbr_state_lock` acquired.
-//
-// Inputs       : pid - the process id
-// Outputs      : struct lbr_state* - the LBR state
-
-struct lbr_state* find_lbr_state_worker(u32 pid)
-{
-    struct lbr_state* tmp;
-
-    if (lbr_state_list != NULL)
-    {
-        // Perform a backward traversal to find the state
-        tmp = lbr_state_list;
-        do {
-            if (tmp->pid == pid)
-            {
-                return tmp;
-            }
-            tmp = tmp->prev;
-        } while (tmp != lbr_state_list);
-    }
-
-    return NULL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-//
 // Function     : find_lbr_state
 // Description  : Find the LBR state for the given process id.
 //
@@ -402,12 +371,24 @@ struct lbr_state* find_lbr_state_worker(u32 pid)
 
 struct lbr_state* find_lbr_state(u32 pid)
 {
-    struct lbr_state* state;
+    struct lbr_state* state = NULL, *tmp;
     char irql_flag[MAX_IRQL_LEN];
 
     xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
-    state = find_lbr_state_worker(pid);
+    if (lbr_state_list != NULL)
+    {
+        // Perform a backward traversal to find the state
+        tmp = lbr_state_list;
+        do {
+            if (tmp->pid == pid)
+            {
+                state = tmp;
+                break;
+            }
+            tmp = tmp->prev;
+        } while (tmp != lbr_state_list);
+    }
 
     xrelease_lock(lbr_state_lock, (void *)irql_flag);
 
