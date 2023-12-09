@@ -31,3 +31,13 @@ all:
 clean:
 	$(MAKE) -C $(KERNEL_DIR) M=$(PWD) clean
 	$(MAKE) -C $(COMMON_DIR) clean
+
+# Helper commands
+insert:
+	sudo insmod $(MODULE_NAME).ko
+
+remove:
+	sudo rmmod $(MODULE_NAME)
+
+mesg:
+	sudo dmesg -wH
