@@ -8,7 +8,7 @@
 //                   libiht.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Dec 03, 2023
+//   Last Modified : Dec 09, 2023
 
 //
 // Include Files
@@ -43,6 +43,14 @@ struct ioctl_request{
     pid_t pid;
 };
 
+// Tracepoint table
+struct tracepoint_table
+{
+    const char *name;
+    void *func;
+    struct tracepoint *tp;
+};
+
 //
 // Global variables
 
@@ -51,26 +59,22 @@ struct proc_dir_entry *proc_entry;
 //
 // Function prototypes
 
-void sched_in_handler(struct preempt_notifier *notifier, int cpu);
-// Function hook for task scheduling in.
+void lookup_tracepoints(struct tracepoint *tp, void *ignore);
+// This function is used to lookup tracepoints.
 
-void sched_out_handler(struct preempt_notifier *notifier, 
-                        struct task_struct *next);
-// Function hook for task scheduling out.
+void register_tracepoints(void);
+// This function is used to register tracepoints.
 
-int __kprobes pre_cswitch_handler(struct kprobe *probe, struct pt_regs *regs);
-// Function hook before context switch.
+void unregister_tracepoints(void);
+// This function is used to unregister tracepoints.
 
-void __kprobes post_cswitch_handler(struct kprobe *probe, struct pt_regs *regs,
-                                        unsigned long flags);
-// Function hook after context switch.
+void tp_sched_switch_handler(void *data, bool preempt,
+                                struct task_struct *prev,
+                                struct task_struct *next);
+// This function is called when the sched_switch tracepoint is hit.
 
-int __kprobes pre_fork_handler(struct kprobe *probe, struct pt_regs *regs);
-// Function hook before forking a new process.
-
-void __kprobes post_fork_handler(struct kprobe *prob, struct pt_regs *regs,
-                                    unsigned long flags);
-// Function hook after forking a new process.
+void tp_new_task_handler(void *data, struct task_struct *task);
+// This function is called when the task_newtask tracepoint is hit.
 
 int device_open(struct inode *inode, struct file *file_ptr);
 // This function is used to open the device.
@@ -115,37 +119,7 @@ static struct file_operations libiht_ops = {
     .unlocked_ioctl = device_ioctl};
 #endif
 
-// TODO: Only one struct will be used, so delete the other one.
-// Structures for installing the context switch hooks.
-static struct preempt_notifier cswitch_notifier;
-static struct preempt_ops cswitch_ops = {
-    .sched_in = sched_in_handler,
-    .sched_out = sched_out_handler};
-
-// Structures for installing the context switch hooks.
-static struct kprobe cswitch_kprobe = {
-    .symbol_name = "context_switch",
-    .pre_handler = pre_cswitch_handler,
-    .post_handler = post_cswitch_handler};
-
-// Structures for installing the syscall (fork) hooks.
-static struct kprobe fork_kprobe = {
-    .symbol_name = "__do_sys_fork",
-    .pre_handler = pre_fork_handler,
-    .post_handler = post_fork_handler};
-
-struct tracepoint_table
-{
-    const char *name;
-    void *func;
-    struct tracepoint *tp;
-};
-
-void tp_sched_switch_handler(void *data, bool preempt,
-                                    struct task_struct *prev,
-                                    struct task_struct *next);
-void tp_new_task_handler(void *data, struct task_struct *task);
-
+// Structures for installing the tracepoint hooks.
 struct tracepoint_table traces[] = {
     {.name = "sched_switch", .func = tp_sched_switch_handler},
     {.name = "task_newtask", .func = tp_new_task_handler}

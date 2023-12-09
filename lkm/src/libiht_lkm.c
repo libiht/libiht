@@ -7,7 +7,7 @@
 //                   specific.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Dec 03, 2023
+//   Last Modified : Dec 09, 2023
 //
 
 #include "../include/libiht_lkm.h"
@@ -20,180 +20,128 @@ MODULE_AUTHOR("Thomason Zhao");
 MODULE_DESCRIPTION("Intel Hardware Trace Library - Linux Kernel Module");
 
 //
-// Context switch handlers
+// Tracepoint table helpers
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Function     : sched_in_handler
-// Description  : This function is the handler for the context switch in event.
-//                It will be called when a process is scheduled in.
+// Function     : lookup_tracepoints
+// Description  : This function is used to lookup tracepoints.
 //
-// Inputs       : notifier - the notifier block
-//                cpu - the cpu id
+// Inputs       : tp - the tracepoint
+//                ignore - the ignore pointer
 // Outputs      : void
 
-void sched_in_handler(struct preempt_notifier *notifier, int cpu)
-{
-    xprintdbg(KERN_INFO "LIBIHT_LKM: sched_in_handler, pid: %d, cpu: %d\n",
-                current->pid, smp_processor_id());
-    // get_lbr(current->pid);
+void lookup_tracepoints(struct tracepoint *tp, void *ignore) {
+    int i;
+
+    for (i = 0; i < sizeof(traces) / sizeof(struct tracepoint_table); i++) {
+        // xprintdbg(KERN_INFO "LIBIHT_LKM: Lookup tracepoint: %s\n", tp->name);
+        if (strcmp(traces[i].name, tp->name) == 0)
+            traces[i].tp = tp;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Function     : sched_out_handler
-// Description  : This function is the handler for the context switch out event.
-//                It will be called when a process is scheduled out.
+// Function     : register_tracepoints
+// Description  : This function is used to register tracepoints.
 //
-// Inputs       : notifier - the notifier block
+// Inputs       : void
+// Outputs      : void
+
+void register_tracepoints(void) {
+    int i;
+
+    for_each_kernel_tracepoint(lookup_tracepoints, NULL);
+
+    // Register tracepoint handlers in the table
+    for (i = 0; i < sizeof(traces) / sizeof(struct tracepoint_table); i++) {
+        if (traces[i].tp) {
+            xprintdbg(KERN_INFO "LIBIHT_LKM: Registering tracepoint %s\n", traces[i].name);
+            tracepoint_probe_register(traces[i].tp, traces[i].func, NULL);
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : unregister_tracepoints
+// Description  : This function is used to unregister tracepoints.
+//
+// Inputs       : void
+// Outputs      : void
+
+void unregister_tracepoints(void) {
+    int i;
+
+    // Unregister tracepoint handlers in the table
+    for (i = 0; i < sizeof(traces) / sizeof(struct tracepoint_table); i++) {
+        if (traces[i].tp) {
+            tracepoint_probe_unregister(traces[i].tp, traces[i].func, NULL);
+            traces[i].tp = NULL;
+        }
+    }
+}
+
+//
+// Tracepoint handlers
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : tp_sched_switch_handler
+// Description  : This function is the handler for the sched_switch event. It
+//                will be called when a process is switched in.
+//
+// Inputs       : data - the data
+//                preempt - the preempt flag
+//                prev - the previous process
 //                next - the next process
 // Outputs      : void
 
-void sched_out_handler(struct preempt_notifier *notifier, 
-                        struct task_struct *next)
+void tp_sched_switch_handler(void *data, bool preempt,
+                                    struct task_struct *prev,
+                                    struct task_struct *next)
 {
-    xprintdbg(KERN_INFO "LIBIHT_LKM: sched_out_handler, pid: %d, cpu: %d\n",
-                current->pid, smp_processor_id());
-    // put_lbr(current->pid);
+    // xprintdbg(KERN_INFO "LIBIHT_LKM: Context switch: %s[%d] -> %s[%d]\n",
+    //        prev->comm, prev->pid, next->comm, next->pid);
+
+    // Dump/restore registers
+    get_lbr(prev->pid);
+    put_lbr(next->pid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Function     : pre_cswitch_handler
-// Description  : This function is the handler for the context switch event. It
-//                will be called before a process is switched out.
+// Function     : tp_new_task_handler
+// Description  : This function is the handler for the new_task event. It will
+//                be called when a new process is created.
 //
-// Inputs       : probe - the kprobe block
-//                regs - the register block
-// Outputs      : int - status of the handler. 0 if success, -1 if fail.
-
-int __kprobes pre_cswitch_handler(struct kprobe *probe, struct pt_regs *regs)
-{
-    xprintdbg(KERN_INFO "LIBIHT_LKM: pre_sched_in_handler, pid: %d, cpu: %d\n",
-                current->pid, smp_processor_id());
-    // Dump registers
-    xprintdbg(KERN_INFO "LIBIHT_LKM: current: %llx\n", current);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: rax: %llx\n", regs->ax);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: rbx: %llx\n", regs->bx);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: rcx: %llx\n", regs->cx);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: rdx: %llx\n", regs->dx);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: rsi: %llx\n", regs->si);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: rdi: %llx\n", regs->di);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: rbp: %llx\n", regs->bp);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: rsp: %llx\n", regs->sp);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: r8: %llx\n", regs->r8);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: r9: %llx\n", regs->r9);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: r10: %llx\n", regs->r10);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: r11: %llx\n", regs->r11);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: r12: %llx\n", regs->r12);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: r13: %llx\n", regs->r13);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: r14: %llx\n", regs->r14);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: r15: %llx\n", regs->r15);
-    return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// Function     : post_cswitch_handler
-// Description  : This function is the handler for the context switch event. It
-//                will be called after a process is switched in.
-//
-// Inputs       : probe - the kprobe block
-//                regs - the register block
-//                flags - the flags
+// Inputs       : data - the data
+//                task - the task
 // Outputs      : void
 
-void __kprobes post_cswitch_handler(struct kprobe *probe, struct pt_regs *regs,
-                                        unsigned long flags)
+void tp_new_task_handler(void *data, struct task_struct *task)
 {
-    xprintdbg(KERN_INFO "LIBIHT_LKM: post_sched_in_handler, pid: %d, cpu: %d\n",
-                current->pid, smp_processor_id());
-    // Dump registers
-    xprintdbg(KERN_INFO "LIBIHT_LKM: current: %llx\n", current);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: rax: %llx\n", regs->ax);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: rbx: %llx\n", regs->bx);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: rcx: %llx\n", regs->cx);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: rdx: %llx\n", regs->dx);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: rsi: %llx\n", regs->si);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: rdi: %llx\n", regs->di);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: rbp: %llx\n", regs->bp);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: rsp: %llx\n", regs->sp);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: r8: %llx\n", regs->r8);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: r9: %llx\n", regs->r9);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: r10: %llx\n", regs->r10);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: r11: %llx\n", regs->r11);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: r12: %llx\n", regs->r12);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: r13: %llx\n", regs->r13);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: r14: %llx\n", regs->r14);
-    xprintdbg(KERN_INFO "LIBIHT_LKM: r15: %llx\n", regs->r15);
-}
-
-//
-// Fork handlers
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// Function     : pre_fork_handler
-// Description  : This function is the handler for the fork event. It will be
-//                called before a new process is forked.
-//
-// Inputs       : probe - the kprobe block
-//                regs - the register block
-// Outputs      : int - status of the handler. 0 if success, -1 if fail.
-
-int __kprobes pre_fork_handler(struct kprobe *probe, struct pt_regs *regs)
-{
-    // Reserved for future use
-    // xprintdbg(KERN_INFO "LIBIHT_LKM: pre_fork_handler, pid: %d\n",
-    //             current->pid);
-    return 0;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// Function     : post_fork_handler
-// Description  : This function is the handler for the fork event. It will be
-//                called after a new process is forked.
-//
-// Inputs       : prob - the kprobe block
-//                regs - the register block
-//                flags - the flags
-// Outputs      : void
-
-void __kprobes post_fork_handler(struct kprobe *prob, struct pt_regs *regs,
-                                    unsigned long flags)
-{
-    struct task_struct *task;
-    struct list_head *list;
     struct lbr_state *parent_state, *child_state;
 
-    // xprintdbg(KERN_INFO "LIBIHT_LKM: post_fork_handler, pid: %d\n",
-    //             current->pid);
-
-    // Examine parent process
-    parent_state = find_lbr_state(current->pid);
+    // Check if parent is enabled
+    parent_state = find_lbr_state(task->real_parent->pid);
     if (parent_state == NULL)
+        // Parent is not enabled
         return;
     
-    xprintdbg(KERN_INFO "LIBIHT_LKM: parent pid: %d\n", parent_state->pid);
+    xprintdbg(KERN_INFO "LIBIHT_LKM: Process %s[%d] created, parent %s[%d]\n", 
+                        task->comm, task->pid, 
+                        task->real_parent->comm, task->real_parent->pid);
 
-    // Examine child process
-    task = current;
-    list = task->children.next;
-    while (list != &task->children)
-    {
-        task = list_entry(list, struct task_struct, sibling);
-        list = task->sibling.next;
-
-        child_state = find_lbr_state(task->pid);
-        if (child_state == NULL)
-            continue;
-
-        xprintdbg(KERN_INFO "LIBIHT_LKM: child pid: %d\n", child_state->pid);
-
-        // Set the field
+    // Check if child is enabled
+    child_state = create_lbr_state();
+    if (child_state != NULL) {
+        // Child is enabled
         child_state->lbr_select = parent_state->lbr_select;
+        child_state->pid = task->pid;
         child_state->parent = parent_state;
+        insert_lbr_state(child_state);
     }
 }
 
@@ -378,52 +326,6 @@ long device_ioctl(struct file *file_ptr, unsigned int ioctl_cmd,
     return ret_val;
 }
 
-void lookup_tracepoints(struct tracepoint *tp, void *ignore) {
-    int i;
-    for (i = 0; i < sizeof(traces) / sizeof(struct tracepoint_table); i++) {
-        if (strcmp(traces[i].name, tp->name) == 0) traces[i].tp = tp;
-    }
-}
-
-void init_tracepoints(void) {
-    int i;
-
-    for_each_kernel_tracepoint(lookup_tracepoints, NULL);
-
-    for (i = 0; i < sizeof(traces) / sizeof(struct tracepoint_table); i++) {
-        if (traces[i].tp) {
-            xprintdbg(KERN_INFO "LIBIHT_LKM: Registering tracepoint %s\n", traces[i].name);
-            tracepoint_probe_register(traces[i].tp, traces[i].func, NULL);
-        }
-    }
-}
-
-void clear_tracepoints(void) {
-    int i;
-    for (i = 0; i < sizeof(traces) / sizeof(struct tracepoint_table); i++) {
-        if (traces[i].tp) {
-            tracepoint_probe_unregister(traces[i].tp, traces[i].func, NULL);
-            traces[i].tp = NULL;
-        }
-    }
-}
-
-void tp_sched_switch_handler(void *data, bool preempt,
-                                    struct task_struct *prev,
-                                    struct task_struct *next)
-{
-    xprintdbg(KERN_INFO "Context switch: %s[%d] -> %s[%d]\n",
-           prev->comm, prev->pid, next->comm, next->pid);
-}
-
-void tp_new_task_handler(void *data, struct task_struct *task)
-{
-    xprintdbg(KERN_INFO "New task: %s[%d]\n", task->comm, task->pid);
-    // Print parent
-    if (task->parent)
-        xprintdbg(KERN_INFO "Parent: %s[%d]\n", task->parent->comm, task->parent->pid);
-}
-
 //
 // Module initialization and cleanup functions
 
@@ -455,29 +357,9 @@ int __init libiht_lkm_init(void)
         return -1;
     }
 
-    // Register kprobe hooks on fork system call
-    xprintdbg(KERN_INFO "LIBIHT_LKM: Registering fork kprobe...\n");
-    // if (register_kprobe(&fork_kprobe)) {
-    //     xprintdbg(KERN_INFO "LIBIHT_LKM: Register fork kprobe failed\n");
-    //     proc_remove(proc_entry);
-    //     return -1;
-    // }
-
-    // Register kprobe hooks on context switches
-    xprintdbg(KERN_INFO "LIBIHT_LKM: Registering context switch hooks...\n");
-    // if (register_kprobe(&cswitch_kprobe)) {
-    //     xprintdbg(KERN_INFO "LIBIHT_LKM: Register cswitch kprobe failed\n");
-    //     unregister_kprobe(&fork_kprobe);
-    //     proc_remove(proc_entry);
-    //     return -1;
-    // }
-    // preempt_notifier_init(&cswitch_notifier, &cswitch_ops);
-    // preempt_notifier_register(&cswitch_notifier);
-
-    // Register tracepoints
+    // Register tracepoint hooks for context swtich and fork
     xprintdbg(KERN_INFO "LIBIHT_LKM: Registering tracepoints...\n");
-    init_tracepoints();
-
+    register_tracepoints();
 
     // Init LBR
     lbr_init();
@@ -505,22 +387,13 @@ void __exit libiht_lkm_exit(void)
 
     // Unregister tracepoints
     xprintdbg(KERN_INFO "LIBIHT_LKM: Unregistering tracepoints...\n");
-    clear_tracepoints();
-
-    // Unregister kprobe hooks on context switches
-    xprintdbg(KERN_INFO "LIBIHT_LKM: Unregistering cswitch hooks...\n");
-    // preempt_notifier_unregister(&cswitch_notifier);
-    // unregister_kprobe(&cswitch_kprobe);
-
-    // Unregister kprobe hooks on fork system call
-    xprintdbg(KERN_INFO "LIBIHT_LKM: Unregistering fork kprobe...\n");
-    // unregister_kprobe(&fork_kprobe);
+    unregister_tracepoints();
 
     // Remove the helper process if exist
     xprintdbg(KERN_INFO "LIBIHT_LKM: Removing helper process...\n");
     if (proc_entry != NULL)
         proc_remove(proc_entry);
-    
+
     xprintdbg(KERN_INFO "LIBIHT_LKM: Exit complete\n");
 }
 
