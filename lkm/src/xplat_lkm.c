@@ -134,6 +134,19 @@ u32 xcoreid(void)
 
 ////////////////////////////////////////////////////////////////////////////////
 //
+// Function     : xgetcurrent_pid
+// Description  : Cross platform get current pid function. Get the current pid.
+//
+// Inputs       : void
+// Outputs      : u32 - current pid.
+
+u32 xgetcurrent_pid(void)
+{
+    return current->pid;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
 // Function     : xcpuid
 // Description  : Cross platform cpuid function. Get the cpuid information.
 //
