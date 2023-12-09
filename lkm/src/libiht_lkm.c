@@ -351,7 +351,7 @@ int __init libiht_lkm_init(void)
 
     // Create user interactive helper process
     xprintdbg(KERN_INFO "LIBIHT-LKM: Creating helper process...\n");
-    proc_entry = proc_create("libiht-info", 0666, NULL, &libiht_ops);
+    proc_entry = proc_create(DEVICE_NAME, 0666, NULL, &libiht_ops);
     if (proc_entry == NULL) {
         xprintdbg(KERN_INFO "LIBIHT-LKM: Create proc failed\n");
         return -1;

@@ -26,6 +26,8 @@
 #define HAVE_PROC_OPS
 #endif
 
+// Device name
+#define DEVICE_NAME "libiht-info"
 
 // I/O control table
 #define LIBIHT_LKM_IOC_MAGIC 'l'
