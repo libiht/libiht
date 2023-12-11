@@ -54,6 +54,9 @@ void xrdmsr(u32 msr, u64 *val);
 u32  xcoreid(void);
 // Cross platform get core id function.
 
+u32 xgetcurrent_pid(void);
+// Cross platform get current user process pid function.
+
 void xcpuid(u32 func_id, u32 *eax, u32 *ebx, u32 *ecx, u32 *edx);
 // Cross platform cpuid function.
 

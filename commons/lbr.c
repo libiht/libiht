@@ -3,15 +3,31 @@
 //  File           : commons/lbr.c
 //  Description    : This is the implementation of the LBR feature for the
 //                   libiht library. See associated documentation for more
-//                   information.
+//                   information. The implementation is largely based on the
+//                   LBR manipulation of PathArmor project.
+//
+//                   Reference: 
+//                   https://github.com/vusec/patharmor/blob/master/lkm/lbr.c
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Nov 25, 2023
+//   Last Modified : Dec 05, 2023
 //
 
 // Include Files
 #include "lbr.h"
 #include "xplat.h"
+
+//
+// Global Variables
+
+struct lbr_state *lbr_state_list;
+// The head of the lbr_state_list.
+
+u64 lbr_capacity;
+// The capacity of the LBR.
+
+char lbr_state_lock[MAX_LOCK_LEN];
+// The lock for lbr_state_list.
 
 //
 // Low level LBR stack and registers access
@@ -57,12 +73,13 @@ void get_lbr(u32 pid)
 {
     int i;
     char irql_flag[MAX_IRQL_LEN];
+    struct lbr_state *state;
 
-    xacquire_lock(lbr_state_lock, (void *)irql_flag);
-
-    struct lbr_state *state = find_lbr_state_worker(pid);
+    state = find_lbr_state(pid);
     if (state == NULL)
         return;
+
+    xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
     xrdmsr(MSR_LBR_TOS, &state->lbr_tos);
 
@@ -87,12 +104,13 @@ void put_lbr(u32 pid)
 {
     int i;
     char irql_flag[MAX_IRQL_LEN];
+    struct lbr_state *state;
 
-    xacquire_lock(lbr_state_lock, (void *)irql_flag);
-
-    struct lbr_state* state = find_lbr_state_worker(pid);
+    state = find_lbr_state(pid);
     if (state == NULL)
         return;
+
+    xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
     xwrmsr(MSR_LBR_SELECT, state->lbr_select);
     xwrmsr(MSR_LBR_TOS, state->lbr_tos);
@@ -120,14 +138,19 @@ void dump_lbr(u32 pid)
     struct lbr_state* state;
     char irql_flag[MAX_IRQL_LEN];
 
-    xacquire_lock(lbr_state_lock, (void *)irql_flag);
-
-    state = find_lbr_state_worker(pid);
+    state = find_lbr_state(pid);
     if (state == NULL)
-    {
-        xprintdbg("LIBIHT-COM: find lbr_state failed\n");
         return;
+
+    // Examine if the current process is the owner of the LBR state
+    if (pid == xgetcurrent_pid()) 
+    {
+        xprintdbg("LIBIHT-COM: Dump LBR for current process\n");
+        // Get fresh LBR info
+        get_lbr(pid);
     }
+
+    xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
     // Dump the LBR state
     xprintdbg("PROC_PID:             %d\n", state->pid);
@@ -188,7 +211,7 @@ void disable_lbr(void)
     xprintdbg("LIBIHT-COM: Disable LBR on cpu core: %d...\n", xcoreid());
 
     // Remove the selection mask
-    __writemsr(MSR_LBR_SELECT, 0);
+    xwrmsr(MSR_LBR_SELECT, 0);
 
     // Flush the LBR and disable it
     flush_lbr(FALSE);
@@ -340,35 +363,6 @@ void remove_lbr_state(struct lbr_state* old_state)
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Function     : find_lbr_state_worker
-// Description  : Find the LBR state for the given process id. This worker
-//				  function is called with the `lbr_state_lock` acquired.
-//
-// Inputs       : pid - the process id
-// Outputs      : struct lbr_state* - the LBR state
-
-struct lbr_state* find_lbr_state_worker(u32 pid)
-{
-    struct lbr_state* tmp;
-
-    if (lbr_state_list != NULL)
-    {
-        // Perform a backward traversal to find the state
-        tmp = lbr_state_list;
-        do {
-            if (tmp->pid == pid)
-            {
-                return tmp;
-            }
-            tmp = tmp->prev;
-        } while (tmp != lbr_state_list);
-    }
-
-    return NULL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-//
 // Function     : find_lbr_state
 // Description  : Find the LBR state for the given process id.
 //
@@ -377,12 +371,24 @@ struct lbr_state* find_lbr_state_worker(u32 pid)
 
 struct lbr_state* find_lbr_state(u32 pid)
 {
-    struct lbr_state* state;
+    struct lbr_state* state = NULL, *tmp;
     char irql_flag[MAX_IRQL_LEN];
 
     xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
-    state = find_lbr_state_worker(pid);
+    if (lbr_state_list != NULL)
+    {
+        // Perform a backward traversal to find the state
+        tmp = lbr_state_list;
+        do {
+            if (tmp->pid == pid)
+            {
+                state = tmp;
+                break;
+            }
+            tmp = tmp->prev;
+        } while (tmp != lbr_state_list);
+    }
 
     xrelease_lock(lbr_state_lock, (void *)irql_flag);
 
@@ -424,7 +430,7 @@ s32 lbr_exit(void)
     struct lbr_state* curr, * prev;
 
     // Free all LBR state
-    xprintdbg("LIBIHT-KMD: Freeing LBR state list...\n");
+    xprintdbg("LIBIHT-COM: Freeing LBR state list...\n");
     if (lbr_state_list != NULL)
     {
         curr = lbr_state_list;
@@ -437,7 +443,7 @@ s32 lbr_exit(void)
     }
 
     // Disable LBR on each cpu
-    xprintdbg("LIBIHT-KMD: Disabling LBR for all cpus...\n");
+    xprintdbg("LIBIHT-COM: Disabling LBR for all cpus...\n");
     xon_each_cpu(disable_lbr);
     return 0;
 }

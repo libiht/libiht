@@ -34,19 +34,19 @@ extern "C" {
 #endif
 
 #ifndef MSR_LBR_TOS
-#define MSR_LBR_TOS		        0x000001c9
+#define MSR_LBR_TOS             0x000001c9
 #endif
 
 #ifndef MSR_LBR_NHM_FROM
-#define MSR_LBR_NHM_FROM	    0x00000680
+#define MSR_LBR_NHM_FROM        0x00000680
 #endif
 
 #ifndef MSR_LBR_NHM_TO
-#define MSR_LBR_NHM_TO		    0x000006c0
+#define MSR_LBR_NHM_TO          0x000006c0
 #endif
 
 #ifndef DEBUGCTLMSR_LBR
-#define DEBUGCTLMSR_LBR			0x00000001 
+#define DEBUGCTLMSR_LBR         0x00000001 
 #endif
 
 /* Bit Field  Bit Offset  Access  Description
@@ -91,13 +91,13 @@ struct lbr_state
 //
 // Global variables
 
-struct lbr_state *lbr_state_list;
+extern struct lbr_state *lbr_state_list;
 // The head of the lbr_state_list.
 
-u64 lbr_capacity;
+extern u64 lbr_capacity;
 // The capacity of the LBR.
 
-char lbr_state_lock[MAX_LOCK_LEN];
+extern char lbr_state_lock[MAX_LOCK_LEN];
 // The lock for lbr_state_list.
 
 //
@@ -132,9 +132,6 @@ void remove_lbr_state_worker(struct lbr_state *old_state);
 
 void remove_lbr_state(struct lbr_state *old_state);
 // Remove a lbr_state from the lbr_state_list.
-
-struct lbr_state *find_lbr_state_worker(u32 pid);
-// Find a lbr_state from the lbr_state_list.
 
 struct lbr_state *find_lbr_state(u32 pid);
 // Find a lbr_state from the lbr_state_list.
