@@ -10,7 +10,7 @@
 //                   Reference: https://github.com/lyshark/WindowsKernelBook
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Nov 25, 2023
+//   Last Modified : Dec 14, 2023
 //
 
 // Include Files
@@ -143,15 +143,12 @@ VOID create_proc_notify(PEPROCESS proc, HANDLE proc_id,
 
 void __fastcall cswitch_call_back(u32 new_proc, u32 old_proc)
 {
-    if (find_lbr_state(new_proc))
-    {
-        put_lbr(new_proc);
-    }
+    // xprintdbg(KERN_INFO "LIBIHT_KMD: Context switch: %s[%d] -> %s[%d]\n",
+    //        prev->comm, prev->pid, next->comm, next->pid);
 
-    if (find_lbr_state(old_proc))
-    {
-        get_lbr(old_proc);
-    }
+    // Dump/restore registers
+    put_lbr(new_proc);
+    get_lbr(old_proc);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -348,10 +345,10 @@ NTSTATUS device_ioctl(PDEVICE_OBJECT device_obj, PIRP Irp)
     case(LIBIHT_KMD_IOC_SELECT_LBR):
         xprintdbg("LIBIHT-KMD: SELECT_LBR\n");
         // Update the select bits for assigned process
-        state = create_lbr_state();
+        state = find_lbr_state(request->pid);
         if (state == NULL)
         {
-            xprintdbg("LIBIHT-KMD: create lbr_state failed\n");
+            xprintdbg("LIBIHT-KMD: find lbr_state failed\n");
             status = STATUS_UNSUCCESSFUL;
             break;
         }
