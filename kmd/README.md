@@ -9,7 +9,7 @@ If you wish to build the KMD component of LIBIHT yourself, you will need to inst
 Navigate to the `kmd` directory and run the following command to build the KMD component of LIBIHT:
 
 ```powershell
-msbuild .\kmd.vcxproj
+msbuild /p:Configuration=Debug /p:Platform=x64 .\kmd.sln
 ```
 
 Please refer to the Microsoft's documentation on [building a driver](https://learn.microsoft.com/en-us/windows-hardware/drivers/develop/building-a-driver) for more detailed instructions on building the KMD component of LIBIHT.
