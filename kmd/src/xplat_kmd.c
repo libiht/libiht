@@ -147,7 +147,7 @@ u32 xcoreid(void)
 
 u32 xgetcurrent_pid(void)
 {
-	return (u32)PsGetCurrentProcessId();
+	return (u32)(ULONG_PTR)PsGetCurrentProcessId();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
