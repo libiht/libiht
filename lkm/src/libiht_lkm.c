@@ -315,6 +315,12 @@ long device_ioctl(struct file *file_ptr, unsigned int ioctl_cmd,
 
         state->lbr_select = request.lbr_select;
         break;
+    
+    case LIBIHT_LKM_IOC_COPY_LBR:
+        xprintdbg(KERN_INFO "LIBIHT-LKM: COPY LBR\n");
+        // Dump LBR info and copy it to the user space
+        copy_lbr(request.pid, request.content);
+        break;
 
     default:
         // Error command code

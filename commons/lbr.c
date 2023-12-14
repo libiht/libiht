@@ -14,6 +14,8 @@
 //
 
 // Include Files
+#include <linux/uaccess.h>
+
 #include "lbr.h"
 #include "xplat.h"
 
@@ -161,6 +163,51 @@ void dump_lbr(u32 pid)
     {
         xprintdbg("MSR_LBR_NHM_FROM[%2d]: 0x%llx\n", i, state->entries[i].from);
         xprintdbg("MSR_LBR_NHM_TO  [%2d]: 0x%llx\n", i, state->entries[i].to);
+    }
+
+    xprintdbg("LIBIHT-COM: LBR info for cpuid: %d\n", xcoreid());
+
+    xrelease_lock(lbr_state_lock, (void *)irql_flag);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : copy_lbr
+// Description  : Dump the LBR registers for the given process id and then copy it to the content
+//
+// Inputs       : pid - the process id, content - the address to store the lbr states
+// Outputs      : void
+
+void copy_lbr(u32 pid, struct lbr_state *content)
+{
+    int ret;
+    struct lbr_state* state;
+    char irql_flag[MAX_IRQL_LEN];
+
+    state = find_lbr_state(pid);
+    if (state == NULL)
+        return;
+
+    // Examine if the current process is the owner of the LBR state
+    if (pid == xgetcurrent_pid()) 
+    {
+        xprintdbg("LIBIHT-COM: Copy LBR for current process\n");
+        // Get fresh LBR info
+        get_lbr(pid);
+    }
+
+    xacquire_lock(lbr_state_lock, (void *)irql_flag);
+
+    // Dump the LBR state
+    xprintdbg("PROC_PID:             %d\n", state->pid);
+    xprintdbg("MSR_LBR_SELECT:       0x%llx\n", state->lbr_select);
+    xprintdbg("MSR_LBR_TOS:          %lld\n", state->lbr_tos);
+
+    ret = copy_to_user(content, state, sizeof(struct lbr_state));
+
+    if(ret != 0)
+    {
+        xprintdbg("LIBIHT-COM: Copy to user space failed\n");
     }
 
     xprintdbg("LIBIHT-COM: LBR info for cpuid: %d\n", xcoreid());

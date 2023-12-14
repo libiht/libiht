@@ -35,6 +35,7 @@
 #define LIBIHT_LKM_IOC_DISABLE_TRACE    _IO(LIBIHT_LKM_IOC_MAGIC, 2)
 #define LIBIHT_LKM_IOC_DUMP_LBR         _IO(LIBIHT_LKM_IOC_MAGIC, 3)
 #define LIBIHT_LKM_IOC_SELECT_LBR       _IO(LIBIHT_LKM_IOC_MAGIC, 4)
+#define LIBIHT_LKM_IOC_COPY_LBR         _IO(LIBIHT_LKM_IOC_MAGIC, 5)
 
 //
 // Type definitions
@@ -43,6 +44,7 @@
 struct ioctl_request{
     uint64_t lbr_select;
     pid_t pid;
+    struct lbr_state *content;
 };
 
 // Tracepoint table
