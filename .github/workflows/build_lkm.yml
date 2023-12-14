@@ -24,4 +24,6 @@ jobs:
               linux-headers-$(uname -r)
 
     - name: Build kernel module
-      run: make -C lkm/
+      run: |
+        cd lkm
+        make
