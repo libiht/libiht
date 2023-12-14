@@ -14,7 +14,7 @@
 //
 
 // Include Files
-#pragma warning(disable : 4201 4819 4311 4302 4996)
+#pragma warning(disable : 4200 4201 4819 4311 4302 4996)
 #include "../infinity_hook/hook.hpp"
 #include "../include/libiht_kmd.h"
 
