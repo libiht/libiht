@@ -13,15 +13,6 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
-    
-
-    - name: Set up kernel build essentials
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y \
-              build-essential \
-              kmod \
-              linux-headers-$(uname -r)
 
     - name: Build kernel module
       run: |
