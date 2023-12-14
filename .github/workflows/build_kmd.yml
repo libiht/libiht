@@ -19,5 +19,6 @@ jobs:
 
     - name: Build Kernel Mode Driver
       run: |
-        msbuild /p:Configuration=Debug /p:Platform=x64 .\kmd\kmd.sln
-        msbuild /p:Configuration=Release /p:Platform=x64 .\kmd\kmd.sln
+        cd .\kmd\
+        msbuild /p:Configuration=Debug /p:Platform=x64 .\kmd.sln
+        msbuild /p:Configuration=Release /p:Platform=x64 .\kmd.sln
