@@ -5,7 +5,7 @@
 //                   kernel-mode driver.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Nov 25, 2023
+//   Last Modified : Dec 14, 2023
 //
 
 #include "../../commons/xplat.h"
@@ -134,6 +134,20 @@ void xrdmsr(u32 msr, u64 *val)
 u32 xcoreid(void)
 {
     return KeGetCurrentProcessorNumberEx(0);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : xgetcurrent_pid
+// Description  : Cross platform get current user process pid function. Get the
+//                current user process pid.
+//
+// Inputs       : void
+// Outputs      : u32 - current user process pid.
+
+u32 xgetcurrent_pid(void)
+{
+	return (u32)PsGetCurrentProcessId();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
