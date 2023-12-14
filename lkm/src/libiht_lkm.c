@@ -305,7 +305,7 @@ long device_ioctl(struct file *file_ptr, unsigned int ioctl_cmd,
     case LIBIHT_LKM_IOC_SELECT_LBR:
         xprintdbg(KERN_INFO "LIBIHT-LKM: SELECT_LBR\n");
         // Update the select bits for assigned process
-        state = find_lbr_state();
+        state = find_lbr_state(request.pid);
         if (state == NULL)
         {
             xprintdbg("LIBIHT-LKM: find lbr_state failed\n");
