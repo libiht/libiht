@@ -1,3 +1,17 @@
+////////////////////////////////////////////////////////////////////////////////
+//
+//  File           : demo/lkm-demo/lkm-demo.c
+//  Description    : This is the main program for the lkm-demo program. It will
+//                   open the helper process and send the ioctl request to the
+//                   helper processs. The kernel module will trace the process 
+//                   and dump the LBR to show the call stack information of the
+//                   cross recursive function call.
+//
+//   Author        : Thomason Zhao
+//   Last Modified : Dec 14, 2023
+//
+
+// Include Files
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -47,10 +61,10 @@ void func2()
 
 void print_usage()
 {
-	printf("Usage: lkm-demo [pid] [count]\n");
+    printf("Usage: lkm-demo [pid] [count]\n");
     printf("pid: the pid of the process want to trace, trace it self if it is 0\n");
-	printf("count: the number of recursive function call\n");
-	printf("Example: lkm-demo 0 10\n");
+    printf("count: the number of recursive function call\n");
+    printf("Example: lkm-demo 0 10\n");
     fflush(stdout);
     exit(-1);
 }
