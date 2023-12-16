@@ -15,7 +15,6 @@
 
 // Include Files
 #include "lbr.h"
-#include "xplat.h"
 
 //
 // Global Variables
@@ -45,6 +44,7 @@ char lbr_state_lock[MAX_LOCK_LEN];
 void flush_lbr(u8 enable)
 {
     int i;
+    u64 dbgmsr;
 
     xwrmsr(MSR_LBR_SELECT, 0);
     xwrmsr(MSR_LBR_TOS, 0);
@@ -56,9 +56,17 @@ void flush_lbr(u8 enable)
     }
 
     if (enable)
-        xwrmsr(MSR_IA32_DEBUGCTLMSR, DEBUGCTLMSR_LBR);
+    {
+        xrdmsr(MSR_IA32_DEBUGCTLMSR, &dbgmsr);
+        dbgmsr |= DEBUGCTLMSR_LBR;
+        xwrmsr(MSR_IA32_DEBUGCTLMSR, dbgmsr);
+    }
     else
-        xwrmsr(MSR_IA32_DEBUGCTLMSR, 0);
+    {
+        xrdmsr(MSR_IA32_DEBUGCTLMSR, &dbgmsr);
+        dbgmsr &= ~DEBUGCTLMSR_LBR;
+        xwrmsr(MSR_IA32_DEBUGCTLMSR, dbgmsr);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
