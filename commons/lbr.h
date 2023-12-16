@@ -46,7 +46,7 @@ extern "C" {
 #endif
 
 #ifndef DEBUGCTLMSR_LBR
-#define DEBUGCTLMSR_LBR         0x00000001 
+#define DEBUGCTLMSR_LBR         (1UL <<  0)
 #endif
 
 /* Bit Field  Bit Offset  Access  Description
@@ -65,15 +65,16 @@ extern "C" {
  * Default selection bit set to:
  * 0x1 = 00000001   --> capture branches occuring in ring >0
  */
-#define LBR_SELECT              0x00000001
+#define LBR_SELECT              (1UL <<  1)
 
 //
 // Type definitions
 
+// Define LBR stack entry
 struct lbr_stack_entry
 {
-    u64 from;   // MSR_LBR_NHM_FROM + offset
-    u64 to;     // MSR_LBR_NHM_TO + offset
+    u64 from;   // Retrieve from MSR_LBR_NHM_FROM + offset
+    u64 to;     // Retrieve from MSR_LBR_NHM_TO + offset
 };
 
 // Define LBR state

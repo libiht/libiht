@@ -44,7 +44,7 @@ char lbr_state_lock[MAX_LOCK_LEN];
 void flush_lbr(u8 enable)
 {
     int i;
-    u64 dbgmsr;
+    u64 dbgctlmsr;
 
     xwrmsr(MSR_LBR_SELECT, 0);
     xwrmsr(MSR_LBR_TOS, 0);
@@ -55,18 +55,12 @@ void flush_lbr(u8 enable)
         xwrmsr(MSR_LBR_NHM_TO + i, 0);
     }
 
+    xrdmsr(MSR_IA32_DEBUGCTLMSR, &dbgctlmsr);
     if (enable)
-    {
-        xrdmsr(MSR_IA32_DEBUGCTLMSR, &dbgmsr);
-        dbgmsr |= DEBUGCTLMSR_LBR;
-        xwrmsr(MSR_IA32_DEBUGCTLMSR, dbgmsr);
-    }
+        dbgctlmsr |= DEBUGCTLMSR_LBR;
     else
-    {
-        xrdmsr(MSR_IA32_DEBUGCTLMSR, &dbgmsr);
-        dbgmsr &= ~DEBUGCTLMSR_LBR;
-        xwrmsr(MSR_IA32_DEBUGCTLMSR, dbgmsr);
-    }
+        dbgctlmsr &= ~DEBUGCTLMSR_LBR;
+    xwrmsr(MSR_IA32_DEBUGCTLMSR, dbgctlmsr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
