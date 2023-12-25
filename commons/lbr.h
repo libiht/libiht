@@ -83,6 +83,7 @@ struct lbr_state
     u64 lbr_select;                   // MSR_LBR_SELECT
     u64 lbr_tos;                      // MSR_LBR_TOS
     u32 pid;                          // process id
+    // TODO: use kernel linked list data struct
     struct lbr_state *prev;           // previous state
     struct lbr_state *next;           // next state
     struct lbr_state *parent;         // parent state

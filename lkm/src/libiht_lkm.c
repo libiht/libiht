@@ -7,7 +7,7 @@
 //                   specific.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Dec 14, 2023
+//   Last Modified : Dec 25, 2023
 //
 
 #include "../include/libiht_lkm.h"
@@ -364,6 +364,7 @@ int __init libiht_lkm_init(void)
     // Init LBR
     lbr_init();
 
+    bts_init();
     xprintdbg(KERN_INFO "LIBIHT_LKM: Initilized\n");
     return 0;
 }
