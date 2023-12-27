@@ -1,7 +1,5 @@
-#include "api.h"
-#include <stdio.h>
-#include <sys/ioctl.h>
-#include <asm/unistd.h>
+#include "../include/api.h"
+#include "../../commons/xplat.h"
 
 unsigned long fd, result;
 
@@ -23,12 +21,7 @@ void disable_lbr(struct lbr_request *user_req)
 
 void dump_lbr(struct lbr_request *user_req)
 {
-    ioctl(fd, LIBIHT_LKM_IOC_DUMP_LBR, user_req);
-}
-
-void copy_lbr(struct lbr_request *user_req)
-{
-    // ioctl(fd, LIBIHT_LKM_IOC_COPY_LBR, user_req);
+    // ioctl(fd, LIBIHT_LKM_IOC_DUMP_LBR, user_req);
     __asm__ volatile (
         "movq $1, %%rdi\n"          // 将文件描述符传递给 rdi 寄存器
         "movq $2, %%rsi\n"          // 将请求值传递给 rsi 寄存器
@@ -37,7 +30,7 @@ void copy_lbr(struct lbr_request *user_req)
         "syscall\n"                 // 执行系统调用
         "movq %%rax, %0"            // 将返回值保存到 result 变量中
         : "=r" (result)
-        : "r" ((unsigned long)fd), "r" ((unsigned long)LIBIHT_LKM_IOC_COPY_LBR), "r" (user_req), "r" (__NR_ioctl)
+        : "r" ((unsigned long)fd), "r" ((unsigned long)LIBIHT_LKM_IOC_DUMP_LBR), "r" (user_req)
         : "rdi", "rsi", "rdx", "rax"
     );
 

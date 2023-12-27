@@ -297,9 +297,9 @@ long device_ioctl(struct file *file_ptr, unsigned int ioctl_cmd,
         break;
 
     case LIBIHT_LKM_IOC_DUMP_LBR:
-        xprintdbg(KERN_INFO "LIBIHT-LKM: DUMP_LBR\n");
-        // Dump LBR info for assigned process
-        dump_lbr(request.pid);
+        xprintdbg(KERN_INFO "LIBIHT-LKM: COPY LBR\n");
+        // Dump LBR info and copy it to the user space
+        dump_lbr(request.pid, request.content);
         break;
 
     case LIBIHT_LKM_IOC_SELECT_LBR:
@@ -314,12 +314,6 @@ long device_ioctl(struct file *file_ptr, unsigned int ioctl_cmd,
         }
 
         state->lbr_select = request.lbr_select;
-        break;
-    
-    case LIBIHT_LKM_IOC_COPY_LBR:
-        xprintdbg(KERN_INFO "LIBIHT-LKM: COPY LBR\n");
-        // Dump LBR info and copy it to the user space
-        copy_lbr(request.pid, request.content);
         break;
 
     default:

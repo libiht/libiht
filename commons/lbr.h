@@ -112,10 +112,8 @@ void get_lbr(u32 pid);
 void put_lbr(u32 pid);
 // Put the LBR of a given process.
 
-void dump_lbr(u32 pid);
+void dump_lbr(u32 pid, struct lbr_state *content);
 // Dump the LBR of a given process.
-
-void copy_lbr(u32 pid, struct lbr_state *content);
 
 void enable_lbr(void);
 // Enable the LBR.
