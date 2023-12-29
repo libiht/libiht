@@ -1,8 +1,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-//  File           : commons/ioclt.h
-//  Description    : This is the header file for the IOCTL definitions for the
-//                   library.
+//  File           : commons/xioclt.h
+//  Description    : This is the header file for the cross platform and cross 
+//                   feature IOCTL definitions for the library.
 //
 //   Author        : Thomason Zhao
 //   Last Modified : Dec 25, 2023
@@ -32,8 +32,25 @@ enum IOCTL {
 
 //
 // Type definitions
-struct ioctl_request{
-    enum IOCTL cmd; // Command
-    u32 pid;        // Process ID
-    u64 buf;        // Buffer pointer (defined in headers of trace features)
+
+// Define the lbr IOCTL structure
+struct lbr_ioctl_request{
+    u32 pid;
+    u64 lbr_select;
+};
+
+// Define the bts IOCTL structure
+struct bts_ioctl_request{
+    u32 pid;
+    u64 bts_config;
+    u64 bts_buffer_size;
+};
+
+// Define the xIOCTL structure
+struct xioctl_request{
+    enum IOCTL cmd;
+    union {
+        struct lbr_ioctl_request lbr;
+        struct bts_ioctl_request bts;
+    } data;
 };
