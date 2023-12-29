@@ -217,6 +217,81 @@ void xrelease_lock(void *lock, void *new_irql)
 }
 
 //
+// List functions
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : xinit_list_head
+// Description  : Cross platform init list head function. Initialize a list
+//                head.
+//
+// Inputs       : list - pointer to the list head to be initialized.
+// Outputs      : void
+
+void xinit_list_head(void *list)
+{
+    INIT_LIST_HEAD((struct list_head *)list);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : xlist_add
+// Description  : Cross platform list add function. Add a new entry after the
+//                specified head.
+//
+// Inputs       : new - pointer to the new entry.
+//                head - pointer to the list head.
+// Outputs      : void
+
+void xlist_add(void *new, void *head)
+{
+    list_add((struct list_head *)new, (struct list_head *)head);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : xlist_del
+// Description  : Cross platform list del function. Delete an entry from the
+//                list.
+//
+// Inputs       : entry - pointer to the entry to be deleted.
+// Outputs      : void
+
+void xlist_del(void *entry)
+{
+    list_del((struct list_head *)entry);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : xlist_next
+// Description  : Cross platform list next function. Get the next entry in the
+//                list. (Need to manipulate the pointer to the entry manually)
+//
+// Inputs       : entry - pointer to the entry.
+// Outputs      : void* - pointer to the next entry.
+
+void *xlist_next(void *entry)
+{
+    return (void *)((struct list_head *)entry)->next;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : xlist_prev
+// Description  : Cross platform list prev function. Get the previous entry in
+//                the list. (Need to manipulate the pointer to the entry 
+//                manually)
+//
+// Inputs       : entry - pointer to the entry.
+// Outputs      : void* - pointer to the previous entry.
+
+void *xlist_prev(void *entry)
+{
+    return (void *)((struct list_head *)entry)->prev;
+}
+
+//
 // Debug functions
 
 ////////////////////////////////////////////////////////////////////////////////
