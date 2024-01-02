@@ -31,7 +31,7 @@ typedef signed      long long   s64;
 typedef unsigned    long long   u64;
 
 #ifndef NULL
-#define NULL ((void *)0)
+#define NULL 0
 #endif
 
 #ifndef TRUE

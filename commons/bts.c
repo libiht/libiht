@@ -38,7 +38,7 @@ void put_bts(struct bts_state *state)
     u64 dbgctlmsr;
 
     // Setup BTS debug store buffer pointer
-    xwrmsr(MSR_IA32_DS_AREA, state->ds_area);
+    xwrmsr(MSR_IA32_DS_AREA, (u64)state->ds_area);
 
     // Enable BTS
     xrdmsr(MSR_IA32_DEBUGCTLMSR, &dbgctlmsr);
@@ -88,14 +88,14 @@ s32 enable_bts(struct bts_ioctl_request *request)
 
     // Setup fields for BTS state
     state->bts_request.pid = request->pid ?
-                request->pid : xget_current_pid();
+                request->pid : xgetcurrent_pid();
     state->bts_request.bts_config = request->bts_config ? 
                 request->bts_config : DEFAULT_BTS_CONFIG;
     state->bts_request.bts_buffer_size = request->bts_buffer_size ?
                 request->bts_buffer_size : DEFAULT_BTS_BUFFER_SIZE;
     
     // Setup fields for BTS debug store area
-    state->ds_area->bts_buffer_base = xmalloc(state->bts_request.bts_buffer_size);
+    state->ds_area->bts_buffer_base = (u64)xmalloc(state->bts_request.bts_buffer_size);
     state->ds_area->bts_index = 0;
     state->ds_area->bts_absolute_maximum = 
             state->ds_area->bts_buffer_base +
@@ -103,6 +103,7 @@ s32 enable_bts(struct bts_ioctl_request *request)
     // Not yet support state->ds_area->bts_interrupt_threshold
 
     insert_bts_state(state);
+    return 0;
 }
 
 s32 disable_bts(struct bts_ioctl_request *request)
@@ -118,16 +119,18 @@ s32 disable_bts(struct bts_ioctl_request *request)
     }
 
     remove_bts_state(state);
-    xfree(state->ds_area->bts_buffer_base);
+    xfree((void *)state->ds_area->bts_buffer_base);
     xfree(state->ds_area);
     xfree(state);
+    
+    return 0;
 }
 
 s32 dump_bts(struct bts_ioctl_request *request)
 {
     struct bts_state *state;
     struct bts_record *record;
-    u32 start, end;
+    u32 i, start, end;
 
     state = find_bts_state(request->pid);
     if (state == NULL)
@@ -138,14 +141,17 @@ s32 dump_bts(struct bts_ioctl_request *request)
     }
 
     // Dump some BTS buffer records
+    // TODO: fix this 32 later
     start = state->ds_area->bts_index - 32;
     end = state->ds_area->bts_index;
-    for (u32 i = start; i < end; i++)
+    for (i = start; i < end; i++)
     {
-        record = state->ds_area->bts_buffer_base + i;
+        record = (struct bts_record*)state->ds_area->bts_buffer_base + i;
         xprintdbg("LIBIHT-COM: BTS record %d: from %llx to %llx.\n",
                     i, record->from, record->to);
     }
+
+    return 0;
 }
 
 s32 config_bts(struct bts_ioctl_request *request)
@@ -174,8 +180,8 @@ s32 config_bts(struct bts_ioctl_request *request)
             state->bts_request.bts_buffer_size = request->bts_buffer_size;
 
             // Reconfigure BTS debug store area
-            xfree(state->ds_area->bts_buffer_base);
-            state->ds_area->bts_buffer_base = xmalloc(request->bts_buffer_size);
+            xfree((void *)state->ds_area->bts_buffer_base);
+            state->ds_area->bts_buffer_base = (u64)xmalloc(request->bts_buffer_size);
             state->ds_area->bts_index = 0;
             state->ds_area->bts_absolute_maximum = 
                     state->ds_area->bts_buffer_base +
@@ -184,6 +190,8 @@ s32 config_bts(struct bts_ioctl_request *request)
 
         put_bts(state);
     }
+
+    return 0;
 }
 
 struct bts_state *create_bts_state()
@@ -193,6 +201,8 @@ struct bts_state *create_bts_state()
     state = xmalloc(sizeof(struct bts_state));
     // TODO: check if this satisfy the page alignment requirement
     state->ds_area = xmalloc(sizeof(struct ds_area));
+
+    return state;
 }
 
 struct bts_state *find_bts_state(u32 pid)
@@ -202,14 +212,14 @@ struct bts_state *find_bts_state(u32 pid)
     u32 offset;
 
     // offsetof(st, m) macro implementation of stddef.h
-    offset = (u32)(&((struct bts_state *)0)->list);
+    offset = (u64)(&((struct bts_state *)0)->list);
     curr_list = bts_state_head;
     do
     {
         curr_list = xlist_next(curr_list);
         if (curr_list == bts_state_head)
             return NULL;
-        curr_state = (struct bts_state *)((u32)curr_list - offset);
+        curr_state = (struct bts_state *)((u64)curr_list - offset);
     } while (curr_state->bts_request.pid != pid);
 
     return curr_state;
@@ -245,7 +255,6 @@ void remove_bts_state(struct bts_state *old_state)
 
 s32 bts_ioctl(struct xioctl_request *request)
 {
-    // TODO: Implement ioctl for BTS
     s32 ret;
 
     xprintdbg("LIBIHT-COM: BTS ioctl command %d.\n", request->cmd);
@@ -281,17 +290,18 @@ s32 bts_ioctl(struct xioctl_request *request)
 
 s32 bts_check(void)
 {
-    u32 edx;
+    u32 cpuinfo[4] = { 0 };
     u64 misc_msr;
 
+    xcpuid(1, &cpuinfo[0], &cpuinfo[1], &cpuinfo[2], &cpuinfo[3]);
+
     // Check if BTS is supported
-    xcpuid(0x1, 0x0, NULL, NULL, &edx);
-    if (!(edx & (1 << X86_FEATURE_DS)))
+    if (!(cpuinfo[3] & (1 << X64_FEATURE_DS)))
         return -1;
     
     // Check if BTS is available
     xrdmsr(MSR_IA32_MISC_ENABLE, &misc_msr);
-    if (!(misc_msr & MSR_IA32_MISC_ENABLE_BTS_UNAVAIL))
+    if (misc_msr & MSR_IA32_MISC_ENABLE_BTS_UNAVAIL)
         return -1;
     
     return 0;
@@ -306,6 +316,7 @@ s32 bts_init(void)
         return -1;
     }
 
+    xprintdbg("LIBIHT-COM: Init BTS related structs.\n");
     xinit_lock(&bts_state_lock);
     xinit_list_head(&bts_state_head);
 
@@ -316,5 +327,6 @@ s32 bts_exit(void)
 {
     // Disable BTS on each cpu
     xon_each_cpu(flush_bts);
+
     return 0;
 }

@@ -382,6 +382,7 @@ int __init libiht_lkm_init(void)
 void __exit libiht_lkm_exit(void)
 {
     xprintdbg(KERN_INFO "LIBIHT_LKM: Exiting...\n");
+    bts_exit();
 
     // Exit LBR
     lbr_exit();

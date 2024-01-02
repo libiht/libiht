@@ -27,8 +27,8 @@ extern "C" {
 // Library constants
 
 // Intel-defined CPU features, CPUID level 0x00000001 (EDX), word 0
-#ifndef X86_FEATURE_DS
-#define X86_FEATURE_DS          (0*32+21)
+#ifndef X64_FEATURE_DS
+#define X64_FEATURE_DS          (0*32+2)
 #endif
 
 // MSR related constants
@@ -145,6 +145,45 @@ extern char bts_state_head[MAX_LIST_LEN];
 
 //
 // Function Prototypes
+
+void get_bts(struct bts_state *state);
+// Get the BTS records from the BTS buffer.
+
+void put_bts(struct bts_state *state);
+// Put the BTS records into the BTS buffer.
+
+void flush_bts(void);
+// Flush the BTS buffer.
+
+s32 enable_bts(struct bts_ioctl_request *request);
+// Enable the BTS.
+
+s32 disable_bts(struct bts_ioctl_request *request);
+// Disable the BTS.
+
+s32 dump_bts(struct bts_ioctl_request *request);
+// Dump the BTS records.
+
+s32 config_bts(struct bts_ioctl_request *request);
+// Configure the BTS trace bits
+
+struct bts_state *create_bts_state(void);
+// Create a new BTS state
+
+struct bts_state *find_bts_state(u32 pid);
+// Find the BTS state by pid
+
+void insert_bts_state(struct bts_state *new_state);
+// Insert the BTS state into the list
+
+void remove_bts_state(struct bts_state *old_state);
+// Remove the BTS state from the list
+
+s32 bts_ioctl(struct xioctl_request *request);
+// The ioctl handler for the BTS
+
+s32 bts_check(void);
+// Check if the BTS is available
 
 s32 bts_init(void);
 // Initialize the BTS
