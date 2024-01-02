@@ -243,9 +243,9 @@ void xinit_list_head(void *list)
 //                head - pointer to the list head.
 // Outputs      : void
 
-void xlist_add(void *new, void *head)
+void xlist_add(void *new_entry, void *head)
 {
-    list_add((struct list_head *)new, (struct list_head *)head);
+    list_add((struct list_head *)new_entry, (struct list_head *)head);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

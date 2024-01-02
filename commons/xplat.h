@@ -76,7 +76,7 @@ void xrelease_lock(void *lock, void *new_irql);
 void xinit_list_head(void *list);
 // Cross platform init list head function.
 
-void xlist_add(void *new, void *head);
+void xlist_add(void *new_entry, void *head);
 // Cross platform list add function.
 
 void xlist_del(void *entry);
