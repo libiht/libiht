@@ -44,14 +44,14 @@ s32 identify_cpu(void)
         }
     }
 
-    xprintdbg("LIBIHT-KMD: DisplayFamily_DisplayModel - %x_%xH\n",
+    xprintdbg("LIBIHT-COM: DisplayFamily_DisplayModel - %x_%xH\n",
                     family, model);
-    xprintdbg("LIBIHT-KMD: LBR capacity - %ld\n", lbr_capacity);
+    xprintdbg("LIBIHT-COM: LBR capacity - %ld\n", lbr_capacity);
 
     if (lbr_capacity == -1)
     {
         // Model name not found
-        xprintdbg("LIBIHT-KMD: CPU model not found\n");
+        xprintdbg("LIBIHT-COM: CPU model not found\n");
         return -1;
     }
 

@@ -15,7 +15,6 @@
 
 // Include Files
 #include "lbr.h"
-#include "xplat.h"
 
 //
 // Global Variables
@@ -28,6 +27,8 @@ u64 lbr_capacity;
 
 char lbr_state_lock[MAX_LOCK_LEN];
 // The lock for lbr_state_list.
+
+// TODO: revise function calls to use lbr_state as parameter to avoid unnecessary find_lbr_state calls
 
 //
 // Low level LBR stack and registers access
@@ -45,6 +46,7 @@ char lbr_state_lock[MAX_LOCK_LEN];
 void flush_lbr(u8 enable)
 {
     int i;
+    u64 dbgctlmsr;
 
     xwrmsr(MSR_LBR_SELECT, 0);
     xwrmsr(MSR_LBR_TOS, 0);
@@ -55,10 +57,12 @@ void flush_lbr(u8 enable)
         xwrmsr(MSR_LBR_NHM_TO + i, 0);
     }
 
+    xrdmsr(MSR_IA32_DEBUGCTLMSR, &dbgctlmsr);
     if (enable)
-        xwrmsr(MSR_IA32_DEBUGCTLMSR, DEBUGCTLMSR_LBR);
+        dbgctlmsr |= DEBUGCTLMSR_LBR;
     else
-        xwrmsr(MSR_IA32_DEBUGCTLMSR, 0);
+        dbgctlmsr &= ~DEBUGCTLMSR_LBR;
+    xwrmsr(MSR_IA32_DEBUGCTLMSR, dbgctlmsr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -173,7 +177,7 @@ void dump_lbr(u32 pid)
 // Function     : enable_lbr
 // Description  : Enable the LBR feature for the current CPU core. This function
 //                should be called on each CPU core by `xon_each_cpu()`
-//				  function dispatch.
+//                dispatch.
 //
 // Inputs       : void
 // Outputs      : void

@@ -20,6 +20,7 @@
 #include <linux/fortify-string.h>
 #include <linux/init.h>
 #include <linux/kprobes.h>
+#include <linux/list.h>
 #include <linux/notifier.h>
 #include <linux/preempt.h>
 #include <linux/printk.h>
