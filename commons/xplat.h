@@ -10,7 +10,7 @@
 //                   i.e. `xplat_kmd.c` and `xplat_lkm.c` for windows and linux.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Dec 25, 2023
+//   Last Modified : Jan 2, 2024
 //
 
 #include "types.h"
