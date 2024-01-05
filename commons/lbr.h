@@ -90,6 +90,13 @@ struct lbr_state
     struct lbr_stack_entry entries[]; // flexible array member
 };
 
+// CPU - LBR map
+struct cpu_to_lbr
+{
+    u32 model;          // CPU model
+    u32 lbr_capacity;   // LBR capacity
+};
+
 //
 // Global variables
 
@@ -137,6 +144,9 @@ void remove_lbr_state(struct lbr_state *old_state);
 
 struct lbr_state *find_lbr_state(u32 pid);
 // Find a lbr_state from the lbr_state_list.
+
+s32 lbr_check(void);
+// Check if the LBR is available.
 
 s32 lbr_init(void);
 // Initialize the LBR.
