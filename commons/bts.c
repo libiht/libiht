@@ -20,6 +20,15 @@ char bts_state_lock[MAX_LOCK_LEN];
 char bts_state_head[MAX_LIST_LEN];
 // Head of bts state list
 
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : get_bts
+// Description  : Get the BTS records out from the BTS buffer. Pause the BTS
+//                tracing.
+//
+// Inputs       : state - the BTS state
+// Outputs      : 0 if successful, -1 if failure
+
 void get_bts(struct bts_state *state)
 {
     u64 dbgctlmsr;
@@ -32,6 +41,15 @@ void get_bts(struct bts_state *state)
     // Reset BTS debug store buffer pointer
     xwrmsr(MSR_IA32_DS_AREA, NULL);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : put_bts
+// Description  : Put the BTS records into the BTS buffer. Resume the BTS
+//                tracing.
+//
+// Inputs       : state - the BTS state
+// Outputs      : 0 if successful, -1 if failure
 
 void put_bts(struct bts_state *state)
 {
@@ -46,7 +64,15 @@ void put_bts(struct bts_state *state)
     xwrmsr(MSR_IA32_DEBUGCTLMSR, dbgctlmsr);
 }
 
-void flush_bts()
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : flush_bts
+// Description  : Flush the BTS buffer.
+//
+// Inputs       : None
+// Outputs      : None
+
+void flush_bts(void)
 {
     u64 dbgctlmsr;
     u64 bts_bits;
@@ -66,6 +92,14 @@ void flush_bts()
     // Reset BTS debug store buffer pointer
     xwrmsr(MSR_IA32_DS_AREA, NULL);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : enable_bts
+// Description  : Enable the BTS.
+//
+// Inputs       : request - the BTS ioctl request
+// Outputs      : 0 if successful, -1 if failure
 
 s32 enable_bts(struct bts_ioctl_request *request)
 {
@@ -106,6 +140,14 @@ s32 enable_bts(struct bts_ioctl_request *request)
     return 0;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : disable_bts
+// Description  : Disable the BTS tracing for a given process in request.
+//
+// Inputs       : request - the BTS ioctl request
+// Outputs      : 0 if successful, -1 if failure
+
 s32 disable_bts(struct bts_ioctl_request *request)
 {
     struct bts_state *state;
@@ -125,6 +167,14 @@ s32 disable_bts(struct bts_ioctl_request *request)
     
     return 0;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : dump_bts
+// Description  : Dump the BTS records for a given process in request.
+//
+// Inputs       : request - the BTS ioctl request
+// Outputs      : 0 if successful, -1 if failure
 
 s32 dump_bts(struct bts_ioctl_request *request)
 {
@@ -153,6 +203,15 @@ s32 dump_bts(struct bts_ioctl_request *request)
 
     return 0;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : config_bts
+// Description  : Configure the BTS trace bits and BTS buffer size for a given
+//                process in request.
+//
+// Inputs       : request - the BTS ioctl request
+// Outputs      : 0 if successful, -1 if failure
 
 s32 config_bts(struct bts_ioctl_request *request)
 {
@@ -194,6 +253,14 @@ s32 config_bts(struct bts_ioctl_request *request)
     return 0;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : create_bts_state
+// Description  : Create a new BTS state.
+//
+// Inputs       : None
+// Outputs      : The new BTS state
+
 struct bts_state *create_bts_state()
 {
     struct bts_state *state;
@@ -204,6 +271,14 @@ struct bts_state *create_bts_state()
 
     return state;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : find_bts_state
+// Description  : Find a BTS state by pid.
+//
+// Inputs       : pid - the pid of the target process
+// Outputs      : The BTS state
 
 struct bts_state *find_bts_state(u32 pid)
 {
@@ -225,6 +300,14 @@ struct bts_state *find_bts_state(u32 pid)
     return curr_state;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : insert_bts_state
+// Description  : Insert a new BTS state into the list.
+//
+// Inputs       : new_state - the new BTS state
+// Outputs      : None
+
 void insert_bts_state(struct bts_state *new_state)
 {
     char irql_flag[MAX_IRQL_LEN];
@@ -239,6 +322,14 @@ void insert_bts_state(struct bts_state *new_state)
     xrelease_lock(&bts_state_lock, irql_flag);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : remove_bts_state
+// Description  : Remove a BTS state from the list.
+//
+// Inputs       : old_state - the old BTS state
+// Outputs      : None
+
 void remove_bts_state(struct bts_state *old_state)
 {
     char irql_flag[MAX_IRQL_LEN];
@@ -252,6 +343,14 @@ void remove_bts_state(struct bts_state *old_state)
                 old_state->bts_request.pid);
     xrelease_lock(&bts_state_lock, irql_flag);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : bts_ioctl
+// Description  : The ioctl handler for the BTS.
+//
+// Inputs       : request - the cross platform ioctl request
+// Outputs      : 0 if successful, -1 if failure
 
 s32 bts_ioctl(struct xioctl_request *request)
 {
@@ -288,6 +387,14 @@ s32 bts_ioctl(struct xioctl_request *request)
     return ret;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : bts_check
+// Description  : Check if the BTS is available.
+//
+// Inputs       : None
+// Outputs      : 0 if successful, -1 if failure
+
 s32 bts_check(void)
 {
     u32 cpuinfo[4] = { 0 };
@@ -307,6 +414,14 @@ s32 bts_check(void)
     return 0;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : bts_init
+// Description  : Initialize the BTS.
+//
+// Inputs       : None
+// Outputs      : 0 if successful, -1 if failure
+
 s32 bts_init(void)
 {
     // Check if BTS is supported and available
@@ -322,6 +437,14 @@ s32 bts_init(void)
 
     return 0;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : bts_exit
+// Description  : Exit the BTS.
+//
+// Inputs       : None
+// Outputs      : 0 if successful, -1 if failure
 
 s32 bts_exit(void)
 {
