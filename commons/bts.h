@@ -129,9 +129,9 @@ struct ds_area
 struct bts_state
 {
     char list[MAX_LIST_LEN];        // Kernel linked list
+    struct bts_state *parent;       // Parent bts_state
     struct bts_ioctl_request bts_request;
     struct ds_area *ds_area;        // Debug Store area pointer
-    struct bts_state *parent;       // Parent BTS state
 };
 
 //
@@ -178,6 +178,8 @@ void insert_bts_state(struct bts_state *new_state);
 
 void remove_bts_state(struct bts_state *old_state);
 // Remove the BTS state from the list
+
+void free_bts_state_list(void);
 
 s32 bts_ioctl(struct xioctl_request *request);
 // The ioctl handler for the BTS
