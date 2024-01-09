@@ -15,6 +15,7 @@
 // Include Files
 #include "types.h"
 #include "xplat.h"
+#include "xioctl.h"
 
 // cpp cross compile handler
 #ifdef __cplusplus
@@ -80,13 +81,10 @@ struct lbr_stack_entry
 // Define LBR state
 struct lbr_state
 {
-    u64 lbr_select;                   // MSR_LBR_SELECT
+    char list[MAX_LIST_LEN];          // Kernel linked list
+    struct lbr_state *parent;         // Parent lbr_state
+    struct lbr_ioctl_request lbr_request;
     u64 lbr_tos;                      // MSR_LBR_TOS
-    u32 pid;                          // process id
-    // TODO: use kernel linked list data struct
-    struct lbr_state *prev;           // previous state
-    struct lbr_state *next;           // next state
-    struct lbr_state *parent;         // parent state
     struct lbr_stack_entry entries[]; // flexible array member
 };
 
@@ -100,38 +98,44 @@ struct cpu_to_lbr
 //
 // Global variables
 
-extern struct lbr_state *lbr_state_list;
-// The head of the lbr_state_list.
-
 extern u64 lbr_capacity;
 // The capacity of the LBR.
 
 extern char lbr_state_lock[MAX_LOCK_LEN];
 // The lock for lbr_state_list.
 
+extern char lbr_state_head[MAX_LIST_LEN];
+// The head of the lbr_state_list.
+
 //
 // Function Prototypes
 
-void flush_lbr(u8 enable);
-// Flush the LBR.
-
-void get_lbr(u32 pid);
+void get_lbr(struct lbr_state *state);
 // Get the LBR of a given process.
 
-void put_lbr(u32 pid);
+void put_lbr(struct lbr_state *state);
 // Put the LBR of a given process.
 
-void dump_lbr(u32 pid);
-// Dump the LBR of a given process.
+void flush_lbr(void);
+// Flush the LBR.
 
-void enable_lbr(void);
+s32 enable_lbr(struct lbr_ioctl_request *request);
 // Enable the LBR.
 
-void disable_lbr(void);
+s32 disable_lbr(struct lbr_ioctl_request *request);
 // Disable the LBR.
+
+s32 dump_lbr(struct lbr_ioctl_request *request);
+// Dump the LBR of a given process.
+
+s32 config_lbr(struct lbr_ioctl_request *request);
+// Configure the LBR.
 
 struct lbr_state *create_lbr_state(void);
 // Create a new lbr_state.
+
+struct lbr_state *find_lbr_state(u32 pid);
+// Find a lbr_state from the lbr_state_list.
 
 void insert_lbr_state(struct lbr_state *new_state);
 // Insert a new lbr_state to the lbr_state_list.
@@ -142,8 +146,8 @@ void remove_lbr_state_worker(struct lbr_state *old_state);
 void remove_lbr_state(struct lbr_state *old_state);
 // Remove a lbr_state from the lbr_state_list.
 
-struct lbr_state *find_lbr_state(u32 pid);
-// Find a lbr_state from the lbr_state_list.
+void free_lbr_state_list(void);
+// Free the lbr_state_list.
 
 s32 lbr_check(void);
 // Check if the LBR is available.

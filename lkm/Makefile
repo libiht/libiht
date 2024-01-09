@@ -15,7 +15,6 @@ obj-m += $(MODULE_NAME).o
 
 # Source files
 libiht_lkm-objs := \
-					$(COMMON_DIR)/cpu.o \
 					$(COMMON_DIR)/debug.o \
 					$(COMMON_DIR)/lbr.o \
 					$(COMMON_DIR)/bts.o \

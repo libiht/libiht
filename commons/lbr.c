@@ -19,14 +19,14 @@
 //
 // Global Variables
 
-struct lbr_state *lbr_state_list;
-// The head of the lbr_state_list.
-
 u64 lbr_capacity;
 // The capacity of the LBR.
 
 char lbr_state_lock[MAX_LOCK_LEN];
 // The lock for lbr_state_list.
+
+char lbr_state_head[MAX_LIST_LEN];
+// The head of the lbr_state_list.
 
 static const struct cpu_to_lbr cpu_lbr_maps[] = {
     {0x5c, 32}, {0x5f, 32}, {0x4e, 32}, {0x5e, 32}, {0x8e, 32}, {0x9e, 32}, 
@@ -48,56 +48,28 @@ static const struct cpu_to_lbr cpu_lbr_maps[] = {
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Function     : flush_lbr
-// Description  : Flush the LBR stack and registers. Caller should ensure this
-//                function is called with interrupts disabled (either on single
-//                core or with interrupts disabled for that core).
-//
-// Inputs       : enable - TRUE to enable LBR, FALSE to disable LBR
-// Outputs      : void
-
-void flush_lbr(u8 enable)
-{
-    int i;
-    u64 dbgctlmsr;
-
-    xwrmsr(MSR_LBR_SELECT, 0);
-    xwrmsr(MSR_LBR_TOS, 0);
-
-    for (i = 0; i < lbr_capacity; i++)
-    {
-        xwrmsr(MSR_LBR_NHM_FROM + i, 0);
-        xwrmsr(MSR_LBR_NHM_TO + i, 0);
-    }
-
-    xrdmsr(MSR_IA32_DEBUGCTLMSR, &dbgctlmsr);
-    if (enable)
-        dbgctlmsr |= DEBUGCTLMSR_LBR;
-    else
-        dbgctlmsr &= ~DEBUGCTLMSR_LBR;
-    xwrmsr(MSR_IA32_DEBUGCTLMSR, dbgctlmsr);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-//
 // Function     : get_lbr
 // Description  : Read the LBR registers into kernel maintained datastructure.
 //
-// Inputs       : pid - the process id
+// Inputs       : state - the LBR state
 // Outputs      : void
 
-void get_lbr(u32 pid)
+void get_lbr(struct lbr_state *state)
 {
     int i;
     char irql_flag[MAX_IRQL_LEN];
     struct lbr_state *state;
+    u64 dbgctlmsr;
 
-    state = find_lbr_state(pid);
-    if (state == NULL)
-        return;
+    // Disable LBR
+    xrdmsr(MSR_IA32_DEBUGCTLMSR, &dbgctlmsr);
+    dbgctlmsr &= ~DEBUGCTLMSR_LBR;
+    xwrmsr(MSR_IA32_DEBUGCTLMSR, dbgctlmsr);
 
+    // Read out LBR registers
     xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
+    xrdmsr(MSR_LBR_SELECT, &state->lbr_request.lbr_select);
     xrdmsr(MSR_LBR_TOS, &state->lbr_tos);
 
     for (i = 0; i < lbr_capacity; i++)
@@ -114,22 +86,20 @@ void get_lbr(u32 pid)
 // Function     : put_lbr
 // Description  : Write the LBR registers from kernel maintained datastructure.
 //
-// Inputs       : pid - the process id
+// Inputs       : state - the LBR state
 // Outputs      : void
 
-void put_lbr(u32 pid)
+void put_lbr(struct lbr_state *state)
 {
     int i;
     char irql_flag[MAX_IRQL_LEN];
     struct lbr_state *state;
+    u64 dbgctlmsr;
 
-    state = find_lbr_state(pid);
-    if (state == NULL)
-        return;
-
+    // Write in LBR registers
     xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
-    xwrmsr(MSR_LBR_SELECT, state->lbr_select);
+    xwrmsr(MSR_LBR_SELECT, state->lbr_request.lbr_select);
     xwrmsr(MSR_LBR_TOS, state->lbr_tos);
 
     for (i = 0; i < lbr_capacity; i++)
@@ -139,39 +109,140 @@ void put_lbr(u32 pid)
     }
 
     xrelease_lock(lbr_state_lock, (void *)irql_flag);
+
+    // Enable LBR
+    xrdmsr(MSR_IA32_DEBUGCTLMSR, &dbgctlmsr);
+    dbgctlmsr |= DEBUGCTLMSR_LBR;
+    xwrmsr(MSR_IA32_DEBUGCTLMSR, dbgctlmsr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : flush_lbr
+// Description  : Flush the LBR stack and registers. Caller should ensure this
+//                function is called with interrupts disabled (either on single
+//                core or with interrupts disabled for that core).
+//
+// Inputs       : enable - TRUE to enable LBR, FALSE to disable LBR
+// Outputs      : void
+
+void flush_lbr(void)
+{
+    int i;
+    u64 dbgctlmsr;
+
+    // Disable LBR
+    xprintdbg("LIBIHT-COM: Flush LBR on cpu core: %d\n", xcoreid());
+    xrdmsr(MSR_IA32_DEBUGCTLMSR, &dbgctlmsr);
+    dbgctlmsr &= ~DEBUGCTLMSR_LBR;
+    xwrmsr(MSR_IA32_DEBUGCTLMSR, dbgctlmsr);
+
+    xwrmsr(MSR_LBR_SELECT, 0);
+    xwrmsr(MSR_LBR_TOS, 0);
+
+    for (i = 0; i < lbr_capacity; i++)
+    {
+        xwrmsr(MSR_LBR_NHM_FROM + i, 0);
+        xwrmsr(MSR_LBR_NHM_TO + i, 0);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : enable_lbr
+// Description  : Enable the LBR feature for the current CPU core. This function
+//                should be called on each CPU core by `xon_each_cpu()`
+//                dispatch.
+//
+// Inputs       : request - the LBR ioctl request
+// Outputs      : s32 - 0 on success, -1 on failure
+
+s32 enable_lbr(struct lbr_ioctl_request *request)
+{
+    struct lbr_state *state;
+
+    state = find_lbr_state(request->pid);
+    if (state == NULL)
+    {
+        xprintdbg("LIBIHT-COM: LBR already enabled for pid %d\n", request->pid);
+        return -1;
+    }
+
+    state = create_lbr_state();
+    if (state == NULL)
+    {
+        xprintdbg("LIBIHT-COM: Create LBR state failed\n");
+        return -1;
+    }
+
+    // Setup fields for LBR state
+    state->parent = NULL;
+    state->lbr_request.pid = request->pid ? request->pid : xgetcurrent_pid();
+    state->lbr_request.lbr_select = request->lbr_select ?
+                                    request->lbr_select : LBR_SELECT;
+
+    insert_lbr_state(state);
+    return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : disable_lbr
+// Description  : Disable the LBR feature for the current CPU core. This
+//                function should be called on each CPU core by `xon_each_cpu()`
+//                function dispatch.
+//
+// Inputs       : request - the LBR ioctl request
+// Outputs      : s32 - 0 on success, -1 on failure
+
+
+s32 disable_lbr(struct lbr_ioctl_request *request)
+{
+    struct lbr_state *state;
+
+    state = find_lbr_state(request->pid);
+    if (state == NULL)
+    {
+        xprintdbg("LIBIHT-COM: LBR not enabled for pid %d\n", request->pid);
+        return -1;
+    }
+
+    remove_lbr_state(state);
+    return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Function     : dump_lbr
 // Description  : Dump the LBR registers for the given process id
-//
-// Inputs       : pid - the process id
-// Outputs      : void
 
-void dump_lbr(u32 pid)
+s32 dump_lbr(struct lbr_ioctl_request *request)
 {
     int i;
     struct lbr_state* state;
     char irql_flag[MAX_IRQL_LEN];
 
-    state = find_lbr_state(pid);
+    state = find_lbr_state(request->pid);
     if (state == NULL)
-        return;
+    {
+        xprintdbg("LIBIHT-COM: LBR not enabled for pid %d\n", request->pid);
+        return -1;
+    }
 
     // Examine if the current process is the owner of the LBR state
-    if (pid == xgetcurrent_pid()) 
+    if (state->lbr_request.pid == xgetcurrent_pid()) 
     {
         xprintdbg("LIBIHT-COM: Dump LBR for current process\n");
         // Get fresh LBR info
-        get_lbr(pid);
+        get_lbr(state);
+        put_lbr(state);
     }
 
     xacquire_lock(lbr_state_lock, (void *)irql_flag);
 
     // Dump the LBR state
-    xprintdbg("PROC_PID:             %d\n", state->pid);
-    xprintdbg("MSR_LBR_SELECT:       0x%llx\n", state->lbr_select);
+    xprintdbg("PROC_PID:             %d\n", state->lbr_request.pid);
+    xprintdbg("MSR_LBR_SELECT:       0x%llx\n", state->lbr_request.lbr_select);
     xprintdbg("MSR_LBR_TOS:          %lld\n", state->lbr_tos);
 
     for (i = 0; i < lbr_capacity; i++)
@@ -183,57 +254,35 @@ void dump_lbr(u32 pid)
     xprintdbg("LIBIHT-COM: LBR info for cpuid: %d\n", xcoreid());
 
     xrelease_lock(lbr_state_lock, (void *)irql_flag);
+
+    return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Function     : enable_lbr
-// Description  : Enable the LBR feature for the current CPU core. This function
-//                should be called on each CPU core by `xon_each_cpu()`
-//                dispatch.
+// Function     : config_lbr
+// Description  : Configure the LBR selection bit for the given process in the
+//                request.
 //
-// Inputs       : void
-// Outputs      : void
+// Inputs       : request - the LBR ioctl request
+// Outputs      : s32 - 0 on success, -1 on failure
 
-void enable_lbr(void)
+s32 config_lbr(struct lbr_ioctl_request *request)
 {
-    char irql_flag[MAX_IRQL_LEN];
+    struct lbr_state* state;
 
-    xacquire_lock(lbr_state_lock, (void *)irql_flag);
+    state = find_lbr_state(request->pid);
+    if (state == NULL)
+    {
+        xprintdbg("LIBIHT-COM: LBR not enabled for pid %d\n", request->pid);
+        return -1;
+    }
 
-    xprintdbg("LIBIHT-COM: Enable LBR on cpu core: %d...\n", xcoreid());
+    get_lbr(state);
+    state->lbr_request.lbr_select = request->lbr_select;
+    put_lbr(state);
 
-    // Flush the LBR and enable it
-    flush_lbr(TRUE);
-
-    xrelease_lock(lbr_state_lock, (void *)irql_flag);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// Function     : disable_lbr
-// Description  : Disable the LBR feature for the current CPU core. This
-//                function should be called on each CPU core by `xon_each_cpu()`
-//                function dispatch.
-//
-// Inputs       : void
-// Outputs      : void
-
-void disable_lbr(void)
-{
-    char irql_flag[MAX_IRQL_LEN];
-
-    xacquire_lock(lbr_state_lock, (void *)irql_flag);
-
-    xprintdbg("LIBIHT-COM: Disable LBR on cpu core: %d...\n", xcoreid());
-
-    // Remove the selection mask
-    xwrmsr(MSR_LBR_SELECT, 0);
-
-    // Flush the LBR and disable it
-    flush_lbr(FALSE);
-
-    xrelease_lock(lbr_state_lock, (void *)irql_flag);
+    return 0;
 }
 
 //
@@ -466,15 +515,20 @@ s32 lbr_check(void)
 
 s32 lbr_init(void)
 {
-    // Initialize the LBR state lock
+    if (lbr_check())
+    {
+        xprintdbg("LIBIHT-COM: LBR not available\n");
+        return -1;
+    }
+
+    xprintdbg("LIBIHT-COM: Init LBR related structs.\n");
     xinit_lock(lbr_state_lock);
+    xinit_list_head(lbr_state_head);
 
-    // Enable LBR on each cpu (Not yet set the selection filter bit)
-    xprintdbg("LIBIHT-COM: Enabling LBR for all cpus...\n");
-    xon_each_cpu(enable_lbr);
+    // Flush LBR on each cpu
+    xprintdbg("LIBIHT-COM: Flushing LBR for all cpus...\n");
+    xon_each_cpu(flush_lbr);
 
-    // Set the state list to NULL after module initialized
-    lbr_state_list = NULL;
     return 0;
 }
 
@@ -490,21 +544,12 @@ s32 lbr_exit(void)
 {
     struct lbr_state* curr, * prev;
 
-    // Free all LBR state
-    xprintdbg("LIBIHT-COM: Freeing LBR state list...\n");
-    if (lbr_state_list != NULL)
-    {
-        curr = lbr_state_list;
-        do
-        {
-            prev = curr->prev;
-            xfree(curr);
-            curr = prev;
-        } while (curr != lbr_state_list);
-    }
+    // Flush LBR on each cpu
+    xprintdbg("LIBIHT-COM: Flushing LBR for all cpus...\n");
+    xon_each_cpu(flush_lbr);
 
-    // Disable LBR on each cpu
-    xprintdbg("LIBIHT-COM: Disabling LBR for all cpus...\n");
-    xon_each_cpu(disable_lbr);
+    // TODO: Free all LBR state
+    xprintdbg("LIBIHT-COM: Freeing LBR state list...\n");
+
     return 0;
 }
