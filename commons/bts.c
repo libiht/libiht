@@ -432,8 +432,8 @@ s32 bts_init(void)
     }
 
     xprintdbg("LIBIHT-COM: Init BTS related structs.\n");
-    xinit_lock(&bts_state_lock);
-    xinit_list_head(&bts_state_head);
+    xinit_lock(bts_state_lock);
+    xinit_list_head(bts_state_head);
 
     return 0;
 }

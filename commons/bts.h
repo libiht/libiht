@@ -128,10 +128,10 @@ struct ds_area
 // Define BTS state
 struct bts_state
 {
+    char list[MAX_LIST_LEN];        // Kernel linked list
     struct bts_ioctl_request bts_request;
     struct ds_area *ds_area;        // Debug Store area pointer
     struct bts_state *parent;       // Parent BTS state
-    char list[MAX_LIST_LEN];        // Kernel linked list
 };
 
 //
