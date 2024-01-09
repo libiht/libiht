@@ -343,12 +343,6 @@ int __init libiht_lkm_init(void)
 {
     xprintdbg(KERN_INFO "LIBIHT_LKM: Initializing...\n");
 
-    // Check availability of the CPU
-    if(identify_cpu() < 0) {
-        xprintdbg(KERN_ERR "LIBIHT_LKM: Identify CPU failed\n");
-        return -1;
-    }
-
     // Create user interactive helper process
     xprintdbg(KERN_INFO "LIBIHT-LKM: Creating helper process...\n");
     proc_entry = proc_create(DEVICE_NAME, 0666, NULL, &libiht_ops);

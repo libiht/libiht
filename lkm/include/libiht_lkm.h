@@ -15,7 +15,6 @@
 #include "headers_lkm.h"
 #include "../../commons/lbr.h"
 #include "../../commons/bts.h"
-#include "../../commons/cpu.h"
 #include "../../commons/types.h"
 #include "../../commons/debug.h"
 
