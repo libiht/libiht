@@ -121,6 +121,7 @@ s32 enable_bts(struct bts_ioctl_request *request)
     }
 
     // Setup fields for BTS state
+    state->parent = NULL;
     state->bts_request.pid = request->pid ?
                 request->pid : xgetcurrent_pid();
     state->bts_request.bts_config = request->bts_config ?
@@ -161,10 +162,6 @@ s32 disable_bts(struct bts_ioctl_request *request)
     }
 
     remove_bts_state(state);
-    xfree((void *)state->ds_area->bts_buffer_base);
-    xfree(state->ds_area);
-    xfree(state);
-
     return 0;
 }
 

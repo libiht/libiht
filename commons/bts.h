@@ -180,6 +180,7 @@ void remove_bts_state(struct bts_state *old_state);
 // Remove the BTS state from the list
 
 void free_bts_state_list(void);
+// Free the BTS state list
 
 s32 bts_ioctl(struct xioctl_request *request);
 // The ioctl handler for the BTS
