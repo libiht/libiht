@@ -17,7 +17,6 @@
 #include <linux/uaccess.h>
 
 #include "lbr.h"
-#include "xplat.h"
 
 //
 // Global Variables
@@ -30,6 +29,21 @@ u64 lbr_capacity;
 
 char lbr_state_lock[MAX_LOCK_LEN];
 // The lock for lbr_state_list.
+
+static const struct cpu_to_lbr cpu_lbr_maps[] = {
+    {0x5c, 32}, {0x5f, 32}, {0x4e, 32}, {0x5e, 32}, {0x8e, 32}, {0x9e, 32}, 
+    {0x55, 32}, {0x66, 32}, {0x7a, 32}, {0x67, 32}, {0x6a, 32}, {0x6c, 32}, 
+    {0x7d, 32}, {0x7e, 32}, {0x8c, 32}, {0x8d, 32}, {0xa5, 32}, {0xa6, 32}, 
+    {0xa7, 32}, {0xa8, 32}, {0x86, 32}, {0x8a, 32}, {0x96, 32}, {0x9c, 32}, 
+    {0x3d, 16}, {0x47, 16}, {0x4f, 16}, {0x56, 16}, {0x3c, 16}, {0x45, 16}, 
+    {0x46, 16}, {0x3f, 16}, {0x2a, 16}, {0x2d, 16}, {0x3a, 16}, {0x3e, 16}, 
+    {0x1a, 16}, {0x1e, 16}, {0x1f, 16}, {0x2e, 16}, {0x25, 16}, {0x2c, 16}, 
+    {0x2f, 16}, {0x17,  4}, {0x1d,  4}, {0x0f,  4}, {0x37,  8}, {0x4a,  8},
+    {0x4c,  8}, {0x4d,  8}, {0x5a,  8}, {0x5d,  8}, {0x1c,  8}, {0x26,  8},
+    {0x27,  8}, {0x35,  8}, {0x36,  8}};
+// CPU - LBR map table
+
+// TODO: revise function calls to use lbr_state as parameter to avoid unnecessary find_lbr_state calls
 
 //
 // Low level LBR stack and registers access
@@ -47,6 +61,7 @@ char lbr_state_lock[MAX_LOCK_LEN];
 void flush_lbr(u8 enable)
 {
     int i;
+    u64 dbgctlmsr;
 
     xwrmsr(MSR_LBR_SELECT, 0);
     xwrmsr(MSR_LBR_TOS, 0);
@@ -57,10 +72,12 @@ void flush_lbr(u8 enable)
         xwrmsr(MSR_LBR_NHM_TO + i, 0);
     }
 
+    xrdmsr(MSR_IA32_DEBUGCTLMSR, &dbgctlmsr);
     if (enable)
-        xwrmsr(MSR_IA32_DEBUGCTLMSR, DEBUGCTLMSR_LBR);
+        dbgctlmsr |= DEBUGCTLMSR_LBR;
     else
-        xwrmsr(MSR_IA32_DEBUGCTLMSR, 0);
+        dbgctlmsr &= ~DEBUGCTLMSR_LBR;
+    xwrmsr(MSR_IA32_DEBUGCTLMSR, dbgctlmsr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -182,7 +199,7 @@ void dump_lbr(u32 pid, struct lbr_state *content)
 // Function     : enable_lbr
 // Description  : Enable the LBR feature for the current CPU core. This function
 //                should be called on each CPU core by `xon_each_cpu()`
-//				  function dispatch.
+//                dispatch.
 //
 // Inputs       : void
 // Outputs      : void
@@ -205,8 +222,8 @@ void enable_lbr(void)
 //
 // Function     : disable_lbr
 // Description  : Disable the LBR feature for the current CPU core. This
-//				  function should be called on each CPU core by `xon_each_cpu()`
-//				  function dispatch.
+//                function should be called on each CPU core by `xon_each_cpu()`
+//                function dispatch.
 //
 // Inputs       : void
 // Outputs      : void
@@ -300,7 +317,7 @@ void insert_lbr_state(struct lbr_state* new_state)
 //
 // Function     : remove_lbr_state_worker
 // Description  : Remove the LBR state from the list. This worker function
-//				  is called with the `lbr_state_lock` acquired.
+//                is called with the `lbr_state_lock` acquired.
 //
 // Inputs       : old_state - the old LBR state
 // Outputs      : void
@@ -402,6 +419,50 @@ struct lbr_state* find_lbr_state(u32 pid)
     xrelease_lock(lbr_state_lock, (void *)irql_flag);
 
     return state;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : lbr_check
+// Description  : Check if the LBR feature is available on the current CPU.
+//                And set the global variable `lbr_capacity`.
+//
+// Inputs       : void
+// Outputs      : s32 - 0 on success, -1 on failure
+
+s32 lbr_check(void)
+{
+    u32 cpuinfo[4] = { 0 };
+    u32 family, model;
+    int i;
+
+    xcpuid(1, &cpuinfo[0], &cpuinfo[1], &cpuinfo[2], &cpuinfo[3]);
+    
+    family = ((cpuinfo[0] >> 8) & 0xF) + ((cpuinfo[0] >> 20) & 0xFF);
+    model = ((cpuinfo[0] >> 4) & 0xF) | ((cpuinfo[0] >> 12) & 0xF0);
+
+    // Identify CPU model
+    for (i = 0; i < sizeof(cpu_lbr_maps) / sizeof(cpu_lbr_maps[0]); ++i)
+    {
+        if (model == cpu_lbr_maps[i].model)
+        {
+            lbr_capacity = cpu_lbr_maps[i].lbr_capacity;
+            break;
+        }
+    }
+
+    xprintdbg("LIBIHT-COM: DisplayFamily_DisplayModel - %x_%xH\n",
+                    family, model);
+    xprintdbg("LIBIHT-COM: LBR capacity - %ld\n", lbr_capacity);
+
+    if (lbr_capacity == 0)
+    {
+        // Model name not found
+        xprintdbg("LIBIHT-COM: CPU model not found\n");
+        return -1;
+    }
+
+    return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

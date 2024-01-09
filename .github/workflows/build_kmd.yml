@@ -1,0 +1,24 @@
+name: Build Windows Kernel Mode Driver
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v1.3.1
+
+    - name: Build Kernel Mode Driver
+      run: |
+        cd .\kmd\
+        msbuild /p:Configuration=Debug /p:Platform=x64 .\kmd.sln
+        msbuild /p:Configuration=Release /p:Platform=x64 .\kmd.sln

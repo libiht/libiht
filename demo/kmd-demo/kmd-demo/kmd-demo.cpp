@@ -1,4 +1,18 @@
-﻿#include <iostream>
+﻿////////////////////////////////////////////////////////////////////////////////
+//
+//  File           : demo/kmd-demo/kmd-demo/kmd-demo.cpp
+//  Description    : This is the main program for the kmd-demo program. It will
+//                   open the helper device and send the ioctl request to the
+//                   helper device. The kernel driver will trace the process 
+//                   and dump the LBR to show the call stack information of the
+//                   cross recursive function call.
+//
+//   Author        : Thomason Zhao
+//   Last Modified : Dec 14, 2023
+//
+
+// Include Files
+#include <iostream>
 #include <Windows.h>
 #include <winioctl.h>
 

@@ -10,7 +10,7 @@
 //                   i.e. `xplat_kmd.c` and `xplat_lkm.c` for windows and linux.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Nov 25, 2023
+//   Last Modified : Jan 2, 2024
 //
 
 #include "types.h"
@@ -24,8 +24,9 @@ extern "C" {
 //
 // Library constants
 
-#define MAX_IRQL_LEN	0x10
-#define MAX_LOCK_LEN	0x100
+#define MAX_IRQL_LEN    0x10
+#define MAX_LOCK_LEN    0x20
+#define MAX_LIST_LEN    0x20
 
 //
 // Function Prototypes
@@ -71,6 +72,21 @@ void xacquire_lock(void *lock, void *old_irql);
 
 void xrelease_lock(void *lock, void *new_irql);
 // Cross platform release lock function.
+
+void xinit_list_head(void *list);
+// Cross platform init list head function.
+
+void xlist_add(void *new_entry, void *head);
+// Cross platform list add function.
+
+void xlist_del(void *entry);
+// Cross platform list del function.
+
+void *xlist_next(void *entry);
+// Cross platform list next function.
+
+void *xlist_prev(void *entry);
+// Cross platform list prev function.
 
 void xprintdbg(const char *format, ...);
 // Cross platform print kernel debug message function.

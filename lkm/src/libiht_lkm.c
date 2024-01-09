@@ -7,7 +7,7 @@
 //                   specific.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Dec 09, 2023
+//   Last Modified : Dec 25, 2023
 //
 
 #include "../include/libiht_lkm.h"
@@ -305,10 +305,10 @@ long device_ioctl(struct file *file_ptr, unsigned int ioctl_cmd,
     case LIBIHT_LKM_IOC_SELECT_LBR:
         xprintdbg(KERN_INFO "LIBIHT-LKM: SELECT_LBR\n");
         // Update the select bits for assigned process
-        state = create_lbr_state();
+        state = find_lbr_state(request.pid);
         if (state == NULL)
         {
-            xprintdbg("LIBIHT-LKM: create lbr_state failed\n");
+            xprintdbg("LIBIHT-LKM: find lbr_state failed\n");
             ret_val = -EINVAL;
             break;
         }
@@ -364,6 +364,7 @@ int __init libiht_lkm_init(void)
     // Init LBR
     lbr_init();
 
+    bts_init();
     xprintdbg(KERN_INFO "LIBIHT_LKM: Initilized\n");
     return 0;
 }
@@ -381,6 +382,7 @@ int __init libiht_lkm_init(void)
 void __exit libiht_lkm_exit(void)
 {
     xprintdbg(KERN_INFO "LIBIHT_LKM: Exiting...\n");
+    bts_exit();
 
     // Exit LBR
     lbr_exit();

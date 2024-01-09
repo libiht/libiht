@@ -18,6 +18,7 @@ libiht_lkm-objs := \
 					$(COMMON_DIR)/cpu.o \
 					$(COMMON_DIR)/debug.o \
 					$(COMMON_DIR)/lbr.o \
+					$(COMMON_DIR)/bts.o \
 					$(SRC_DIR)/xplat_lkm.o \
 					$(SRC_DIR)/libiht_lkm.o \
 

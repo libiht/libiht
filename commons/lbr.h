@@ -46,7 +46,7 @@ extern "C" {
 #endif
 
 #ifndef DEBUGCTLMSR_LBR
-#define DEBUGCTLMSR_LBR         0x00000001 
+#define DEBUGCTLMSR_LBR         (1UL <<  0)
 #endif
 
 /* Bit Field  Bit Offset  Access  Description
@@ -65,15 +65,16 @@ extern "C" {
  * Default selection bit set to:
  * 0x1 = 00000001   --> capture branches occuring in ring >0
  */
-#define LBR_SELECT              0x00000001
+#define LBR_SELECT              (1UL <<  1)
 
 //
 // Type definitions
 
+// Define LBR stack entry
 struct lbr_stack_entry
 {
-    u64 from;   // MSR_LBR_NHM_FROM + offset
-    u64 to;     // MSR_LBR_NHM_TO + offset
+    u64 from;   // Retrieve from MSR_LBR_NHM_FROM + offset
+    u64 to;     // Retrieve from MSR_LBR_NHM_TO + offset
 };
 
 // Define LBR state
@@ -82,10 +83,18 @@ struct lbr_state
     u64 lbr_select;                   // MSR_LBR_SELECT
     u64 lbr_tos;                      // MSR_LBR_TOS
     u32 pid;                          // process id
+    // TODO: use kernel linked list data struct
     struct lbr_state *prev;           // previous state
     struct lbr_state *next;           // next state
     struct lbr_state *parent;         // parent state
     struct lbr_stack_entry entries[]; // flexible array member
+};
+
+// CPU - LBR map
+struct cpu_to_lbr
+{
+    u32 model;          // CPU model
+    u32 lbr_capacity;   // LBR capacity
 };
 
 //
@@ -135,6 +144,9 @@ void remove_lbr_state(struct lbr_state *old_state);
 
 struct lbr_state *find_lbr_state(u32 pid);
 // Find a lbr_state from the lbr_state_list.
+
+s32 lbr_check(void);
+// Check if the LBR is available.
 
 s32 lbr_init(void);
 // Initialize the LBR.

@@ -5,7 +5,7 @@
 //                   kernel-mode driver.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Nov 25, 2023
+//   Last Modified : Jan 2, 2024
 //
 
 #include "../../commons/xplat.h"
@@ -138,6 +138,20 @@ u32 xcoreid(void)
 
 ////////////////////////////////////////////////////////////////////////////////
 //
+// Function     : xgetcurrent_pid
+// Description  : Cross platform get current user process pid function. Get the
+//                current user process pid.
+//
+// Inputs       : void
+// Outputs      : u32 - current user process pid.
+
+u32 xgetcurrent_pid(void)
+{
+	return (u32)(ULONG_PTR)PsGetCurrentProcessId();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
 // Function     : xcpuid
 // Description  : Cross platform cpuid function. Get the cpuid information.
 //
@@ -210,6 +224,79 @@ void xacquire_lock(void *lock, void *old_irql)
 void xrelease_lock(void *lock, void *new_irql)
 {
     KeReleaseSpinLock((PKSPIN_LOCK)lock, *(PKIRQL)new_irql);
+}
+
+//
+// List functions
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : xinit_list_head
+// Description  : Cross platform init list head function. Initialize a list
+//                head.
+//
+// Inputs       : list - pointer to the list head to be initialized.
+// Outputs      : void
+
+void xinit_list_head(void *list)
+{
+	InitializeListHead((PLIST_ENTRY)list);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : xlist_add
+// Description  : Cross platform list add function. Add an entry to a list.
+//
+// Inputs       : new_entry - pointer to the entry to be added.
+//                head      - pointer to the list head.
+// Outputs      : void
+
+void xlist_add(void* new_entry, void* head)
+{
+	InsertHeadList((PLIST_ENTRY)head, (PLIST_ENTRY)new_entry);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : xlist_del
+// Description  : Cross platform list delete function. Delete an entry from a
+//                list.
+//
+// Inputs       : entry - pointer to the entry to be deleted.
+// Outputs      : void
+
+void xlist_del(void* entry)
+{
+    RemoveEntryList((PLIST_ENTRY)entry);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : xlist_next
+// Description  : Cross platform list next function. Get the next entry in a
+//                list.
+//
+// Inputs       : entry - pointer to the current entry.
+// Outputs      : void* - pointer to the next entry.
+
+void* xlist_next(void* entry)
+{
+	return (void*)((PLIST_ENTRY)entry)->Flink;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : xlist_prev
+// Description  : Cross platform list prev function. Get the previous entry in a
+//                list.
+//
+// Inputs       : entry - pointer to the current entry.
+// Outputs      : void* - pointer to the previous entry.
+
+void* xlist_prev(void* entry)
+{
+	return (void*)((PLIST_ENTRY)entry)->Blink;
 }
 
 //
