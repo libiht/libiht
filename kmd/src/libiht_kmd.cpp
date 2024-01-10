@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
 //  File           : kmd/src/libiht_kmd.cpp
-//  Description    : This is the main implementation for the kernel mode driver 
+//  Description    : This is the main implementation for the kernel mode driver
 //                   of libiht. This driver is used to capture the last branch
 //                   records of a given process. This file is very platform
 //                   specific and thanks to lyshark for sharing the book
