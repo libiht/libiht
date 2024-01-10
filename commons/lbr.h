@@ -9,7 +9,7 @@
 //                   of a given process.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Nov 25, 2023
+//   Last Modified : Jan 9, 2023
 //
 
 // Include Files
@@ -140,14 +140,14 @@ struct lbr_state *find_lbr_state(u32 pid);
 void insert_lbr_state(struct lbr_state *new_state);
 // Insert a new lbr_state to the lbr_state_list.
 
-void remove_lbr_state_worker(struct lbr_state *old_state);
-// Remove a lbr_state from the lbr_state_list.
-
 void remove_lbr_state(struct lbr_state *old_state);
 // Remove a lbr_state from the lbr_state_list.
 
 void free_lbr_state_list(void);
 // Free the lbr_state_list.
+
+s32 lbr_ioctl(struct xioctl_request *request);
+// The ioctl handler for the LBR.
 
 s32 lbr_check(void);
 // Check if the LBR is available.

@@ -6,7 +6,7 @@
 //                   information.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Dec 25, 2023
+//   Last Modified : Jan 9, 2023
 //
 
 // Include Files
@@ -264,6 +264,7 @@ struct bts_state *create_bts_state()
 
     state = xmalloc(sizeof(struct bts_state));
     // TODO: check if this satisfy the page alignment requirement
+    // TODO: check if xmalloc return valid pointer
     state->ds_area = xmalloc(sizeof(struct ds_area));
 
     return state;
@@ -321,9 +322,9 @@ void insert_bts_state(struct bts_state *new_state)
         return;
 
     xacquire_lock(bts_state_lock, irql_flag);
-    xlist_add(&new_state->list, &bts_state_head);
     xprintdbg("LIBIHT-COM: Insert BTS state for pid %d.\n",
                 new_state->bts_request.pid);
+    xlist_add(&new_state->list, &bts_state_head);
     xrelease_lock(bts_state_lock, irql_flag);
 }
 
@@ -373,8 +374,10 @@ void free_bts_state_list(void)
     curr_list = xlist_next(bts_state_head);
     while (curr_list != bts_state_head)
     {
-        curr_list = xlist_next(curr_list);
         curr_state = (struct bts_state *)((u64)curr_list - offset);
+        curr_list = xlist_next(curr_list);
+
+        xlist_del(curr_state->list);
         xfree(curr_state->ds_area);
         xfree(curr_state);
     }
@@ -392,7 +395,7 @@ void free_bts_state_list(void)
 
 s32 bts_ioctl(struct xioctl_request *request)
 {
-    s32 ret;
+    s32 ret = 0;
 
     xprintdbg("LIBIHT-COM: BTS ioctl command %d.\n", request->cmd);
     switch (request->cmd)
@@ -419,6 +422,7 @@ s32 bts_ioctl(struct xioctl_request *request)
 
     default:
         xprintdbg("LIBIHT-COM: Invalid BTS ioctl command.\n");
+        ret = -1;
         break;
     }
 

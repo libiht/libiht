@@ -10,7 +10,7 @@
 //                   https://github.com/vusec/patharmor/blob/master/lkm/lbr.c
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Dec 05, 2023
+//   Last Modified : Jan 9, 2023
 //
 
 // Include Files
@@ -58,7 +58,6 @@ void get_lbr(struct lbr_state *state)
 {
     int i;
     char irql_flag[MAX_IRQL_LEN];
-    struct lbr_state *state;
     u64 dbgctlmsr;
 
     // Disable LBR
@@ -93,7 +92,6 @@ void put_lbr(struct lbr_state *state)
 {
     int i;
     char irql_flag[MAX_IRQL_LEN];
-    struct lbr_state *state;
     u64 dbgctlmsr;
 
     // Write in LBR registers
@@ -299,8 +297,9 @@ s32 config_lbr(struct lbr_ioctl_request *request)
 struct lbr_state* create_lbr_state(void)
 {
     struct lbr_state* state;
+    u64 state_size;
 
-    u64 state_size = sizeof(struct lbr_state) +
+    state_size = sizeof(struct lbr_state) +
                         lbr_capacity * sizeof(struct lbr_stack_entry);
 
     state = xmalloc(state_size);
@@ -314,6 +313,42 @@ struct lbr_state* create_lbr_state(void)
 
 ////////////////////////////////////////////////////////////////////////////////
 //
+// Function     : find_lbr_state
+// Description  : Find the LBR state for the given process id.
+//
+// Inputs       : pid - the process id
+// Outputs      : struct lbr_state* - the LBR state
+
+struct lbr_state* find_lbr_state(u32 pid)
+{
+    char irql_flag[MAX_IRQL_LEN];
+    struct lbr_state *curr_state, *ret_state = NULL;
+    void *curr_list;
+    u64 offset;
+
+    xacquire_lock(lbr_state_lock, irql_flag);
+
+    // offsetof(st, m) macro implementation of stddef.h
+    offset = (u64)(&((struct lbr_state *)0)->list);
+    curr_list = xlist_next(lbr_state_head);
+    while (curr_list != lbr_state_head)
+    {
+        curr_list = xlist_next(curr_list);
+        curr_state = (struct lbr_state *)((u64)curr_list - offset);
+        if (curr_state->lbr_request.pid == pid)
+        {
+            ret_state = curr_state;
+            break;
+        }
+    }
+
+    xrelease_lock(lbr_state_lock, irql_flag);
+
+    return ret_state;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
 // Function     : insert_lbr_state
 // Description  : Insert new LBR state into the list.
 //
@@ -322,90 +357,16 @@ struct lbr_state* create_lbr_state(void)
 
 void insert_lbr_state(struct lbr_state* new_state)
 {
-    struct lbr_state* head;
     char irql_flag[MAX_IRQL_LEN];
 
     if (new_state == NULL)
-    {
-        xprintdbg("LIBIHT-COM: Insert new state param is NULL\n");
         return;
-    }
 
-    xacquire_lock(lbr_state_lock, (void *)irql_flag);
-
-    head = lbr_state_list;
-    if (head == NULL)
-    {
-        new_state->prev = new_state;
-        new_state->next = new_state;
-        lbr_state_list = new_state;
-    }
-    else
-    {
-        head->prev->next = new_state;
-        new_state->prev = head->prev;
-        head->prev = new_state;
-        new_state->next = head;
-    }
-
-    xprintdbg("LIBIHT-COM: Insert LBR state for pid %d\n", new_state->pid);
-
-    xrelease_lock(lbr_state_lock, (void *)irql_flag);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-//
-// Function     : remove_lbr_state_worker
-// Description  : Remove the LBR state from the list. This worker function
-//                is called with the `lbr_state_lock` acquired.
-//
-// Inputs       : old_state - the old LBR state
-// Outputs      : void
-
-void remove_lbr_state_worker(struct lbr_state* old_state)
-{
-
-    struct lbr_state* head;
-    struct lbr_state* tmp;
-
-    if (old_state == NULL)
-    {
-        xprintdbg("LIBIHT-COM: Remove old state param is NULL\n");
-        return;
-    }
-
-    head = lbr_state_list;
-    if (head == NULL)
-    {
-        xprintdbg("LIBIHT-COM: Remove old state list head is NULL\n");
-        return;
-    }
-
-    if (head == old_state)
-    {
-        // Check if only one state in the list
-        lbr_state_list = head->next == head ? NULL : head->next;
-    }
-
-    // Unlink from linked list
-    old_state->prev->next = old_state->next;
-    old_state->next->prev = old_state->prev;
-
-    // Free all its child
-    if (lbr_state_list != NULL)
-    {
-        tmp = lbr_state_list;
-        do
-        {
-            if (tmp->parent == old_state)
-                remove_lbr_state_worker(tmp);
-            tmp = tmp->prev;
-        } while (tmp != lbr_state_list);
-    }
-
-    xprintdbg("LIBIHT-COM: Remove LBR state for pid %d\n", old_state->pid);
-
-    xfree(old_state);
+    xacquire_lock(lbr_state_lock, irql_flag);
+    xprintdbg("LIBIHT-COM: Insert LBR state for pid %d\n",
+                new_state->lbr_request.pid);
+    xlist_add(lbr_state_head, new_state->list);
+    xrelease_lock(lbr_state_lock, irql_flag);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -420,45 +381,86 @@ void remove_lbr_state(struct lbr_state* old_state)
 {
     char irql_flag[MAX_IRQL_LEN];
 
-    xacquire_lock(lbr_state_lock, (void *)irql_flag);
-
-    remove_lbr_state_worker(old_state);
-
-    xrelease_lock(lbr_state_lock, (void *)irql_flag);
+    if (old_state == NULL)
+        return;
+    
+    xacquire_lock(lbr_state_lock, irql_flag);
+    xprintdbg("LIBIHT-COM: Remove LBR state for pid %d\n",
+                old_state->lbr_request.pid);
+    xlist_del(old_state->list);
+    xfree(old_state);
+    xrelease_lock(lbr_state_lock, irql_flag);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Function     : find_lbr_state
-// Description  : Find the LBR state for the given process id.
+// Function     : free_lbr_state_list
+// Description  : Free the LBR state list.
 //
-// Inputs       : pid - the process id
-// Outputs      : struct lbr_state* - the LBR state
+// Inputs       : void
+// Outputs      : void
 
-struct lbr_state* find_lbr_state(u32 pid)
+void free_lbr_state_list(void)
 {
-    struct lbr_state* state = NULL, *tmp;
     char irql_flag[MAX_IRQL_LEN];
+    struct lbr_state *curr_state;
+    void *curr_list;
+    u64 offset;
 
-    xacquire_lock(lbr_state_lock, (void *)irql_flag);
+    xacquire_lock(lbr_state_lock, irql_flag);
 
-    if (lbr_state_list != NULL)
+    // offsetof(st, m) macro implementation of stddef.h
+    offset = (u64)(&((struct lbr_state *)0)->list);
+    curr_list = xlist_next(lbr_state_head);
+    while (curr_list != lbr_state_head)
     {
-        // Perform a backward traversal to find the state
-        tmp = lbr_state_list;
-        do {
-            if (tmp->pid == pid)
-            {
-                state = tmp;
-                break;
-            }
-            tmp = tmp->prev;
-        } while (tmp != lbr_state_list);
+        curr_state = (struct lbr_state *)((u64)curr_list - offset);
+        curr_list = xlist_next(curr_list);
+
+        xlist_del(curr_state->list);
+        xfree(curr_state);
     }
 
-    xrelease_lock(lbr_state_lock, (void *)irql_flag);
+    xrelease_lock(lbr_state_lock, irql_flag);
+}
 
-    return state;
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : lbr_ioctl
+// Description  : The ioctl handler for the LBR feature.
+//
+// Inputs       : request - the LBR ioctl request
+// Outputs      : s32 - 0 on success, -1 on failure
+
+s32 lbr_ioctl(struct xioctl_request *request)
+{
+    s32 ret = 0;
+
+    xprintdbg("LIBIHT-COM: LBR ioctl command %d.\n", request->cmd);
+    switch (request->cmd)
+    {
+        case LIBIHT_IOCTL_ENABLE_LBR:
+            xprintdbg("LIBIHT-COM: Enable LBR for pid %d\n",
+                        request->data.lbr.pid);
+            ret = enable_lbr(&request->data.lbr);
+            break;
+        case LIBIHT_IOCTL_DISABLE_LBR:
+            xprintdbg("LIBIHT-COM: Disable LBR for pid %d\n",
+                        request->data.lbr.pid);
+            ret = disable_lbr(&request->data.lbr);
+            break;
+        case LIBIHT_IOCTL_DUMP_LBR:
+            xprintdbg("LIBIHT-COM: Dump LBR for pid %d\n",
+                        request->data.lbr.pid);
+            ret = dump_lbr(&request->data.lbr);
+            break;
+        default:
+            xprintdbg("LIBIHT-COM: Invalid LBR ioctl command\n");
+            ret = -1;
+            break;
+    }
+
+    return ret;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -542,14 +544,13 @@ s32 lbr_init(void)
 
 s32 lbr_exit(void)
 {
-    struct lbr_state* curr, * prev;
-
     // Flush LBR on each cpu
     xprintdbg("LIBIHT-COM: Flushing LBR for all cpus...\n");
     xon_each_cpu(flush_lbr);
 
-    // TODO: Free all LBR state
+    // Free all LBR state
     xprintdbg("LIBIHT-COM: Freeing LBR state list...\n");
+    free_lbr_state_list();
 
     return 0;
 }
