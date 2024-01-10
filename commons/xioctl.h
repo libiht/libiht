@@ -1,3 +1,6 @@
+#ifndef _COMMONS_XIOCTL_H
+#define _COMMONS_XIOCTL_H
+
 ////////////////////////////////////////////////////////////////////////////////
 //
 //  File           : commons/xioclt.h
@@ -5,7 +8,7 @@
 //                   feature IOCTL definitions for the library.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Dec 25, 2023
+//   Last Modified : Jan 10, 2023
 //
 
 //
@@ -15,7 +18,7 @@
 //
 // Library constants
 enum IOCTL {
-    LIBIHT_IOCTL,               // Placeholder
+    LIBIHT_IOCTL_BASE,          // Placeholder
     // LBR
     // TODO: adapt lbr to this new structure
     LIBIHT_IOCTL_ENABLE_LBR,
@@ -54,3 +57,5 @@ struct xioctl_request{
         struct bts_ioctl_request bts;
     } data;
 };
+
+#endif // _COMMONS_XIOCTL_H
