@@ -6,7 +6,7 @@
 //                   information.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 9, 2023
+//   Last Modified : Jan 10, 2023
 //
 
 // Include Files
@@ -69,8 +69,8 @@ void put_bts(struct bts_state *state)
 // Function     : flush_bts
 // Description  : Flush the BTS buffer.
 //
-// Inputs       : None
-// Outputs      : None
+// Inputs       : void
+// Outputs      : void
 
 void flush_bts(void)
 {
@@ -138,6 +138,9 @@ s32 enable_bts(struct bts_ioctl_request *request)
     // Not yet support state->ds_area->bts_interrupt_threshold
 
     insert_bts_state(state);
+    // If the requesting process is the current process, trace it right away
+    if (state->bts_request.pid == xgetcurrent_pid())
+        put_bts(state);
     return 0;
 }
 
@@ -255,7 +258,7 @@ s32 config_bts(struct bts_ioctl_request *request)
 // Function     : create_bts_state
 // Description  : Create a new BTS state.
 //
-// Inputs       : None
+// Inputs       : void
 // Outputs      : The new BTS state
 
 struct bts_state *create_bts_state()
@@ -312,7 +315,7 @@ struct bts_state *find_bts_state(u32 pid)
 // Description  : Insert a new BTS state into the list.
 //
 // Inputs       : new_state - the new BTS state
-// Outputs      : None
+// Outputs      : void
 
 void insert_bts_state(struct bts_state *new_state)
 {
@@ -334,7 +337,7 @@ void insert_bts_state(struct bts_state *new_state)
 // Description  : Remove a BTS state from the list.
 //
 // Inputs       : old_state - the old BTS state
-// Outputs      : None
+// Outputs      : void
 
 void remove_bts_state(struct bts_state *old_state)
 {
@@ -357,8 +360,8 @@ void remove_bts_state(struct bts_state *old_state)
 // Function     : free_bts_state_list
 // Description  : Free the BTS state list.
 //
-// Inputs       : None
-// Outputs      : None
+// Inputs       : void
+// Outputs      : void
 
 void free_bts_state_list(void)
 {
@@ -387,13 +390,13 @@ void free_bts_state_list(void)
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Function     : bts_ioctl
+// Function     : bts_ioctl_handler
 // Description  : The ioctl handler for the BTS.
 //
 // Inputs       : request - the cross platform ioctl request
 // Outputs      : 0 if successful, -1 if failure
 
-s32 bts_ioctl(struct xioctl_request *request)
+s32 bts_ioctl_handler(struct xioctl_request *request)
 {
     s32 ret = 0;
 
@@ -431,10 +434,68 @@ s32 bts_ioctl(struct xioctl_request *request)
 
 ////////////////////////////////////////////////////////////////////////////////
 //
+// Function     : bts_cswitch_handler
+// Description  : The context switch handler for the BTS.
+//
+// Inputs       : prev_pid - the pid of the previous process
+//                next_pid - the pid of the next process
+// Outputs      : void
+
+void bts_cswitch_handler(u32 prev_pid, u32 next_pid)
+{
+    struct bts_state *prev_state, *next_state;
+
+    prev_state = find_bts_state(prev_pid);
+    next_state = find_bts_state(next_pid);
+
+    if (prev_state != NULL)
+    {
+        xprintdbg("LIBIHT-COM: BTS context switch from pid %d\n",
+            prev_state->bts_request.pid);
+        get_bts(prev_state);
+    }
+
+    if (next_state != NULL)
+    {
+        xprintdbg("LIBIHT-COM: BTS context switch to pid %d\n",
+                next_state->bts_request.pid);
+        put_bts(next_state);
+    }
+}
+
+void bts_newproc_handler(u32 parent_pid, u32 child_pid)
+{
+    struct bts_state *parent_state, *child_state;
+    // char irql_flag[MAX_IRQL_LEN];
+
+    parent_state = find_bts_state(parent_pid);
+    if (parent_state == NULL)
+        return;
+    
+    xprintdbg("LIBIHT-COM: BTS new process %d parent pid %d\n",
+            child_pid, parent_pid);
+    child_state = create_bts_state();
+    if (child_state == NULL)
+        return;
+    
+    child_state->parent = parent_state;
+    child_state->bts_request.pid = child_pid;
+    child_state->bts_request.bts_config = parent_state->bts_request.bts_config;
+    child_state->bts_request.bts_buffer_size = parent_state->bts_request.bts_buffer_size;
+    // TODO: memcpy or not? overhead? If yes, acquire lock for this operation
+    insert_bts_state(child_state);
+
+    // If the child process is the current process, trace it right away
+    if (child_pid == xgetcurrent_pid())
+        put_bts(child_state);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
 // Function     : bts_check
 // Description  : Check if the BTS is available.
 //
-// Inputs       : None
+// Inputs       : void
 // Outputs      : 0 if successful, -1 if failure
 
 s32 bts_check(void)
@@ -461,7 +522,7 @@ s32 bts_check(void)
 // Function     : bts_init
 // Description  : Initialize the BTS.
 //
-// Inputs       : None
+// Inputs       : void
 // Outputs      : 0 if successful, -1 if failure
 
 s32 bts_init(void)
@@ -489,7 +550,7 @@ s32 bts_init(void)
 // Function     : bts_exit
 // Description  : Exit the BTS.
 //
-// Inputs       : None
+// Inputs       : void
 // Outputs      : 0 if successful, -1 if failure
 
 s32 bts_exit(void)

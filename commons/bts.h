@@ -10,7 +10,7 @@
 //                   adapted from the Linux kernel source code.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Dec 25, 2023
+//   Last Modified : Jan 10, 2023
 //
 
 // Include Files
@@ -182,8 +182,15 @@ void remove_bts_state(struct bts_state *old_state);
 void free_bts_state_list(void);
 // Free the BTS state list
 
-s32 bts_ioctl(struct xioctl_request *request);
+s32 bts_ioctl_handler(struct xioctl_request *request);
 // The ioctl handler for the BTS
+
+// TODO
+void bts_cswitch_handler(u32 prev_pid, u32 next_pid);
+// The context switch handler for the BTS
+
+void bts_newproc_handler(u32 parent_pid, u32 child_pid);
+// The new process handler for the BTS
 
 s32 bts_check(void);
 // Check if the BTS is available

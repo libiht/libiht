@@ -9,7 +9,7 @@
 //                   of a given process.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 9, 2023
+//   Last Modified : Jan 10, 2023
 //
 
 // Include Files
@@ -146,8 +146,14 @@ void remove_lbr_state(struct lbr_state *old_state);
 void free_lbr_state_list(void);
 // Free the lbr_state_list.
 
-s32 lbr_ioctl(struct xioctl_request *request);
+s32 lbr_ioctl_handler(struct xioctl_request *request);
 // The ioctl handler for the LBR.
+
+void lbr_cswitch_handler(u32 prev_pid, u32 next_pid);
+// The context switch handler for the LBR.
+
+void lbr_newproc_handler(u32 parent_pid, u32 child_pid);
+// The new process handler for the LBR.
 
 s32 lbr_check(void);
 // Check if the LBR is available.

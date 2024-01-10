@@ -6,11 +6,11 @@
 //                   information. The implementation is largely based on the
 //                   LBR manipulation of PathArmor project.
 //
-//                   Reference: 
+//                   Reference:
 //                   https://github.com/vusec/patharmor/blob/master/lkm/lbr.c
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 9, 2023
+//   Last Modified : Jan 10, 2023
 //
 
 // Include Files
@@ -29,13 +29,13 @@ char lbr_state_head[MAX_LIST_LEN];
 // The head of the lbr_state_list.
 
 static const struct cpu_to_lbr cpu_lbr_maps[] = {
-    {0x5c, 32}, {0x5f, 32}, {0x4e, 32}, {0x5e, 32}, {0x8e, 32}, {0x9e, 32}, 
-    {0x55, 32}, {0x66, 32}, {0x7a, 32}, {0x67, 32}, {0x6a, 32}, {0x6c, 32}, 
-    {0x7d, 32}, {0x7e, 32}, {0x8c, 32}, {0x8d, 32}, {0xa5, 32}, {0xa6, 32}, 
-    {0xa7, 32}, {0xa8, 32}, {0x86, 32}, {0x8a, 32}, {0x96, 32}, {0x9c, 32}, 
-    {0x3d, 16}, {0x47, 16}, {0x4f, 16}, {0x56, 16}, {0x3c, 16}, {0x45, 16}, 
-    {0x46, 16}, {0x3f, 16}, {0x2a, 16}, {0x2d, 16}, {0x3a, 16}, {0x3e, 16}, 
-    {0x1a, 16}, {0x1e, 16}, {0x1f, 16}, {0x2e, 16}, {0x25, 16}, {0x2c, 16}, 
+    {0x5c, 32}, {0x5f, 32}, {0x4e, 32}, {0x5e, 32}, {0x8e, 32}, {0x9e, 32},
+    {0x55, 32}, {0x66, 32}, {0x7a, 32}, {0x67, 32}, {0x6a, 32}, {0x6c, 32},
+    {0x7d, 32}, {0x7e, 32}, {0x8c, 32}, {0x8d, 32}, {0xa5, 32}, {0xa6, 32},
+    {0xa7, 32}, {0xa8, 32}, {0x86, 32}, {0x8a, 32}, {0x96, 32}, {0x9c, 32},
+    {0x3d, 16}, {0x47, 16}, {0x4f, 16}, {0x56, 16}, {0x3c, 16}, {0x45, 16},
+    {0x46, 16}, {0x3f, 16}, {0x2a, 16}, {0x2d, 16}, {0x3a, 16}, {0x3e, 16},
+    {0x1a, 16}, {0x1e, 16}, {0x1f, 16}, {0x2e, 16}, {0x25, 16}, {0x2c, 16},
     {0x2f, 16}, {0x17,  4}, {0x1d,  4}, {0x0f,  4}, {0x37,  8}, {0x4a,  8},
     {0x4c,  8}, {0x4d,  8}, {0x5a,  8}, {0x5d,  8}, {0x1c,  8}, {0x26,  8},
     {0x27,  8}, {0x35,  8}, {0x36,  8}};
@@ -66,7 +66,7 @@ void get_lbr(struct lbr_state *state)
     xwrmsr(MSR_IA32_DEBUGCTLMSR, dbgctlmsr);
 
     // Read out LBR registers
-    xacquire_lock(lbr_state_lock, (void *)irql_flag);
+    xacquire_lock(lbr_state_lock, irql_flag);
 
     xrdmsr(MSR_LBR_SELECT, &state->lbr_request.lbr_select);
     xrdmsr(MSR_LBR_TOS, &state->lbr_tos);
@@ -77,7 +77,7 @@ void get_lbr(struct lbr_state *state)
         xrdmsr(MSR_LBR_NHM_TO + i, &state->entries[i].to);
     }
 
-    xrelease_lock(lbr_state_lock, (void *)irql_flag);
+    xrelease_lock(lbr_state_lock, irql_flag);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -95,7 +95,7 @@ void put_lbr(struct lbr_state *state)
     u64 dbgctlmsr;
 
     // Write in LBR registers
-    xacquire_lock(lbr_state_lock, (void *)irql_flag);
+    xacquire_lock(lbr_state_lock, irql_flag);
 
     xwrmsr(MSR_LBR_SELECT, state->lbr_request.lbr_select);
     xwrmsr(MSR_LBR_TOS, state->lbr_tos);
@@ -106,7 +106,7 @@ void put_lbr(struct lbr_state *state)
         xwrmsr(MSR_LBR_NHM_TO + i, state->entries[i].to);
     }
 
-    xrelease_lock(lbr_state_lock, (void *)irql_flag);
+    xrelease_lock(lbr_state_lock, irql_flag);
 
     // Enable LBR
     xrdmsr(MSR_IA32_DEBUGCTLMSR, &dbgctlmsr);
@@ -148,9 +148,7 @@ void flush_lbr(void)
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Function     : enable_lbr
-// Description  : Enable the LBR feature for the current CPU core. This function
-//                should be called on each CPU core by `xon_each_cpu()`
-//                dispatch.
+// Description  : Enable the LBR feature for the requested process id.
 //
 // Inputs       : request - the LBR ioctl request
 // Outputs      : s32 - 0 on success, -1 on failure
@@ -178,17 +176,18 @@ s32 enable_lbr(struct lbr_ioctl_request *request)
     state->lbr_request.pid = request->pid ? request->pid : xgetcurrent_pid();
     state->lbr_request.lbr_select = request->lbr_select ?
                                     request->lbr_select : LBR_SELECT;
-
     insert_lbr_state(state);
+
+    // If the requesting process is the current process, trace it right away
+    if (state->lbr_request.pid == xgetcurrent_pid())
+        put_lbr(state);
     return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Function     : disable_lbr
-// Description  : Disable the LBR feature for the current CPU core. This
-//                function should be called on each CPU core by `xon_each_cpu()`
-//                function dispatch.
+// Description  : Disable the LBR feature for the requested process id.
 //
 // Inputs       : request - the LBR ioctl request
 // Outputs      : s32 - 0 on success, -1 on failure
@@ -228,7 +227,7 @@ s32 dump_lbr(struct lbr_ioctl_request *request)
     }
 
     // Examine if the current process is the owner of the LBR state
-    if (state->lbr_request.pid == xgetcurrent_pid()) 
+    if (state->lbr_request.pid == xgetcurrent_pid())
     {
         xprintdbg("LIBIHT-COM: Dump LBR for current process\n");
         // Get fresh LBR info
@@ -236,7 +235,7 @@ s32 dump_lbr(struct lbr_ioctl_request *request)
         put_lbr(state);
     }
 
-    xacquire_lock(lbr_state_lock, (void *)irql_flag);
+    xacquire_lock(lbr_state_lock, irql_flag);
 
     // Dump the LBR state
     xprintdbg("PROC_PID:             %d\n", state->lbr_request.pid);
@@ -251,7 +250,7 @@ s32 dump_lbr(struct lbr_ioctl_request *request)
 
     xprintdbg("LIBIHT-COM: LBR info for cpuid: %d\n", xcoreid());
 
-    xrelease_lock(lbr_state_lock, (void *)irql_flag);
+    xrelease_lock(lbr_state_lock, irql_flag);
 
     return 0;
 }
@@ -383,7 +382,7 @@ void remove_lbr_state(struct lbr_state* old_state)
 
     if (old_state == NULL)
         return;
-    
+
     xacquire_lock(lbr_state_lock, irql_flag);
     xprintdbg("LIBIHT-COM: Remove LBR state for pid %d\n",
                 old_state->lbr_request.pid);
@@ -432,7 +431,7 @@ void free_lbr_state_list(void)
 // Inputs       : request - the LBR ioctl request
 // Outputs      : s32 - 0 on success, -1 on failure
 
-s32 lbr_ioctl(struct xioctl_request *request)
+s32 lbr_ioctl_handler(struct xioctl_request *request)
 {
     s32 ret = 0;
 
@@ -465,6 +464,80 @@ s32 lbr_ioctl(struct xioctl_request *request)
 
 ////////////////////////////////////////////////////////////////////////////////
 //
+// Function     : lbr_cswitch_handler
+// Description  : The context switch handler for the LBR feature.
+//
+// Inputs       : prev_pid - the previous process id
+//                next_pid - the next process id
+// Outputs      : void
+
+void lbr_cswitch_handler(u32 prev_pid, u32 next_pid)
+{
+    struct lbr_state *prev_state, *next_state;
+
+    prev_state = find_lbr_state(prev_pid);
+    next_state = find_lbr_state(next_pid);
+
+    if (prev_state != NULL)
+    {
+        xprintdbg("LIBIHT-COM: LBR context switch from pid %d\n",
+                    prev_state->lbr_request.pid);
+        get_lbr(prev_state);
+    }
+
+    if (next_state != NULL)
+    {
+        xprintdbg("LIBIHT-COM: LBR context switch to pid %d\n",
+                    next_state->lbr_request.pid);
+        put_lbr(next_state);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : lbr_newproc_handler
+// Description  : The new process handler for the LBR feature.
+//
+// Inputs       : parent_pid - the parent process id
+//                child_pid - the child process id
+// Outputs      : void
+
+void lbr_newproc_handler(u32 parent_pid, u32 child_pid)
+{
+    struct lbr_state *parent_state, *child_state;
+    char irql_flag[MAX_IRQL_LEN];
+    int i;
+
+    parent_state = find_lbr_state(parent_pid);
+    if (parent_state == NULL)
+        return;
+
+    xprintdbg("LIBIHT-COM: LBR new child process pid %d, parent pid %d\n",
+                child_pid, parent_pid);
+    child_state = create_lbr_state();
+    if (child_state == NULL)
+        return;
+
+    xacquire_lock(lbr_state_lock, irql_flag);
+    // Copy parent state to child state
+    child_state->parent = parent_state;
+    child_state->lbr_request.pid = child_pid;
+    child_state->lbr_request.lbr_select = parent_state->lbr_request.lbr_select;
+    for (i = 0; i < lbr_capacity; i++)
+    {
+        child_state->entries[i].from = parent_state->entries[i].from;
+        child_state->entries[i].to = parent_state->entries[i].to;
+    }
+    xrelease_lock(lbr_state_lock, irql_flag);
+    insert_lbr_state(child_state);
+
+    // If the child process is the current process, trace it right away
+    if (child_pid == xgetcurrent_pid())
+        put_lbr(child_state);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
 // Function     : lbr_check
 // Description  : Check if the LBR feature is available on the current CPU.
 //                And set the global variable `lbr_capacity`.
@@ -479,7 +552,7 @@ s32 lbr_check(void)
     int i;
 
     xcpuid(1, &cpuinfo[0], &cpuinfo[1], &cpuinfo[2], &cpuinfo[3]);
-    
+
     family = ((cpuinfo[0] >> 8) & 0xF) + ((cpuinfo[0] >> 20) & 0xFF);
     model = ((cpuinfo[0] >> 4) & 0xF) | ((cpuinfo[0] >> 12) & 0xF0);
 
