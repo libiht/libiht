@@ -41,8 +41,6 @@ static const struct cpu_to_lbr cpu_lbr_maps[] = {
     {0x27,  8}, {0x35,  8}, {0x36,  8}};
 // CPU - LBR map table
 
-// TODO: revise function calls to use lbr_state as parameter to avoid unnecessary find_lbr_state calls
-
 //
 // Low level LBR stack and registers access
 

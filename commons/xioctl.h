@@ -19,18 +19,20 @@
 // Library constants
 enum IOCTL {
     LIBIHT_IOCTL_BASE,          // Placeholder
+
     // LBR
-    // TODO: adapt lbr to this new structure
     LIBIHT_IOCTL_ENABLE_LBR,
     LIBIHT_IOCTL_DISABLE_LBR,
     LIBIHT_IOCTL_DUMP_LBR,
     LIBIHT_IOCTL_SELECT_LBR,
+    LIBIHT_IOCTL_LBR_END,       // End of LBR
 
     // BTS
     LIBIHT_IOCTL_ENABLE_BTS,
     LIBIHT_IOCTL_DISABLE_BTS,
     LIBIHT_IOCTL_DUMP_BTS,
     LIBIHT_IOCTL_CONFIG_BTS,
+    LIBIHT_IOCTL_BTS_END,       // End of BTS
 };
 
 //

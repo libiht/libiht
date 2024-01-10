@@ -102,7 +102,9 @@ void tp_sched_switch_handler(void *data, bool preempt,
                                     struct task_struct *prev_task,
                                     struct task_struct *next_task)
 {
-    // TODO
+    lbr_cswitch_handler(prev_task->pid, next_task->pid);
+    // TODO: integrate BTS
+    // bts_cswitch_handler(prev_task->pid, next_task->pid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,7 +119,9 @@ void tp_sched_switch_handler(void *data, bool preempt,
 
 void tp_new_task_handler(void *data, struct task_struct *task)
 {
-    // TODO
+    lbr_newproc_handler(task->real_parent->pid, task->pid);
+    // TODO: integrate BTS
+    // bts_newproc_handler(task->real_parent->pid, task->pid);
 }
 
 //
@@ -225,7 +229,26 @@ long device_ioctl(struct file *file_ptr, unsigned int ioctl_cmd,
         xprintdbg(KERN_INFO "LIBIHT-LKM: Remaining size %ld\n", request_size_left);
         return -EIO;
     }
-    // TODO
+
+    // Process request
+    if (request.cmd <= LIBIHT_IOCTL_LBR_END)
+    {
+        // LBR request
+        xprintdbg(KERN_INFO "LIBIHT-LKM: LBR request\n");
+        ret_val = lbr_ioctl_handler(&request);
+    }
+    else if (request.cmd <= LIBIHT_IOCTL_BTS_END)
+    {
+        // BTS request
+        xprintdbg(KERN_INFO "LIBIHT-LKM: BTS request\n");
+        ret_val = bts_ioctl_handler(&request);
+    }
+    else
+    {
+        // Unknown request
+        xprintdbg(KERN_INFO "LIBIHT-LKM: Unknown request\n");
+        ret_val = -EINVAL;
+    }
 
     return ret_val;
 }
@@ -263,9 +286,10 @@ int __init libiht_lkm_init(void)
     xprintdbg(KERN_INFO "LIBIHT_LKM: Initilizing LBR...\n");
     lbr_init();
 
+    // TODO: integrate BTS
     // Init BTS
-    xprintdbg(KERN_INFO "LIBIHT_LKM: Initilizing BTS...\n");
-    bts_init();
+    // xprintdbg(KERN_INFO "LIBIHT_LKM: Initilizing BTS...\n");
+    // bts_init();
 
     xprintdbg(KERN_INFO "LIBIHT_LKM: Initilized\n");
     return 0;
@@ -285,9 +309,10 @@ void __exit libiht_lkm_exit(void)
 {
     xprintdbg(KERN_INFO "LIBIHT_LKM: Exiting...\n");
 
+    // TODO: integrate BTS
     // Exit BTS
-    xprintdbg(KERN_INFO "LIBIHT_LKM: Exiting BTS...\n");
-    bts_exit();
+    // xprintdbg(KERN_INFO "LIBIHT_LKM: Exiting BTS...\n");
+    // bts_exit();
 
     // Exit LBR
     xprintdbg(KERN_INFO "LIBIHT_LKM: Exiting LBR...\n");

@@ -266,9 +266,15 @@ struct bts_state *create_bts_state()
     struct bts_state *state;
 
     state = xmalloc(sizeof(struct bts_state));
+    if (state == NULL)
+        return NULL;
     // TODO: check if this satisfy the page alignment requirement
-    // TODO: check if xmalloc return valid pointer
     state->ds_area = xmalloc(sizeof(struct ds_area));
+    if (state->ds_area == NULL)
+    {
+        xfree(state);
+        return NULL;
+    }
 
     return state;
 }
@@ -404,22 +410,26 @@ s32 bts_ioctl_handler(struct xioctl_request *request)
     switch (request->cmd)
     {
     case LIBIHT_IOCTL_ENABLE_BTS:
-        xprintdbg("LIBIHT-COM: Enable BTS.\n");
+        xprintdbg("LIBIHT-COM: Enable BTS for pid %d.\n",
+                    request->data.bts.pid);
         ret = enable_bts(&request->data.bts);
         break;
 
     case LIBIHT_IOCTL_DISABLE_BTS:
-        xprintdbg("LIBIHT-COM: Disable BTS.\n");
+        xprintdbg("LIBIHT-COM: Disable BTS for pid %d.\n",
+                    request->data.bts.pid);
         ret = disable_bts(&request->data.bts);
         break;
 
     case LIBIHT_IOCTL_DUMP_BTS:
-        xprintdbg("LIBIHT-COM: Dump BTS.\n");
+        xprintdbg("LIBIHT-COM: Dump BTS for pid %d.\n",
+                    request->data.bts.pid);
         ret = dump_bts(&request->data.bts);
         break;
 
     case LIBIHT_IOCTL_CONFIG_BTS:
-        xprintdbg("LIBIHT-COM: Config BTS.\n");
+        xprintdbg("LIBIHT-COM: Config BTS for pid %d.\n",
+                    request->data.bts.pid);
         ret = config_bts(&request->data.bts);
         break;
 

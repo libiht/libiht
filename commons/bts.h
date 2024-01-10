@@ -102,7 +102,6 @@ extern "C" {
 
 //
 // Type definitions
-// TODO
 
 // Define BTS record
 struct bts_record
@@ -185,7 +184,6 @@ void free_bts_state_list(void);
 s32 bts_ioctl_handler(struct xioctl_request *request);
 // The ioctl handler for the BTS
 
-// TODO
 void bts_cswitch_handler(u32 prev_pid, u32 next_pid);
 // The context switch handler for the BTS
 
