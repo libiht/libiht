@@ -79,14 +79,14 @@ void xlock_core(void *old_irql)
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Function     : xunlock_core
+// Function     : xrelease_core
 // Description  : Cross platform unlock core function. Restore IRQL to
 //                the old IRQL.
 //
-// Inputs       : old_irql - pointer to the old IRQL.
+// Inputs       : new_irql - pointer to the old IRQL.
 // Outputs      : void
 
-void xunlock_core(void *old_irql)
+void xrelease_core(void *new_irql)
 {
     put_cpu();
 }
