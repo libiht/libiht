@@ -76,12 +76,15 @@ void flush_bts(void)
 {
     u64 dbgctlmsr;
     u64 bts_bits;
+    char irql_flag[MAX_IRQL_LEN];
 
     bts_bits = DEBUGCTLMSR_TR |
                 DEBUGCTLMSR_BTS |
                 DEBUGCTLMSR_BTINT |
                 DEBUGCTLMSR_BTS_OFF_OS |
                 DEBUGCTLMSR_BTS_OFF_USR;
+
+    xlock_core(irql_flag);
 
     // Disable BTS
     xprintdbg("LIBIHT-COM: Flush BTS on cpu core: %d...\n", xcoreid());
@@ -91,6 +94,8 @@ void flush_bts(void)
 
     // Reset BTS debug store buffer pointer
     xwrmsr(MSR_IA32_DS_AREA, NULL);
+
+    xrelease_core(irql_flag);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -106,7 +111,7 @@ s32 enable_bts(struct bts_ioctl_request *request)
     struct bts_state *state;
 
     state = find_bts_state(request->pid);
-    if (state != NULL)
+    if (state)
     {
         xprintdbg("LIBIHT-COM: BTS already enabled for pid %d.\n",
                     request->pid);
@@ -301,8 +306,8 @@ struct bts_state *find_bts_state(u32 pid)
     curr_list = xlist_next(bts_state_head);
     while (curr_list != bts_state_head)
     {
-        curr_list = xlist_next(curr_list);
         curr_state = (struct bts_state *)((u64)curr_list - offset);
+        curr_list = xlist_next(curr_list);
         if (curr_state->bts_request.pid == pid)
         {
             ret_state = curr_state;
@@ -333,7 +338,7 @@ void insert_bts_state(struct bts_state *new_state)
     xacquire_lock(bts_state_lock, irql_flag);
     xprintdbg("LIBIHT-COM: Insert BTS state for pid %d.\n",
                 new_state->bts_request.pid);
-    xlist_add(&new_state->list, &bts_state_head);
+    xlist_add(new_state->list, bts_state_head);
     xrelease_lock(bts_state_lock, irql_flag);
 }
 
@@ -385,6 +390,8 @@ void free_bts_state_list(void)
     {
         curr_state = (struct bts_state *)((u64)curr_list - offset);
         curr_list = xlist_next(curr_list);
+        xprintdbg("LIBIHT-COM: Free BTS state for pid %d.\n",
+                    curr_state->bts_request.pid);
 
         xlist_del(curr_state->list);
         xfree(curr_state->ds_area);
@@ -458,14 +465,14 @@ void bts_cswitch_handler(u32 prev_pid, u32 next_pid)
     prev_state = find_bts_state(prev_pid);
     next_state = find_bts_state(next_pid);
 
-    if (prev_state != NULL)
+    if (prev_state)
     {
         xprintdbg("LIBIHT-COM: BTS context switch from pid %d\n",
             prev_state->bts_request.pid);
         get_bts(prev_state);
     }
 
-    if (next_state != NULL)
+    if (next_state)
     {
         xprintdbg("LIBIHT-COM: BTS context switch to pid %d\n",
                 next_state->bts_request.pid);

@@ -66,7 +66,7 @@ extern "C" {
  * Default selection bit set to:
  * 0x1 = 00000001   --> capture branches occuring in ring >0
  */
-#define LBR_SELECT              (1UL <<  1)
+#define LBR_SELECT              (1UL <<  0)
 
 //
 // Type definitions

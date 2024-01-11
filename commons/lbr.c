@@ -126,6 +126,9 @@ void flush_lbr(void)
 {
     int i;
     u64 dbgctlmsr;
+    char irql_flag[MAX_IRQL_LEN];
+
+    xlock_core(irql_flag);
 
     // Disable LBR
     xprintdbg("LIBIHT-COM: Flush LBR on cpu core: %d\n", xcoreid());
@@ -133,6 +136,7 @@ void flush_lbr(void)
     dbgctlmsr &= ~DEBUGCTLMSR_LBR;
     xwrmsr(MSR_IA32_DEBUGCTLMSR, dbgctlmsr);
 
+    // Flush LBR registers
     xwrmsr(MSR_LBR_SELECT, 0);
     xwrmsr(MSR_LBR_TOS, 0);
 
@@ -141,6 +145,8 @@ void flush_lbr(void)
         xwrmsr(MSR_LBR_NHM_FROM + i, 0);
         xwrmsr(MSR_LBR_NHM_TO + i, 0);
     }
+
+    xrelease_core(irql_flag);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -156,7 +162,7 @@ s32 enable_lbr(struct lbr_ioctl_request *request)
     struct lbr_state *state;
 
     state = find_lbr_state(request->pid);
-    if (state == NULL)
+    if (state)
     {
         xprintdbg("LIBIHT-COM: LBR already enabled for pid %d\n", request->pid);
         return -1;
@@ -330,9 +336,9 @@ struct lbr_state* find_lbr_state(u32 pid)
     curr_list = xlist_next(lbr_state_head);
     while (curr_list != lbr_state_head)
     {
-        curr_list = xlist_next(curr_list);
         curr_state = (struct lbr_state *)((u64)curr_list - offset);
-        if (curr_state->lbr_request.pid == pid)
+        curr_list = xlist_next(curr_list);
+        if (pid != 0 && curr_state->lbr_request.pid == pid)
         {
             ret_state = curr_state;
             break;
@@ -362,7 +368,7 @@ void insert_lbr_state(struct lbr_state* new_state)
     xacquire_lock(lbr_state_lock, irql_flag);
     xprintdbg("LIBIHT-COM: Insert LBR state for pid %d\n",
                 new_state->lbr_request.pid);
-    xlist_add(lbr_state_head, new_state->list);
+    xlist_add(new_state->list, lbr_state_head);
     xrelease_lock(lbr_state_lock, irql_flag);
 }
 
@@ -413,6 +419,8 @@ void free_lbr_state_list(void)
     {
         curr_state = (struct lbr_state *)((u64)curr_list - offset);
         curr_list = xlist_next(curr_list);
+        xprintdbg("LIBIHT-COM: Free LBR state for pid %d\n",
+                    curr_state->lbr_request.pid);
 
         xlist_del(curr_state->list);
         xfree(curr_state);
@@ -476,17 +484,17 @@ void lbr_cswitch_handler(u32 prev_pid, u32 next_pid)
     prev_state = find_lbr_state(prev_pid);
     next_state = find_lbr_state(next_pid);
 
-    if (prev_state != NULL)
+    if (prev_state)
     {
-        xprintdbg("LIBIHT-COM: LBR context switch from pid %d\n",
-                    prev_state->lbr_request.pid);
+        xprintdbg("LIBIHT-COM: LBR context switch from pid %d on cpu core %d\n",
+                    prev_state->lbr_request.pid, xcoreid());
         get_lbr(prev_state);
     }
 
-    if (next_state != NULL)
+    if (next_state)
     {
-        xprintdbg("LIBIHT-COM: LBR context switch to pid %d\n",
-                    next_state->lbr_request.pid);
+        xprintdbg("LIBIHT-COM: LBR context switch to pid %d on cpu core %d\n",
+                    next_state->lbr_request.pid, xcoreid());
         put_lbr(next_state);
     }
 }
