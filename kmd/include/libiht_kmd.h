@@ -8,12 +8,12 @@
 //                   libiht. 
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Nov 26, 2023
+//   Last Modified : Jan 11, 2023
 //
 
 // Includes Files
 #include "../../commons/lbr.h"
-#include "../../commons/cpu.h"
+#include "../../commons/bts.h"
 #include "../../commons/types.h"
 #include "../../commons/debug.h"
 #include "../infinity_hook/imports.hpp"
@@ -31,13 +31,10 @@ extern "C" {
 #define SYM_DEVICE_NAME     L"\\DosDevices\\libiht-info"
 
 // I/O control codes
-#define KMD_IOCTL_TYPE 0x8888
-#define KMD_IOCTL_FUNC 0x888
-
-#define LIBIHT_KMD_IOC_ENABLE_TRACE     CTL_CODE(KMD_IOCTL_TYPE, KMD_IOCTL_FUNC + 1, METHOD_BUFFERED, FILE_ANY_ACCESS)
-#define LIBIHT_KMD_IOC_DISABLE_TRACE    CTL_CODE(KMD_IOCTL_TYPE, KMD_IOCTL_FUNC + 2, METHOD_BUFFERED, FILE_ANY_ACCESS)
-#define LIBIHT_KMD_IOC_DUMP_LBR         CTL_CODE(KMD_IOCTL_TYPE, KMD_IOCTL_FUNC + 3, METHOD_BUFFERED, FILE_ANY_ACCESS)
-#define LIBIHT_KMD_IOC_SELECT_LBR       CTL_CODE(KMD_IOCTL_TYPE, KMD_IOCTL_FUNC + 4, METHOD_BUFFERED, FILE_ANY_ACCESS)
+// TODO: Is IOCTL macros really needed?
+#define LIBIHT_KMD_IOCTL_TYPE       0x8888
+#define LIBIHT_KMD_IOCTL_FUNC       0x888
+#define LIBIHT_KMD_IOCTL_BASE       CTL_CODE(LIBIHT_KMD_IOCTL_TYPE, LIBIHT_KMD_IOCTL_FUNC + 0, METHOD_BUFFERED, FILE_ANY_ACCESS)
 
 //
 // Type definitions

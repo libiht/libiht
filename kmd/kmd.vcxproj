@@ -116,7 +116,7 @@
     <FilesToPackage Include="$(TargetPath)" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\commons\cpu.c" />
+    <ClCompile Include="..\commons\bts.c" />
     <ClCompile Include="..\commons\debug.c" />
     <ClCompile Include="..\commons\lbr.c" />
     <ClCompile Include="infinity_hook\hde\hde64.cpp" />
@@ -125,7 +125,7 @@
     <ClCompile Include="src\xplat_kmd.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\commons\cpu.h" />
+    <ClInclude Include="..\commons\bts.h" />
     <ClInclude Include="..\commons\debug.h" />
     <ClInclude Include="..\commons\lbr.h" />
     <ClInclude Include="..\commons\types.h" />

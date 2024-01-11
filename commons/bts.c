@@ -185,7 +185,7 @@ s32 dump_bts(struct bts_ioctl_request *request)
 {
     struct bts_state *state;
     struct bts_record *record;
-    u32 i, start, end;
+    u64 i, start, end;
 
     state = find_bts_state(request->pid);
     if (state == NULL)

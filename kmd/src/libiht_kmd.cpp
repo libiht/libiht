@@ -10,7 +10,7 @@
 //                   Reference: https://github.com/lyshark/WindowsKernelBook
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Dec 14, 2023
+//   Last Modified : Jan 11, 2023
 //
 
 // Include Files
@@ -89,41 +89,17 @@ VOID create_proc_notify(PEPROCESS proc, HANDLE proc_id,
     PPS_CREATE_NOTIFY_INFO create_info)
 {
     UNREFERENCED_PARAMETER(proc);
-    struct lbr_state *parent_state, *child_state, *state;
-
     if (create_info != NULL)
     {
         // Process is being created
-        xprintdbg("LIBIHT-KMD: Process %ld is being created, parent: %ld\n", proc_id, create_info->ParentProcessId);
-
-        parent_state = find_lbr_state((u32)(UINT_PTR)create_info->ParentProcessId);
-        if (parent_state == NULL)
-            // Ignore process that is not being monitored
-            return;
-
-        child_state = find_lbr_state((u32)(UINT_PTR)proc_id);
-        if (child_state != NULL)
-        {
-            // Set up trace for new process
-            child_state->lbr_select = parent_state->lbr_select;
-            child_state->pid = (u32)(UINT_PTR)proc_id;
-            child_state->parent = parent_state;
-
-            insert_lbr_state(child_state);
-            xprintdbg("LIBIHT-KMD: New child_state is created & inserted to monitor list\n");
-        }
-        else
-        {
-            xprintdbg("LIBIHT-KMD: New child_state is NULL, create state failed\n");
-        }
+        lbr_newproc_handler((u32)(UINT_PTR)create_info->ParentProcessId, (u32)proc_id);
+        // TODO: Integrate BTS
+        //bts_newproc_handler((u32)(UINT_PTR)create_info->ParentProcessId, (u32)proc_id);
     }
     else
     {
         // Process is being terminated
-        xprintdbg("LIBIHT-KMD: Process %ld is being terminated\n", proc_id);
-        state = find_lbr_state((u32)(UINT_PTR)proc_id);
-        if (state != NULL)
-            remove_lbr_state(state);
+        // TODO: remove the process? But this feature not implemented on lkm
     }
 }
 
@@ -143,12 +119,9 @@ VOID create_proc_notify(PEPROCESS proc, HANDLE proc_id,
 
 void __fastcall cswitch_call_back(u32 new_proc, u32 old_proc)
 {
-    // xprintdbg(KERN_INFO "LIBIHT_KMD: Context switch: %s[%d] -> %s[%d]\n",
-    //        prev->comm, prev->pid, next->comm, next->pid);
-
-    // Dump/restore registers
-    put_lbr(new_proc);
-    get_lbr(old_proc);
+    lbr_cswitch_handler(old_proc, new_proc);
+    // TODO: Integrate BTS
+    //bts_cswitch_handler(old_proc, new_proc);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -269,22 +242,21 @@ NTSTATUS device_ioctl(PDEVICE_OBJECT device_obj, PIRP Irp)
 {
     PIO_STACK_LOCATION irp_stack;
     ULONG ioctl_cmd;
-    struct lbr_state* state;
-    struct ioctl_request* request;
+    struct xioctl_request* request;
     u64 request_size;
     NTSTATUS status = STATUS_SUCCESS;
 
     UNREFERENCED_PARAMETER(device_obj);
 
+    // Copy user request
     irp_stack = IoGetCurrentIrpStackLocation(Irp);
-
     ioctl_cmd = irp_stack->Parameters.DeviceIoControl.IoControlCode;
     request_size = irp_stack->Parameters.DeviceIoControl.InputBufferLength;
-    request = (struct ioctl_request*)Irp->AssociatedIrp.SystemBuffer; // Input buffer
+    request = (struct xioctl_request*)Irp->AssociatedIrp.SystemBuffer; // Input buffer
 
-    if (request_size != sizeof(ioctl_request))
+    if (request_size != sizeof(xioctl_request))
     {
-        xprintdbg("LIBIHT-KMD: Wrong request size of %ld, expect: %ld\n", request_size, sizeof(ioctl_request));
+        xprintdbg("LIBIHT-KMD: Wrong request size of %ld, expect: %ld\n", request_size, sizeof(xioctl_request));
         status = STATUS_INVALID_DEVICE_REQUEST;
         Irp->IoStatus.Status = status;
         Irp->IoStatus.Information = 0;
@@ -293,74 +265,27 @@ NTSTATUS device_ioctl(PDEVICE_OBJECT device_obj, PIRP Irp)
         return status;
     }
 
-    xprintdbg("LIBIHT-KMD: Got ioctl argument %#x!\n", ioctl_cmd);
-    xprintdbg("LIBIHT-KMD: request select bits: %lld\n", request->lbr_select);
-    xprintdbg("LIBIHT-KMD: request pid: %d\n", request->pid);
-
-    switch (ioctl_cmd)
+    // Process request
+    if (request->cmd <= LIBIHT_IOCTL_LBR_END)
     {
-    case(LIBIHT_KMD_IOC_ENABLE_TRACE):
-        xprintdbg("LIBIHT-KMD: ENABLE_TRACE\n");
-        // Enable trace for assigned process
-        state = find_lbr_state(request->pid);
-        if (state)
-        {
-            xprintdbg("LIBIHT-KMD: Process %d already enabled\n", request->pid);
+        // LBR request
+        xprintdbg("LIBIHT-KMD: LBR request\n");
+        if (lbr_ioctl_handler(request) != 0)
             status = STATUS_UNSUCCESSFUL;
-            break;
-        }
-        state = create_lbr_state();
-        if (state == NULL)
-        {
-            xprintdbg("LIBIHT-KMD: create lbr_state failed\n");
-            status = STATUS_UNSUCCESSFUL;
-            break;
-        }
-
-        // Set the field
-        state->lbr_select = request->lbr_select ? request->lbr_select : LBR_SELECT;
-        state->pid = request->pid ? request->pid : (u32)(ULONG_PTR)PsGetCurrentProcessId();
-        state->parent = NULL;
-
-        insert_lbr_state(state);
-        break;
-    case(LIBIHT_KMD_IOC_DISABLE_TRACE):
-        xprintdbg("LIBIHT-KMD: DISABLE_TRACE\n");
-        // Disable trace for assigned process (and its children)
-        state = find_lbr_state(request->pid);
-        if (state == NULL)
-        {
-            xprintdbg("LIBIHT-KMD: find lbr_state failed\n");
-            status = STATUS_UNSUCCESSFUL;
-            break;
-        }
-
-        remove_lbr_state(state);
-        break;
-    case(LIBIHT_KMD_IOC_DUMP_LBR):
-        xprintdbg("LIBIHT-KMD: DUMP_LBR\n");
-        // Dump LBR info for assigned process
-        dump_lbr(request->pid);
-        break;
-    case(LIBIHT_KMD_IOC_SELECT_LBR):
-        xprintdbg("LIBIHT-KMD: SELECT_LBR\n");
-        // Update the select bits for assigned process
-        state = find_lbr_state(request->pid);
-        if (state == NULL)
-        {
-            xprintdbg("LIBIHT-KMD: find lbr_state failed\n");
-            status = STATUS_UNSUCCESSFUL;
-            break;
-        }
-
-        state->lbr_select = request->lbr_select;
-        break;
-    default:
-        // Error command code
-        xprintdbg("LIBIHT-KMD: Error IOCTL command \n");
-        status = STATUS_INVALID_DEVICE_REQUEST;
-        break;
     }
+	else if (request->cmd <= LIBIHT_IOCTL_BTS_END)
+	{
+		// BTS request
+		xprintdbg("LIBIHT-KMD: BTS request\n");
+		if (bts_ioctl_handler(request) != 0)
+			status = STATUS_UNSUCCESSFUL;
+	}
+	else
+	{
+		// Unknown request
+		xprintdbg("LIBIHT-KMD: Unknown request\n");
+		status = STATUS_INVALID_DEVICE_REQUEST;
+	}
 
     // Complete the request
     Irp->IoStatus.Status = status;
@@ -413,13 +338,6 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_obj, PUNICODE_STRING reg_path)
     // LINKER_FLAGS=/INTEGRITYCHECK
     bypass_check_sign(driver_obj);
 
-    // Check availability of the cpu
-    if (identify_cpu() < 0)
-    {
-        xprintdbg("LIBIHT-KMD: Identify CPU failed\n");
-        return STATUS_UNSUCCESSFUL;
-    }
-
     // Create user interactive helper device
     xprintdbg("LIBIHT-KMD: Creating helper device...\n");
     status = device_create(driver_obj);
@@ -441,6 +359,10 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_obj, PUNICODE_STRING reg_path)
     // Init LBR
     lbr_init();
 
+    // TODO: Integrate BTS
+    //// Init BTS
+    //bts_init();
+
     xprintdbg("LIBIHT-KMD: Initialized\n");
     return STATUS_SUCCESS;
 }
@@ -459,9 +381,12 @@ NTSTATUS DriverExit(PDRIVER_OBJECT driver_obj)
 {
     NTSTATUS status;
     UNREFERENCED_PARAMETER(driver_obj);
-    //struct lbr_state* curr, * prev;
 
     xprintdbg("LIBIHT-KMD: Exiting...\n");
+
+    // TODO: Integrate BTS
+    //// Exit BTS
+    //bts_exit();
 
     // Exit LBR
     lbr_exit();
