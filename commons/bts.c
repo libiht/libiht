@@ -363,7 +363,7 @@ void remove_bts_state(struct bts_state *old_state)
     xprintdbg("LIBIHT-COM: Remove BTS state for pid %d.\n",
                 old_state->bts_request.pid);
     xlist_del(&old_state->list);
-    xfree(old_state->ds_area->bts_buffer_base);
+    xfree((void *)old_state->ds_area->bts_buffer_base);
     xfree(old_state->ds_area);
     xfree(old_state);
     xrelease_lock(bts_state_lock, irql_flag);
@@ -397,7 +397,7 @@ void free_bts_state_list(void)
                     curr_state->bts_request.pid);
 
         xlist_del(curr_state->list);
-        xfree(curr_state->ds_area->bts_buffer_base);
+        xfree((void *)curr_state->ds_area->bts_buffer_base);
         xfree(curr_state->ds_area);
         xfree(curr_state);
     }
