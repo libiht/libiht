@@ -48,6 +48,7 @@ static const struct cpu_to_lbr cpu_lbr_maps[] = {
 //
 // Function     : get_lbr
 // Description  : Read the LBR registers into kernel maintained datastructure.
+//                And pause the LBR tracing.
 //
 // Inputs       : state - the LBR state
 // Outputs      : void
@@ -82,6 +83,7 @@ void get_lbr(struct lbr_state *state)
 //
 // Function     : put_lbr
 // Description  : Write the LBR registers from kernel maintained datastructure.
+//                And resume the LBR tracing.
 //
 // Inputs       : state - the LBR state
 // Outputs      : void
@@ -119,7 +121,7 @@ void put_lbr(struct lbr_state *state)
 //                function is called with interrupts disabled (either on single
 //                core or with interrupts disabled for that core).
 //
-// Inputs       : enable - TRUE to enable LBR, FALSE to disable LBR
+// Inputs       : void
 // Outputs      : void
 
 void flush_lbr(void)
@@ -215,7 +217,10 @@ s32 disable_lbr(struct lbr_ioctl_request *request)
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Function     : dump_lbr
-// Description  : Dump the LBR registers for the given process id
+// Description  : Dump the LBR registers for the given process id.
+//
+// Inputs       : request - the LBR ioctl request
+// Outputs      : s32 - 0 on success, -1 on failure
 
 s32 dump_lbr(struct lbr_ioctl_request *request)
 {
@@ -292,7 +297,7 @@ s32 config_lbr(struct lbr_ioctl_request *request)
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Function     : create_lbr_state
-// Description  : Create a new LBR state for the given process id.
+// Description  : Create a new blank LBR state.
 //
 // Inputs       : pid - the process id
 // Outputs      : struct lbr_state* - the newly created LBR state
@@ -431,7 +436,7 @@ void free_lbr_state_list(void)
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Function     : lbr_ioctl
+// Function     : lbr_ioctl_handler
 // Description  : The ioctl handler for the LBR feature.
 //
 // Inputs       : request - the LBR ioctl request

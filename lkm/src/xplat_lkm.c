@@ -5,7 +5,7 @@
 //                   Linux kernel module.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Dec 03, 2023
+//   Last Modified : Jan 11, 2023
 //
 
 #include "../../commons/xplat.h"
@@ -81,9 +81,9 @@ void xlock_core(void *old_irql)
 //
 // Function     : xrelease_core
 // Description  : Cross platform unlock core function. Restore IRQL to
-//                the old IRQL.
+//                the new IRQL.
 //
-// Inputs       : new_irql - pointer to the old IRQL.
+// Inputs       : new_irql - pointer to the new IRQL.
 // Outputs      : void
 
 void xrelease_core(void *new_irql)

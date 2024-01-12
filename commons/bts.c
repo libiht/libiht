@@ -67,7 +67,9 @@ void put_bts(struct bts_state *state)
 ////////////////////////////////////////////////////////////////////////////////
 //
 // Function     : flush_bts
-// Description  : Flush the BTS buffer.
+// Description  : Flush the BTS buffer. Caller should ensure this function is
+//                called with interrupts disabled (either on single core or
+//                with interrupts disabled for that core).
 //
 // Inputs       : void
 // Outputs      : void
@@ -266,7 +268,7 @@ s32 config_bts(struct bts_ioctl_request *request)
 // Inputs       : void
 // Outputs      : The new BTS state
 
-struct bts_state *create_bts_state()
+struct bts_state *create_bts_state(void)
 {
     struct bts_state *state;
 
@@ -361,6 +363,7 @@ void remove_bts_state(struct bts_state *old_state)
     xprintdbg("LIBIHT-COM: Remove BTS state for pid %d.\n",
                 old_state->bts_request.pid);
     xlist_del(&old_state->list);
+    xfree(old_state->ds_area->bts_buffer_base);
     xfree(old_state->ds_area);
     xfree(old_state);
     xrelease_lock(bts_state_lock, irql_flag);
@@ -394,6 +397,7 @@ void free_bts_state_list(void)
                     curr_state->bts_request.pid);
 
         xlist_del(curr_state->list);
+        xfree(curr_state->ds_area->bts_buffer_base);
         xfree(curr_state->ds_area);
         xfree(curr_state);
     }
@@ -488,13 +492,13 @@ void bts_newproc_handler(u32 parent_pid, u32 child_pid)
     parent_state = find_bts_state(parent_pid);
     if (parent_state == NULL)
         return;
-    
+
     xprintdbg("LIBIHT-COM: BTS new process %d parent pid %d\n",
             child_pid, parent_pid);
     child_state = create_bts_state();
     if (child_state == NULL)
         return;
-    
+
     child_state->parent = parent_state;
     child_state->bts_request.pid = child_pid;
     child_state->bts_request.bts_config = parent_state->bts_request.bts_config;
