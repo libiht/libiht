@@ -58,7 +58,7 @@ struct xioctl_request{
     union {
         struct lbr_ioctl_request lbr;
         struct bts_ioctl_request bts;
-    } data;
+    } body;
 };
 
 #endif // _COMMONS_XIOCTL_H
