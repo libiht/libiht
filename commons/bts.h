@@ -124,13 +124,31 @@ struct ds_area
     u64 pebs_interrupt_threshold;   // PEBS placeholder
 };
 
+// Define BTS configuration
+struct bts_config
+{
+    u32 pid;                        // Process ID
+    u64 bts_config;                 // MSR_IA32_DEBUGCTLMSR
+    u64 bts_buffer_size;            // BTS buffer size
+};
+
+// Define BTS data
+// TODO: pay attention when using this struct in dump bts
+struct bts_data
+{
+    struct bts_record *bts_buffer_base; // BTS buffer base
+    u64 bts_index;                      // BTS current index
+    u64 bts_absolute_maximum;           // BTS absolute maximum
+    u64 bts_interrupt_threshold;        // BTS interrupt threshold
+};
+
 // Define BTS state
 struct bts_state
 {
-    char list[MAX_LIST_LEN];        // Kernel linked list
-    struct bts_state *parent;       // Parent bts_state
-    struct bts_ioctl_request bts_request;
-    struct ds_area *ds_area;        // Debug Store area pointer
+    char list[MAX_LIST_LEN];            // Kernel linked list
+    struct bts_state *parent;           // Parent bts_state
+    struct bts_config config;           // BTS configuration
+    struct ds_area *ds_area;            // Debug Store area pointer
 };
 
 //

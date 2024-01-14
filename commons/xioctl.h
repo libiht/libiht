@@ -14,6 +14,8 @@
 //
 // Include Files
 #include "types.h"
+#include "lbr.h"
+#include "bts.h"
 
 //
 // Library constants
@@ -40,15 +42,14 @@ enum IOCTL {
 
 // Define the lbr IOCTL structure
 struct lbr_ioctl_request{
-    u32 pid;
-    u64 lbr_select;
+    struct lbr_config lbr_config;
+    struct lbr_data *buffer;
 };
 
 // Define the bts IOCTL structure
 struct bts_ioctl_request{
-    u32 pid;
-    u64 bts_config;
-    u64 bts_buffer_size;
+    struct bts_config bts_config;
+    struct bts_data *buffer;
 };
 
 // Define the xIOCTL structure

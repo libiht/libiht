@@ -78,14 +78,27 @@ struct lbr_stack_entry
     u64 to;     // Retrieve from MSR_LBR_NHM_TO + offset
 };
 
+// Define LBR configuration
+struct lbr_config
+{
+    u32 pid;                          // Process ID
+    u64 lbr_select;                   // MSR_LBR_SELECT
+};
+
+// Define LBR data
+struct lbr_data
+{
+    u64 lbr_tos;                      // MSR_LBR_TOS
+    struct lbr_stack_entry entries[]; // Flexible array member
+};
+
 // Define LBR state
 struct lbr_state
 {
     char list[MAX_LIST_LEN];          // Kernel linked list
     struct lbr_state *parent;         // Parent lbr_state
-    struct lbr_ioctl_request lbr_request;
-    u64 lbr_tos;                      // MSR_LBR_TOS
-    struct lbr_stack_entry entries[]; // flexible array member
+    struct lbr_config config;         // LBR configuration
+    struct lbr_data *data;            // LBR data
 };
 
 // CPU - LBR map
