@@ -58,7 +58,7 @@ void xfree(void *ptr)
 
 void *xmemset(void *ptr, s32 c, u64 cnt)
 {
-    memset(ptr, c, cnt);
+    return memset(ptr, c, cnt);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,7 +74,7 @@ void *xmemset(void *ptr, s32 c, u64 cnt)
 
 void *xmemcpy(void *dst, void *src, u64 cnt)
 {
-    memcpy(dst, src, cnt);
+    return memcpy(dst, src, cnt);
 } 
 
 //
