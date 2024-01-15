@@ -314,31 +314,34 @@ s32 config_lbr(struct lbr_ioctl_request *request)
 struct lbr_state* create_lbr_state(void)
 {
     struct lbr_state* state;
+    struct lbr_data* data;
+    struct lbr_stack_entry* entries;
 
     state = xmalloc(sizeof(struct lbr_state));
     if (state == NULL)
         return NULL;
 
-    state->data = xmalloc(sizeof(struct lbr_data));
-    if (state->data == NULL)
+    data = xmalloc(sizeof(struct lbr_data));
+    if (data == NULL)
     {
         xfree(state);
         return NULL;
     }
 
-    state->data->entries = xmalloc(
-                            sizeof(struct lbr_stack_entry) * lbr_capacity);
-    if (state->data->entries == NULL)
+    entries = xmalloc(sizeof(struct lbr_stack_entry) * lbr_capacity);
+    if (entries == NULL)
     {
-        xfree(state->data);
+        xfree(data);
         xfree(state);
         return NULL;
     }
 
     xmemset(state, 0, sizeof(struct lbr_state));
-    xmemset(state->data, 0, sizeof(struct lbr_data));
-    xmemset(state->data->entries, 0,
-                sizeof(struct lbr_stack_entry) * lbr_capacity);
+    xmemset(data, 0, sizeof(struct lbr_data));
+    xmemset(entries, 0, sizeof(struct lbr_stack_entry) * lbr_capacity);
+
+    state->data = data;
+    data->entries = entries;
 
     return state;
 }
