@@ -58,11 +58,27 @@ void xfree(void *ptr)
 // Inputs       : ptr - pointer to the memory to be set.
 //                c   - value to be set.
 //                cnt - size of the memory to be set.
-// Outputs      : void
+// Outputs      : void* - pointer to the set memory.
 
-void xmemset(void* ptr, s32 c, u64 cnt)
+void *xmemset(void* ptr, s32 c, u64 cnt)
 {
-    memset(ptr, c, cnt);
+    return memset(ptr, c, cnt);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : xmemcpy
+// Description  : Cross platform kernel memcpy function. Copy memory from one
+//                location to another.
+//
+// Inputs       : dst - pointer to the destination memory.
+//                src - pointer to the source memory.
+//                cnt - size of the memory to be copied.
+// Outputs      : void* - pointer to the destination memory.
+
+void* xmemcpy(void* dst, void* src, u64 cnt)
+{
+    return memcpy(dst, src, cnt);
 }
 
 //
