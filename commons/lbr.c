@@ -67,13 +67,13 @@ void get_lbr(struct lbr_state *state)
     // Read out LBR registers
     xacquire_lock(lbr_state_lock, irql_flag);
 
-    xrdmsr(MSR_LBR_SELECT, &state->lbr_request.lbr_select);
-    xrdmsr(MSR_LBR_TOS, &state->lbr_tos);
+    xrdmsr(MSR_LBR_SELECT, &state->config.lbr_select);
+    xrdmsr(MSR_LBR_TOS, &state->data->lbr_tos);
 
     for (i = 0; i < lbr_capacity; i++)
     {
-        xrdmsr(MSR_LBR_NHM_FROM + i, &state->entries[i].from);
-        xrdmsr(MSR_LBR_NHM_TO + i, &state->entries[i].to);
+        xrdmsr(MSR_LBR_NHM_FROM + i, &state->data->entries[i].from);
+        xrdmsr(MSR_LBR_NHM_TO + i, &state->data->entries[i].to);
     }
 
     xrelease_lock(lbr_state_lock, irql_flag);
@@ -97,13 +97,13 @@ void put_lbr(struct lbr_state *state)
     // Write in LBR registers
     xacquire_lock(lbr_state_lock, irql_flag);
 
-    xwrmsr(MSR_LBR_SELECT, state->lbr_request.lbr_select);
-    xwrmsr(MSR_LBR_TOS, state->lbr_tos);
+    xwrmsr(MSR_LBR_SELECT, state->config.lbr_select);
+    xwrmsr(MSR_LBR_TOS, state->data->lbr_tos);
 
     for (i = 0; i < lbr_capacity; i++)
     {
-        xwrmsr(MSR_LBR_NHM_FROM + i, state->entries[i].from);
-        xwrmsr(MSR_LBR_NHM_TO + i, state->entries[i].to);
+        xwrmsr(MSR_LBR_NHM_FROM + i, state->data->entries[i].from);
+        xwrmsr(MSR_LBR_NHM_TO + i, state->data->entries[i].to);
     }
 
     xrelease_lock(lbr_state_lock, irql_flag);
@@ -163,10 +163,11 @@ s32 enable_lbr(struct lbr_ioctl_request *request)
 {
     struct lbr_state *state;
 
-    state = find_lbr_state(request->pid);
+    state = find_lbr_state(request->lbr_config.pid);
     if (state)
     {
-        xprintdbg("LIBIHT-COM: LBR already enabled for pid %d\n", request->pid);
+        xprintdbg("LIBIHT-COM: LBR already enabled for pid %d\n",
+                    request->lbr_config.pid);
         return -1;
     }
 
@@ -177,15 +178,16 @@ s32 enable_lbr(struct lbr_ioctl_request *request)
         return -1;
     }
 
-    // Setup fields for LBR state
+    // Setup config fields for LBR state
     state->parent = NULL;
-    state->lbr_request.pid = request->pid ? request->pid : xgetcurrent_pid();
-    state->lbr_request.lbr_select = request->lbr_select ?
-                                    request->lbr_select : LBR_SELECT;
+    state->config.pid = request->lbr_config.pid ?
+                                    request->lbr_config.pid : xgetcurrent_pid();
+    state->config.lbr_select = request->lbr_config.lbr_select ?
+                                    request->lbr_config.lbr_select : LBR_SELECT;
     insert_lbr_state(state);
 
     // If the requesting process is the current process, trace it right away
-    if (state->lbr_request.pid == xgetcurrent_pid())
+    if (state->config.pid == xgetcurrent_pid())
         put_lbr(state);
     return 0;
 }
@@ -203,10 +205,11 @@ s32 disable_lbr(struct lbr_ioctl_request *request)
 {
     struct lbr_state *state;
 
-    state = find_lbr_state(request->pid);
+    state = find_lbr_state(request->lbr_config.pid);
     if (state == NULL)
     {
-        xprintdbg("LIBIHT-COM: LBR not enabled for pid %d\n", request->pid);
+        xprintdbg("LIBIHT-COM: LBR not enabled for pid %d\n",
+                    request->lbr_config.pid);
         return -1;
     }
 
@@ -228,15 +231,16 @@ s32 dump_lbr(struct lbr_ioctl_request *request)
     struct lbr_state* state;
     char irql_flag[MAX_IRQL_LEN];
 
-    state = find_lbr_state(request->pid);
+    state = find_lbr_state(request->lbr_config.pid);
     if (state == NULL)
     {
-        xprintdbg("LIBIHT-COM: LBR not enabled for pid %d\n", request->pid);
+        xprintdbg("LIBIHT-COM: LBR not enabled for pid %d\n",
+                    request->lbr_config.pid);
         return -1;
     }
 
     // Examine if the current process is the owner of the LBR state
-    if (state->lbr_request.pid == xgetcurrent_pid())
+    if (state->config.pid == xgetcurrent_pid())
     {
         xprintdbg("LIBIHT-COM: Dump LBR for current process\n");
         // Get fresh LBR info
@@ -247,17 +251,21 @@ s32 dump_lbr(struct lbr_ioctl_request *request)
     xacquire_lock(lbr_state_lock, irql_flag);
 
     // Dump the LBR state
-    xprintdbg("PROC_PID:             %d\n", state->lbr_request.pid);
-    xprintdbg("MSR_LBR_SELECT:       0x%llx\n", state->lbr_request.lbr_select);
-    xprintdbg("MSR_LBR_TOS:          %lld\n", state->lbr_tos);
+    xprintdbg("PROC_PID:             %d\n", state->config.pid);
+    xprintdbg("MSR_LBR_SELECT:       0x%llx\n", state->config.lbr_select);
+    xprintdbg("MSR_LBR_TOS:          %lld\n", state->data->lbr_tos);
 
     for (i = 0; i < lbr_capacity; i++)
     {
-        xprintdbg("MSR_LBR_NHM_FROM[%2d]: 0x%llx\n", i, state->entries[i].from);
-        xprintdbg("MSR_LBR_NHM_TO  [%2d]: 0x%llx\n", i, state->entries[i].to);
+        xprintdbg("MSR_LBR_NHM_FROM[%2d]: 0x%llx\n", i,
+                    state->data->entries[i].from);
+        xprintdbg("MSR_LBR_NHM_TO  [%2d]: 0x%llx\n", i,
+                    state->data->entries[i].to);
     }
 
     xprintdbg("LIBIHT-COM: LBR info for cpuid: %d\n", xcoreid());
+
+    // TODO: Dump data to user request pointer
 
     xrelease_lock(lbr_state_lock, irql_flag);
 
@@ -277,15 +285,16 @@ s32 config_lbr(struct lbr_ioctl_request *request)
 {
     struct lbr_state* state;
 
-    state = find_lbr_state(request->pid);
+    state = find_lbr_state(request->lbr_config.pid);
     if (state == NULL)
     {
-        xprintdbg("LIBIHT-COM: LBR not enabled for pid %d\n", request->pid);
+        xprintdbg("LIBIHT-COM: LBR not enabled for pid %d\n",
+                    request->lbr_config.pid);
         return -1;
     }
 
     get_lbr(state);
-    state->lbr_request.lbr_select = request->lbr_select;
+    state->config.lbr_select = request->lbr_config.lbr_select;
     put_lbr(state);
 
     return 0;
@@ -305,16 +314,31 @@ s32 config_lbr(struct lbr_ioctl_request *request)
 struct lbr_state* create_lbr_state(void)
 {
     struct lbr_state* state;
-    u64 state_size;
 
-    state_size = sizeof(struct lbr_state) +
-                        lbr_capacity * sizeof(struct lbr_stack_entry);
-
-    state = xmalloc(state_size);
+    state = xmalloc(sizeof(struct lbr_state));
     if (state == NULL)
         return NULL;
 
-    xmemset(state, 0, state_size);
+    state->data = xmalloc(sizeof(struct lbr_data));
+    if (state->data == NULL)
+    {
+        xfree(state);
+        return NULL;
+    }
+
+    state->data->entries = xmalloc(
+                            sizeof(struct lbr_stack_entry) * lbr_capacity);
+    if (state->data->entries == NULL)
+    {
+        xfree(state->data);
+        xfree(state);
+        return NULL;
+    }
+
+    xmemset(state, 0, sizeof(struct lbr_state));
+    xmemset(state->data, 0, sizeof(struct lbr_data));
+    xmemset(state->data->entries, 0,
+                sizeof(struct lbr_stack_entry) * lbr_capacity);
 
     return state;
 }
@@ -343,7 +367,7 @@ struct lbr_state* find_lbr_state(u32 pid)
     {
         curr_state = (struct lbr_state *)((u64)curr_list - offset);
         curr_list = xlist_next(curr_list);
-        if (pid != 0 && curr_state->lbr_request.pid == pid)
+        if (pid != 0 && curr_state->config.pid == pid)
         {
             ret_state = curr_state;
             break;
@@ -372,7 +396,7 @@ void insert_lbr_state(struct lbr_state* new_state)
 
     xacquire_lock(lbr_state_lock, irql_flag);
     xprintdbg("LIBIHT-COM: Insert LBR state for pid %d\n",
-                new_state->lbr_request.pid);
+                new_state->config.pid);
     xlist_add(new_state->list, lbr_state_head);
     xrelease_lock(lbr_state_lock, irql_flag);
 }
@@ -394,8 +418,10 @@ void remove_lbr_state(struct lbr_state* old_state)
 
     xacquire_lock(lbr_state_lock, irql_flag);
     xprintdbg("LIBIHT-COM: Remove LBR state for pid %d\n",
-                old_state->lbr_request.pid);
+                old_state->config.pid);
     xlist_del(old_state->list);
+    xfree(old_state->data->entries);
+    xfree(old_state->data);
     xfree(old_state);
     xrelease_lock(lbr_state_lock, irql_flag);
 }
@@ -425,9 +451,11 @@ void free_lbr_state_list(void)
         curr_state = (struct lbr_state *)((u64)curr_list - offset);
         curr_list = xlist_next(curr_list);
         xprintdbg("LIBIHT-COM: Free LBR state for pid %d\n",
-                    curr_state->lbr_request.pid);
+                    curr_state->config.pid);
 
         xlist_del(curr_state->list);
+        xfree(curr_state->data->entries);
+        xfree(curr_state->data);
         xfree(curr_state);
     }
 
@@ -451,18 +479,18 @@ s32 lbr_ioctl_handler(struct xioctl_request *request)
     {
         case LIBIHT_IOCTL_ENABLE_LBR:
             xprintdbg("LIBIHT-COM: Enable LBR for pid %d\n",
-                        request->data.lbr.pid);
-            ret = enable_lbr(&request->data.lbr);
+                        request->body.lbr.lbr_config.pid);
+            ret = enable_lbr(&request->body.lbr);
             break;
         case LIBIHT_IOCTL_DISABLE_LBR:
             xprintdbg("LIBIHT-COM: Disable LBR for pid %d\n",
-                        request->data.lbr.pid);
-            ret = disable_lbr(&request->data.lbr);
+                        request->body.lbr.lbr_config.pid);
+            ret = disable_lbr(&request->body.lbr);
             break;
         case LIBIHT_IOCTL_DUMP_LBR:
             xprintdbg("LIBIHT-COM: Dump LBR for pid %d\n",
-                        request->data.lbr.pid);
-            ret = dump_lbr(&request->data.lbr);
+                        request->body.lbr.lbr_config.pid);
+            ret = dump_lbr(&request->body.lbr);
             break;
         default:
             xprintdbg("LIBIHT-COM: Invalid LBR ioctl command\n");
@@ -492,14 +520,14 @@ void lbr_cswitch_handler(u32 prev_pid, u32 next_pid)
     if (prev_state)
     {
         xprintdbg("LIBIHT-COM: LBR context switch from pid %d on cpu core %d\n",
-                    prev_state->lbr_request.pid, xcoreid());
+                    prev_state->config.pid, xcoreid());
         get_lbr(prev_state);
     }
 
     if (next_state)
     {
         xprintdbg("LIBIHT-COM: LBR context switch to pid %d on cpu core %d\n",
-                    next_state->lbr_request.pid, xcoreid());
+                    next_state->config.pid, xcoreid());
         put_lbr(next_state);
     }
 }
@@ -517,7 +545,6 @@ void lbr_newproc_handler(u32 parent_pid, u32 child_pid)
 {
     struct lbr_state *parent_state, *child_state;
     char irql_flag[MAX_IRQL_LEN];
-    int i;
 
     parent_state = find_lbr_state(parent_pid);
     if (parent_state == NULL)
@@ -532,13 +559,11 @@ void lbr_newproc_handler(u32 parent_pid, u32 child_pid)
     xacquire_lock(lbr_state_lock, irql_flag);
     // Copy parent state to child state
     child_state->parent = parent_state;
-    child_state->lbr_request.pid = child_pid;
-    child_state->lbr_request.lbr_select = parent_state->lbr_request.lbr_select;
-    for (i = 0; i < lbr_capacity; i++)
-    {
-        child_state->entries[i].from = parent_state->entries[i].from;
-        child_state->entries[i].to = parent_state->entries[i].to;
-    }
+    child_state->config.pid = child_pid;
+    child_state->config.lbr_select = parent_state->config.lbr_select;
+    xmemcpy(child_state->data, parent_state->data,
+                sizeof(struct lbr_data) +
+                    lbr_capacity * sizeof(struct lbr_stack_entry));
     xrelease_lock(lbr_state_lock, irql_flag);
     insert_lbr_state(child_state);
 

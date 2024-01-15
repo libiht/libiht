@@ -103,14 +103,6 @@ extern "C" {
 //
 // Type definitions
 
-// Define BTS record
-struct bts_record
-{
-    u64 from;   // branch from
-    u64 to;     // branch to
-    u64 misc;   // misc information
-};
-
 // Define Debug Store buffer management area (Assuming 64-bit)
 struct ds_area
 {
@@ -122,24 +114,6 @@ struct ds_area
     u64 pebs_index;                 // PEBS placeholder
     u64 pebs_absolute_maximum;      // PEBS placeholder
     u64 pebs_interrupt_threshold;   // PEBS placeholder
-};
-
-// Define BTS configuration
-struct bts_config
-{
-    u32 pid;                        // Process ID
-    u64 bts_config;                 // MSR_IA32_DEBUGCTLMSR
-    u64 bts_buffer_size;            // BTS buffer size
-};
-
-// Define BTS data
-// TODO: pay attention when using this struct in dump bts
-struct bts_data
-{
-    struct bts_record *bts_buffer_base; // BTS buffer base
-    u64 bts_index;                      // BTS current index
-    u64 bts_absolute_maximum;           // BTS absolute maximum
-    u64 bts_interrupt_threshold;        // BTS interrupt threshold
 };
 
 // Define BTS state

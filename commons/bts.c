@@ -35,7 +35,7 @@ void get_bts(struct bts_state *state)
 
     // Disable BTS
     xrdmsr(MSR_IA32_DEBUGCTLMSR, &dbgctlmsr);
-    dbgctlmsr &= ~state->bts_request.bts_config;
+    dbgctlmsr &= ~state->config.bts_config;
     xwrmsr(MSR_IA32_DEBUGCTLMSR, dbgctlmsr);
 
     // Reset BTS debug store buffer pointer
@@ -60,7 +60,7 @@ void put_bts(struct bts_state *state)
 
     // Enable BTS
     xrdmsr(MSR_IA32_DEBUGCTLMSR, &dbgctlmsr);
-    dbgctlmsr |= state->bts_request.bts_config;
+    dbgctlmsr |= state->config.bts_config;
     xwrmsr(MSR_IA32_DEBUGCTLMSR, dbgctlmsr);
 }
 
@@ -112,11 +112,11 @@ s32 enable_bts(struct bts_ioctl_request *request)
 {
     struct bts_state *state;
 
-    state = find_bts_state(request->pid);
+    state = find_bts_state(request->bts_config.pid);
     if (state)
     {
         xprintdbg("LIBIHT-COM: BTS already enabled for pid %d.\n",
-                    request->pid);
+                    request->bts_config.pid);
         return -1;
     }
 
@@ -129,24 +129,24 @@ s32 enable_bts(struct bts_ioctl_request *request)
 
     // Setup fields for BTS state
     state->parent = NULL;
-    state->bts_request.pid = request->pid ?
-                request->pid : xgetcurrent_pid();
-    state->bts_request.bts_config = request->bts_config ?
-                request->bts_config : DEFAULT_BTS_CONFIG;
-    state->bts_request.bts_buffer_size = request->bts_buffer_size ?
-                request->bts_buffer_size : DEFAULT_BTS_BUFFER_SIZE;
+    state->config.pid = request->bts_config.pid ?
+                request->bts_config.pid : xgetcurrent_pid();
+    state->config.bts_config = request->bts_config.bts_config ?
+                request->bts_config.bts_config : DEFAULT_BTS_CONFIG;
+    state->config.bts_buffer_size = request->bts_config.bts_buffer_size ?
+                request->bts_config.bts_buffer_size : DEFAULT_BTS_BUFFER_SIZE;
 
     // Setup fields for BTS debug store area
-    state->ds_area->bts_buffer_base = (u64)xmalloc(state->bts_request.bts_buffer_size);
+    state->ds_area->bts_buffer_base = (u64)xmalloc(state->config.bts_buffer_size);
     state->ds_area->bts_index = 0;
     state->ds_area->bts_absolute_maximum =
             state->ds_area->bts_buffer_base +
-            state->bts_request.bts_buffer_size + 1;
+            state->config.bts_buffer_size + 1;
     // Not yet support state->ds_area->bts_interrupt_threshold
 
     insert_bts_state(state);
     // If the requesting process is the current process, trace it right away
-    if (state->bts_request.pid == xgetcurrent_pid())
+    if (state->config.pid == xgetcurrent_pid())
         put_bts(state);
     return 0;
 }
@@ -163,11 +163,11 @@ s32 disable_bts(struct bts_ioctl_request *request)
 {
     struct bts_state *state;
 
-    state = find_bts_state(request->pid);
+    state = find_bts_state(request->bts_config.pid);
     if (state == NULL)
     {
         xprintdbg("LIBIHT-COM: BTS not enabled for pid %d.\n",
-                    request->pid);
+                    request->bts_config.pid);
         return -1;
     }
 
@@ -189,11 +189,11 @@ s32 dump_bts(struct bts_ioctl_request *request)
     struct bts_record *record;
     u64 i, start, end;
 
-    state = find_bts_state(request->pid);
+    state = find_bts_state(request->bts_config.pid);
     if (state == NULL)
     {
         xprintdbg("LIBIHT-COM: BTS not enabled for pid %d.\n",
-                    request->pid);
+                    request->bts_config.pid);
         return -1;
     }
 
@@ -207,6 +207,8 @@ s32 dump_bts(struct bts_ioctl_request *request)
         xprintdbg("LIBIHT-COM: BTS record %d: from %llx to %llx.\n",
                     i, record->from, record->to);
     }
+
+    // TODO: Dump data to user request pointer
 
     return 0;
 }
@@ -224,34 +226,34 @@ s32 config_bts(struct bts_ioctl_request *request)
 {
     struct bts_state *state;
 
-    state = find_bts_state(request->pid);
+    state = find_bts_state(request->bts_config.pid);
     if (state == NULL)
     {
         xprintdbg("LIBIHT-COM: BTS not enabled for pid %d.\n",
-                    request->pid);
+                    request->bts_config.pid);
         return -1;
     }
 
-    state->bts_request.bts_config = request->bts_config;
+    state->config.bts_config = request->bts_config.bts_config;
     // If the current process is the target process, we need to
     // disable and re-enable BTS to apply the new configuration
-    if (xgetcurrent_pid() == request->pid)
+    if (xgetcurrent_pid() == request->bts_config.pid)
     {
         // TODO: check if it works
         get_bts(state);
 
-        if (request->bts_buffer_size != state->bts_request.bts_buffer_size &&
-            request->bts_buffer_size != 0)
+        if (request->bts_config.bts_buffer_size != state->config.bts_buffer_size &&
+            request->bts_config.bts_buffer_size != 0)
         {
-            state->bts_request.bts_buffer_size = request->bts_buffer_size;
+            state->config.bts_buffer_size = request->bts_config.bts_buffer_size;
 
             // Reconfigure BTS debug store area
             xfree((void *)state->ds_area->bts_buffer_base);
-            state->ds_area->bts_buffer_base = (u64)xmalloc(request->bts_buffer_size);
+            state->ds_area->bts_buffer_base = (u64)xmalloc(request->bts_config.bts_buffer_size);
             state->ds_area->bts_index = 0;
             state->ds_area->bts_absolute_maximum =
                     state->ds_area->bts_buffer_base +
-                    request->bts_buffer_size + 1;
+                    request->bts_config.bts_buffer_size + 1;
         }
 
         put_bts(state);
@@ -310,7 +312,7 @@ struct bts_state *find_bts_state(u32 pid)
     {
         curr_state = (struct bts_state *)((u64)curr_list - offset);
         curr_list = xlist_next(curr_list);
-        if (curr_state->bts_request.pid == pid)
+        if (curr_state->config.pid == pid)
         {
             ret_state = curr_state;
             break;
@@ -339,7 +341,7 @@ void insert_bts_state(struct bts_state *new_state)
 
     xacquire_lock(bts_state_lock, irql_flag);
     xprintdbg("LIBIHT-COM: Insert BTS state for pid %d.\n",
-                new_state->bts_request.pid);
+                new_state->config.pid);
     xlist_add(new_state->list, bts_state_head);
     xrelease_lock(bts_state_lock, irql_flag);
 }
@@ -361,7 +363,7 @@ void remove_bts_state(struct bts_state *old_state)
 
     xacquire_lock(bts_state_lock, irql_flag);
     xprintdbg("LIBIHT-COM: Remove BTS state for pid %d.\n",
-                old_state->bts_request.pid);
+                old_state->config.pid);
     xlist_del(&old_state->list);
     xfree((void *)old_state->ds_area->bts_buffer_base);
     xfree(old_state->ds_area);
@@ -394,7 +396,7 @@ void free_bts_state_list(void)
         curr_state = (struct bts_state *)((u64)curr_list - offset);
         curr_list = xlist_next(curr_list);
         xprintdbg("LIBIHT-COM: Free BTS state for pid %d.\n",
-                    curr_state->bts_request.pid);
+                    curr_state->config.pid);
 
         xlist_del(curr_state->list);
         xfree((void *)curr_state->ds_area->bts_buffer_base);
@@ -422,26 +424,26 @@ s32 bts_ioctl_handler(struct xioctl_request *request)
     {
     case LIBIHT_IOCTL_ENABLE_BTS:
         xprintdbg("LIBIHT-COM: Enable BTS for pid %d.\n",
-                    request->data.bts.pid);
-        ret = enable_bts(&request->data.bts);
+                    request->body.bts.bts_config.pid);
+        ret = enable_bts(&request->body.bts);
         break;
 
     case LIBIHT_IOCTL_DISABLE_BTS:
         xprintdbg("LIBIHT-COM: Disable BTS for pid %d.\n",
-                    request->data.bts.pid);
-        ret = disable_bts(&request->data.bts);
+                    request->body.bts.bts_config.pid);
+        ret = disable_bts(&request->body.bts);
         break;
 
     case LIBIHT_IOCTL_DUMP_BTS:
         xprintdbg("LIBIHT-COM: Dump BTS for pid %d.\n",
-                    request->data.bts.pid);
-        ret = dump_bts(&request->data.bts);
+                    request->body.bts.bts_config.pid);
+        ret = dump_bts(&request->body.bts);
         break;
 
     case LIBIHT_IOCTL_CONFIG_BTS:
         xprintdbg("LIBIHT-COM: Config BTS for pid %d.\n",
-                    request->data.bts.pid);
-        ret = config_bts(&request->data.bts);
+                    request->body.bts.bts_config.pid);
+        ret = config_bts(&request->body.bts);
         break;
 
     default:
@@ -472,14 +474,14 @@ void bts_cswitch_handler(u32 prev_pid, u32 next_pid)
     if (prev_state)
     {
         xprintdbg("LIBIHT-COM: BTS context switch from pid %d\n",
-            prev_state->bts_request.pid);
+            prev_state->config.pid);
         get_bts(prev_state);
     }
 
     if (next_state)
     {
         xprintdbg("LIBIHT-COM: BTS context switch to pid %d\n",
-                next_state->bts_request.pid);
+                next_state->config.pid);
         put_bts(next_state);
     }
 }
@@ -500,9 +502,9 @@ void bts_newproc_handler(u32 parent_pid, u32 child_pid)
         return;
 
     child_state->parent = parent_state;
-    child_state->bts_request.pid = child_pid;
-    child_state->bts_request.bts_config = parent_state->bts_request.bts_config;
-    child_state->bts_request.bts_buffer_size = parent_state->bts_request.bts_buffer_size;
+    child_state->config.pid = child_pid;
+    child_state->config.bts_config = parent_state->config.bts_config;
+    child_state->config.bts_buffer_size = parent_state->config.bts_buffer_size;
     // TODO: memcpy or not? overhead? If yes, acquire lock for this operation
     insert_bts_state(child_state);
 

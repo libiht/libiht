@@ -71,27 +71,6 @@ extern "C" {
 //
 // Type definitions
 
-// Define LBR stack entry
-struct lbr_stack_entry
-{
-    u64 from;   // Retrieve from MSR_LBR_NHM_FROM + offset
-    u64 to;     // Retrieve from MSR_LBR_NHM_TO + offset
-};
-
-// Define LBR configuration
-struct lbr_config
-{
-    u32 pid;                          // Process ID
-    u64 lbr_select;                   // MSR_LBR_SELECT
-};
-
-// Define LBR data
-struct lbr_data
-{
-    u64 lbr_tos;                      // MSR_LBR_TOS
-    struct lbr_stack_entry entries[]; // Flexible array member
-};
-
 // Define LBR state
 struct lbr_state
 {
