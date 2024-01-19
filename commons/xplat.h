@@ -10,7 +10,7 @@
 //                   i.e. `xplat_kmd.c` and `xplat_lkm.c` for windows and linux.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 2, 2024
+//   Last Modified : Jan 15, 2024
 //
 
 #include "types.h"
@@ -31,14 +31,17 @@ extern "C" {
 //
 // Function Prototypes
 
-void* xmalloc(u64 size);
+void *xmalloc(u64 size);
 // Cross platform kernel malloc function.
 
 void xfree(void *ptr);
 // Cross platform kernel free function.
 
-void xmemset(void *ptr, s32 c, u64 cnt);
+void *xmemset(void *ptr, s32 c, u64 cnt);
 // Cross platform kernel memset function.
+
+void *xmemcpy(void *dst, void *src, u64 cnt);
+// Cross platform kernel memcpy function.
 
 void xlock_core(void *old_irql);
 // Cross platform lock core function.

@@ -5,7 +5,7 @@
 //                   Linux kernel module.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Dec 03, 2023
+//   Last Modified : Jan 15, 2023
 //
 
 #include "../../commons/xplat.h"
@@ -24,9 +24,9 @@
 //                the kernel heap.
 //
 // Inputs       : size - size of the memory to be allocated.
-// Outputs      : void* - pointer to the allocated memory.
+// Outputs      : void * - pointer to the allocated memory.
 
-void* xmalloc(u64 size)
+void *xmalloc(u64 size)
 {
     return kmalloc(size, GFP_KERNEL);
 }
@@ -54,11 +54,28 @@ void xfree(void *ptr)
 // Inputs       : ptr - pointer to the memory to be set.
 //                c   - value to be set.
 //                cnt - size of the memory to be set.
+// Outputs      : void * - pointer to the set memory.
 
-void xmemset(void *ptr, s32 c, u64 cnt)
+void *xmemset(void *ptr, s32 c, u64 cnt)
 {
-    memset(ptr, c, cnt);
+    return memset(ptr, c, cnt);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : xmemcpy
+// Description  : Cross platform kernel memcpy function. Copy memory from one
+//                location to another.
+//
+// Inputs       : dst - pointer to the destination memory.
+//                src - pointer to the source memory.
+//                cnt - size of the memory to be copied.
+// Outputs      : void * - pointer to the destination memory.
+
+void *xmemcpy(void *dst, void *src, u64 cnt)
+{
+    return memcpy(dst, src, cnt);
+} 
 
 //
 // CPU core, hardware, register read/write functions
@@ -79,14 +96,14 @@ void xlock_core(void *old_irql)
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Function     : xunlock_core
+// Function     : xrelease_core
 // Description  : Cross platform unlock core function. Restore IRQL to
-//                the old IRQL.
+//                the new IRQL.
 //
-// Inputs       : old_irql - pointer to the old IRQL.
+// Inputs       : new_irql - pointer to the new IRQL.
 // Outputs      : void
 
-void xunlock_core(void *old_irql)
+void xrelease_core(void *new_irql)
 {
     put_cpu();
 }

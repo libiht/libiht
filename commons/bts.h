@@ -10,7 +10,7 @@
 //                   adapted from the Linux kernel source code.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Dec 25, 2023
+//   Last Modified : Jan 15, 2023
 //
 
 // Include Files
@@ -102,15 +102,6 @@ extern "C" {
 
 //
 // Type definitions
-// TODO
-
-// Define BTS record
-struct bts_record
-{
-    u64 from;   // branch from
-    u64 to;     // branch to
-    u64 misc;   // misc information
-};
 
 // Define Debug Store buffer management area (Assuming 64-bit)
 struct ds_area
@@ -128,10 +119,10 @@ struct ds_area
 // Define BTS state
 struct bts_state
 {
-    struct bts_ioctl_request bts_request;
-    struct ds_area *ds_area;        // Debug Store area pointer
-    struct bts_state *parent;       // Parent BTS state
-    char list[MAX_LIST_LEN];        // Kernel linked list
+    char list[MAX_LIST_LEN];            // Kernel linked list
+    struct bts_state *parent;           // Parent bts_state
+    struct bts_config config;           // BTS configuration
+    struct ds_area *ds_area;            // Debug Store area pointer
 };
 
 //
@@ -179,8 +170,17 @@ void insert_bts_state(struct bts_state *new_state);
 void remove_bts_state(struct bts_state *old_state);
 // Remove the BTS state from the list
 
-s32 bts_ioctl(struct xioctl_request *request);
+void free_bts_state_list(void);
+// Free the BTS state list
+
+s32 bts_ioctl_handler(struct xioctl_request *request);
 // The ioctl handler for the BTS
+
+void bts_cswitch_handler(u32 prev_pid, u32 next_pid);
+// The context switch handler for the BTS
+
+void bts_newproc_handler(u32 parent_pid, u32 child_pid);
+// The new process handler for the BTS
 
 s32 bts_check(void);
 // Check if the BTS is available

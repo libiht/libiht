@@ -58,11 +58,27 @@ void xfree(void *ptr)
 // Inputs       : ptr - pointer to the memory to be set.
 //                c   - value to be set.
 //                cnt - size of the memory to be set.
-// Outputs      : void
+// Outputs      : void* - pointer to the set memory.
 
-void xmemset(void* ptr, s32 c, u64 cnt)
+void *xmemset(void* ptr, s32 c, u64 cnt)
 {
-    memset(ptr, c, cnt);
+    return memset(ptr, c, cnt);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : xmemcpy
+// Description  : Cross platform kernel memcpy function. Copy memory from one
+//                location to another.
+//
+// Inputs       : dst - pointer to the destination memory.
+//                src - pointer to the source memory.
+//                cnt - size of the memory to be copied.
+// Outputs      : void* - pointer to the destination memory.
+
+void* xmemcpy(void* dst, void* src, u64 cnt)
+{
+    return memcpy(dst, src, cnt);
 }
 
 //
@@ -147,7 +163,7 @@ u32 xcoreid(void)
 
 u32 xgetcurrent_pid(void)
 {
-	return (u32)(ULONG_PTR)PsGetCurrentProcessId();
+    return (u32)(ULONG_PTR)PsGetCurrentProcessId();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -240,7 +256,7 @@ void xrelease_lock(void *lock, void *new_irql)
 
 void xinit_list_head(void *list)
 {
-	InitializeListHead((PLIST_ENTRY)list);
+    InitializeListHead((PLIST_ENTRY)list);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -254,7 +270,7 @@ void xinit_list_head(void *list)
 
 void xlist_add(void* new_entry, void* head)
 {
-	InsertHeadList((PLIST_ENTRY)head, (PLIST_ENTRY)new_entry);
+    InsertHeadList((PLIST_ENTRY)head, (PLIST_ENTRY)new_entry);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -282,7 +298,7 @@ void xlist_del(void* entry)
 
 void* xlist_next(void* entry)
 {
-	return (void*)((PLIST_ENTRY)entry)->Flink;
+    return (void*)((PLIST_ENTRY)entry)->Flink;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -296,7 +312,7 @@ void* xlist_next(void* entry)
 
 void* xlist_prev(void* entry)
 {
-	return (void*)((PLIST_ENTRY)entry)->Blink;
+    return (void*)((PLIST_ENTRY)entry)->Blink;
 }
 
 //

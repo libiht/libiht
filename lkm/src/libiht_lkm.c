@@ -7,7 +7,7 @@
 //                   specific.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Dec 25, 2023
+//   Last Modified : Jan 10, 2023
 //
 
 #include "../include/libiht_lkm.h"
@@ -94,20 +94,17 @@ void unregister_tracepoints(void) {
 //
 // Inputs       : data - the data
 //                preempt - the preempt flag
-//                prev - the previous process
-//                next - the next process
+//                prev_task - the previous process
+//                next_task - the next_task process
 // Outputs      : void
 
 void tp_sched_switch_handler(void *data, bool preempt,
-                                    struct task_struct *prev,
-                                    struct task_struct *next)
+                                    struct task_struct *prev_task,
+                                    struct task_struct *next_task)
 {
-    // xprintdbg(KERN_INFO "LIBIHT_LKM: Context switch: %s[%d] -> %s[%d]\n",
-    //        prev->comm, prev->pid, next->comm, next->pid);
-
-    // Dump/restore registers
-    get_lbr(prev->pid);
-    put_lbr(next->pid);
+    lbr_cswitch_handler(prev_task->pid, next_task->pid);
+    // TODO: integrate BTS
+    // bts_cswitch_handler(prev_task->pid, next_task->pid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -122,27 +119,9 @@ void tp_sched_switch_handler(void *data, bool preempt,
 
 void tp_new_task_handler(void *data, struct task_struct *task)
 {
-    struct lbr_state *parent_state, *child_state;
-
-    // Check if parent is enabled
-    parent_state = find_lbr_state(task->real_parent->pid);
-    if (parent_state == NULL)
-        // Parent is not enabled
-        return;
-    
-    xprintdbg(KERN_INFO "LIBIHT_LKM: Process %s[%d] created, parent %s[%d]\n", 
-                        task->comm, task->pid, 
-                        task->real_parent->comm, task->real_parent->pid);
-
-    // Check if child is enabled
-    child_state = create_lbr_state();
-    if (child_state != NULL) {
-        // Child is enabled
-        child_state->lbr_select = parent_state->lbr_select;
-        child_state->pid = task->pid;
-        child_state->parent = parent_state;
-        insert_lbr_state(child_state);
-    }
+    lbr_newproc_handler(task->real_parent->pid, task->pid);
+    // TODO: integrate BTS
+    // bts_newproc_handler(task->real_parent->pid, task->pid);
 }
 
 //
@@ -236,13 +215,14 @@ ssize_t device_write(struct file *file_ptr, const char *buffer, size_t length,
 long device_ioctl(struct file *file_ptr, unsigned int ioctl_cmd,
                     unsigned long ioctl_param)
 {
-    struct lbr_state *state;
-    struct ioctl_request request;
+    struct xioctl_request request;
     unsigned long request_size_left;
     long ret_val = 0;
 
     // Copy user request
-    request_size_left = copy_from_user(&request, (struct ioctl_request *)ioctl_param, sizeof(struct ioctl_request));
+    request_size_left = copy_from_user(&request, 
+                        (struct xioctl_request *)ioctl_param,
+                        sizeof(struct xioctl_request));
     if (request_size_left != 0)
     {
         // Partial copy
@@ -250,77 +230,24 @@ long device_ioctl(struct file *file_ptr, unsigned int ioctl_cmd,
         return -EIO;
     }
 
-    xprintdbg(KERN_INFO "LIBIHT-LKM: Got ioctl argument %#x!", ioctl_cmd);
-    xprintdbg(KERN_INFO "LIBIHT-LKM: request select bits: %lld", request.lbr_select);
-    xprintdbg(KERN_INFO "LIBIHT-LKM: request pid: %d", request.pid);
-
-    switch (ioctl_cmd)
+    // Process request
+    if (request.cmd <= LIBIHT_IOCTL_LBR_END)
     {
-    case LIBIHT_LKM_IOC_ENABLE_TRACE:
-        xprintdbg(KERN_INFO "LIBIHT-LKM: ENABLE_TRACE\n");
-        // Enable trace for assigned process
-        state = find_lbr_state(request.pid);
-        if (state)
-        {
-            xprintdbg("LIBIHT-LKM: Process %d already enabled\n", request.pid);
-            ret_val = -EINVAL;
-            break;
-        }
-        state = create_lbr_state();
-        if (state == NULL)
-        {
-            xprintdbg("LIBIHT-KMD: create lbr_state failed\n");
-            ret_val = -EINVAL;
-            break;
-        }
-
-        // Set the field
-        state->lbr_select = request.lbr_select ? request.lbr_select : LBR_SELECT;
-        state->pid = request.pid ? request.pid : current->pid;
-        state->parent = NULL;
-
-        insert_lbr_state(state);
-        break;
-
-    case LIBIHT_LKM_IOC_DISABLE_TRACE:
-        xprintdbg(KERN_INFO "LIBIHT-LKM: DISABLE_TRACE\n");
-        // Disable trace for assigned process (and its children)
-        state = find_lbr_state(request.pid);
-        if (state == NULL)
-        {
-            xprintdbg("LIBIHT-LKM: find lbr_state failed\n");
-            ret_val = -EINVAL;
-            break;
-        }
-
-        remove_lbr_state(state);
-        break;
-
-    case LIBIHT_LKM_IOC_DUMP_LBR:
-        xprintdbg(KERN_INFO "LIBIHT-LKM: DUMP_LBR\n");
-        // Dump LBR info for assigned process
-        dump_lbr(request.pid);
-        break;
-
-    case LIBIHT_LKM_IOC_SELECT_LBR:
-        xprintdbg(KERN_INFO "LIBIHT-LKM: SELECT_LBR\n");
-        // Update the select bits for assigned process
-        state = find_lbr_state(request.pid);
-        if (state == NULL)
-        {
-            xprintdbg("LIBIHT-LKM: find lbr_state failed\n");
-            ret_val = -EINVAL;
-            break;
-        }
-
-        state->lbr_select = request.lbr_select;
-        break;
-
-    default:
-        // Error command code
-        xprintdbg(KERN_INFO "LIBIHT-LKM: Error IOCTL command\n");
+        // LBR request
+        xprintdbg(KERN_INFO "LIBIHT-LKM: LBR request\n");
+        ret_val = lbr_ioctl_handler(&request);
+    }
+    else if (request.cmd <= LIBIHT_IOCTL_BTS_END)
+    {
+        // BTS request
+        xprintdbg(KERN_INFO "LIBIHT-LKM: BTS request\n");
+        ret_val = bts_ioctl_handler(&request);
+    }
+    else
+    {
+        // Unknown request
+        xprintdbg(KERN_INFO "LIBIHT-LKM: Unknown request\n");
         ret_val = -EINVAL;
-        break;
     }
 
     return ret_val;
@@ -343,12 +270,6 @@ int __init libiht_lkm_init(void)
 {
     xprintdbg(KERN_INFO "LIBIHT_LKM: Initializing...\n");
 
-    // Check availability of the CPU
-    if(identify_cpu() < 0) {
-        xprintdbg(KERN_ERR "LIBIHT_LKM: Identify CPU failed\n");
-        return -1;
-    }
-
     // Create user interactive helper process
     xprintdbg(KERN_INFO "LIBIHT-LKM: Creating helper process...\n");
     proc_entry = proc_create(DEVICE_NAME, 0666, NULL, &libiht_ops);
@@ -362,9 +283,14 @@ int __init libiht_lkm_init(void)
     register_tracepoints();
 
     // Init LBR
+    xprintdbg(KERN_INFO "LIBIHT_LKM: Initilizing LBR...\n");
     lbr_init();
 
-    bts_init();
+    // TODO: integrate BTS
+    // Init BTS
+    // xprintdbg(KERN_INFO "LIBIHT_LKM: Initilizing BTS...\n");
+    // bts_init();
+
     xprintdbg(KERN_INFO "LIBIHT_LKM: Initilized\n");
     return 0;
 }
@@ -382,9 +308,14 @@ int __init libiht_lkm_init(void)
 void __exit libiht_lkm_exit(void)
 {
     xprintdbg(KERN_INFO "LIBIHT_LKM: Exiting...\n");
-    bts_exit();
+
+    // TODO: integrate BTS
+    // Exit BTS
+    // xprintdbg(KERN_INFO "LIBIHT_LKM: Exiting BTS...\n");
+    // bts_exit();
 
     // Exit LBR
+    xprintdbg(KERN_INFO "LIBIHT_LKM: Exiting LBR...\n");
     lbr_exit();
 
     // Unregister tracepoints

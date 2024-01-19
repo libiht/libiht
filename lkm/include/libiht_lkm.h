@@ -8,14 +8,13 @@
 //                   libiht.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Dec 25, 2023
+//   Last Modified : Jan 10, 2023
 
 //
 // Include Files
 #include "headers_lkm.h"
 #include "../../commons/lbr.h"
 #include "../../commons/bts.h"
-#include "../../commons/cpu.h"
 #include "../../commons/types.h"
 #include "../../commons/debug.h"
 
@@ -30,21 +29,13 @@
 // Device name
 #define DEVICE_NAME "libiht-info"
 
-// I/O control table
-#define LIBIHT_LKM_IOC_MAGIC 'l'
-#define LIBIHT_LKM_IOC_ENABLE_TRACE     _IO(LIBIHT_LKM_IOC_MAGIC, 1)
-#define LIBIHT_LKM_IOC_DISABLE_TRACE    _IO(LIBIHT_LKM_IOC_MAGIC, 2)
-#define LIBIHT_LKM_IOC_DUMP_LBR         _IO(LIBIHT_LKM_IOC_MAGIC, 3)
-#define LIBIHT_LKM_IOC_SELECT_LBR       _IO(LIBIHT_LKM_IOC_MAGIC, 4)
+// I/O control macros
+// TODO: Is IOCTL macros really needed?
+#define LIBIHT_LKM_IOCTL_MAGIC 'l'
+#define LIBIHT_LKM_IOCTL_BASE       _IO(LIBIHT_LKM_IOCTL_MAGIC, 0)
 
 //
 // Type definitions
-
-// IOCTL request structure
-struct ioctl_request{
-    uint64_t lbr_select;
-    pid_t pid;
-};
 
 // Tracepoint table
 struct tracepoint_table

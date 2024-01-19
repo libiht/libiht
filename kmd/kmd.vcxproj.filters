@@ -35,9 +35,6 @@
     <ClCompile Include="infinity_hook\hde\hde64.cpp">
       <Filter>infinity_hook\hde</Filter>
     </ClCompile>
-    <ClCompile Include="..\commons\cpu.c">
-      <Filter>commons</Filter>
-    </ClCompile>
     <ClCompile Include="..\commons\debug.c">
       <Filter>commons</Filter>
     </ClCompile>
@@ -49,6 +46,9 @@
     </ClCompile>
     <ClCompile Include="src\xplat_kmd.c">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\commons\bts.c">
+      <Filter>commons</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -73,9 +73,6 @@
     <ClInclude Include="infinity_hook\hde\table64.h">
       <Filter>infinity_hook\hde</Filter>
     </ClInclude>
-    <ClInclude Include="..\commons\cpu.h">
-      <Filter>commons</Filter>
-    </ClInclude>
     <ClInclude Include="..\commons\debug.h">
       <Filter>commons</Filter>
     </ClInclude>
@@ -93,6 +90,9 @@
     </ClInclude>
     <ClInclude Include="include\libiht_kmd.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\commons\bts.h">
+      <Filter>commons</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
