@@ -262,6 +262,7 @@ s32 dump_lbr(struct lbr_ioctl_request *request)
         xprintdbg("MSR_LBR_NHM_TO  [%2d]: 0x%llx\n", i,
                     state->data->entries[i].to);
     }
+    xcopy_to_user(request->buffer, state, sizeof (struct lbr_state));
 
     xprintdbg("LIBIHT-COM: LBR info for cpuid: %d\n", xcoreid());
 

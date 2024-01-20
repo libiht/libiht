@@ -20,6 +20,7 @@ libiht_lkm-objs := \
 					$(COMMON_DIR)/bts.o \
 					$(SRC_DIR)/xplat_lkm.o \
 					$(SRC_DIR)/libiht_lkm.o \
+					$(SRC_DIR)/xioctl_lkm.o \
 
 # Include paths
 ccflags-y := -I$(INC_DIR) -I$(COMMON_DIR)
