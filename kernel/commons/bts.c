@@ -504,15 +504,15 @@ void bts_cswitch_handler(u32 prev_pid, u32 next_pid)
 
     if (prev_state)
     {
-        xprintdbg("LIBIHT-COM: BTS context switch from pid %d\n",
-            prev_state->config.pid);
+        xprintdbg("LIBIHT-COM: BTS context switch from pid %d on core %d\n",
+            prev_state->config.pid, xcoreid());
         get_bts(prev_state);
     }
 
     if (next_state)
     {
-        xprintdbg("LIBIHT-COM: BTS context switch to pid %d\n",
-                next_state->config.pid);
+        xprintdbg("LIBIHT-COM: BTS context switch to pid %d on core %d\n",
+                next_state->config.pid, xcoreid());
         put_bts(next_state);
     }
 }
