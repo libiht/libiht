@@ -31,6 +31,7 @@ all:
 clean:
 	$(MAKE) -C $(KERNEL_DIR) M=$(PWD) clean
 	$(MAKE) -C $(COMMON_DIR) clean
+	$(RM) $(MODULE_NAME).asm
 
 # Helper commands
 insert:
@@ -41,3 +42,6 @@ remove:
 
 mesg:
 	sudo dmesg -wH
+
+disasm:
+	objdump -M intel -d $(MODULE_NAME).ko > $(MODULE_NAME).asm
