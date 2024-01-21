@@ -272,6 +272,23 @@ s32 config_bts(struct bts_ioctl_request *request)
 
         put_bts(state);
     }
+    else
+    {
+        if (request->bts_config.bts_buffer_size != state->config.bts_buffer_size &&
+            request->bts_config.bts_buffer_size != 0)
+        {
+            state->config.bts_buffer_size = request->bts_config.bts_buffer_size;
+
+            // Reconfigure BTS debug store area
+            xfree((void *)state->ds_area->bts_buffer_base);
+            state->ds_area->bts_buffer_base = (u64)xmalloc(request->bts_config.bts_buffer_size);
+            state->ds_area->bts_index = 0;
+            state->ds_area->bts_absolute_maximum =
+                    state->ds_area->bts_buffer_base +
+                    request->bts_config.bts_buffer_size + 1;
+        }
+
+    }
 
     return 0;
 }

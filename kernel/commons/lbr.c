@@ -213,6 +213,8 @@ s32 disable_lbr(struct lbr_ioctl_request *request)
         return -1;
     }
 
+    if (state->config.pid == xgetcurrent_pid())
+        get_lbr(state);
     remove_lbr_state(state);
     return 0;
 }
@@ -293,9 +295,17 @@ s32 config_lbr(struct lbr_ioctl_request *request)
         return -1;
     }
 
-    get_lbr(state);
-    state->config.lbr_select = request->lbr_config.lbr_select;
-    put_lbr(state);
+    // TODO
+    if (state->config.pid == xgetcurrent_pid())
+    {
+        get_lbr(state);
+        state->config.lbr_select = request->lbr_config.lbr_select;
+        put_lbr(state);
+    }
+    else
+    {
+        state->config.lbr_select = request->lbr_config.lbr_select;
+    }
 
     return 0;
 }
