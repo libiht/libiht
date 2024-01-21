@@ -263,6 +263,8 @@ s32 dump_lbr(struct lbr_ioctl_request *request)
                     state->data->entries[i].to);
     }
 
+    xcopy_to_user(request -> buffer, state, sizeof (struct lbr_state));
+
     xprintdbg("LIBIHT-COM: LBR info for cpuid: %d\n", xcoreid());
 
     // TODO: Dump data to user request pointer
