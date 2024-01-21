@@ -19,6 +19,9 @@
 #include <string.h>
 #include <sys/ioctl.h>
 
+// #define ENABLE_LBR
+#define ENABLE_BTS
+
 // Device name
 #define DEVICE_NAME "libiht-info"
 
@@ -182,6 +185,9 @@ int main(int argc, char* argv[])
     }
 
     struct xioctl_request input;
+
+#ifdef ENABLE_LBR
+
     // Enable LBR
     input.body.lbr.lbr_config.lbr_select = 0;
     input.body.lbr.lbr_config.pid = pid;
@@ -202,6 +208,34 @@ int main(int argc, char* argv[])
     input.cmd = LIBIHT_IOCTL_DISABLE_LBR;
     ioctl(fd, LIBIHT_LKM_IOCTL_BASE, &input);
     sleep(1);
+
+#endif
+
+#ifdef ENABLE_BTS
+
+    // Enable BTS
+    input.body.bts.bts_config.bts_buffer_size = 0;
+    input.body.bts.bts_config.bts_config = 0;
+    input.body.lbr.lbr_config.pid = pid;
+
+    input.cmd = LIBIHT_IOCTL_ENABLE_BTS;
+    ioctl(fd, LIBIHT_LKM_IOCTL_BASE, &input);
+    sleep(1);
+
+    // Simulate critical logic
+    func1();
+
+    // Dump BTS
+    input.cmd = LIBIHT_IOCTL_DUMP_BTS;
+    ioctl(fd, LIBIHT_LKM_IOCTL_BASE, &input);
+    sleep(1);
+
+    // Disable BTS
+    input.cmd = LIBIHT_IOCTL_DISABLE_BTS;
+    ioctl(fd, LIBIHT_LKM_IOCTL_BASE, &input);
+    sleep(1);
+
+#endif
 
     printf("Finished!\n");
     close(fd);
