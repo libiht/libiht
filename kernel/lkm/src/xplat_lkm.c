@@ -10,6 +10,7 @@
 
 #include "../../commons/xplat.h"
 #include "../include/headers_lkm.h"
+#include <linux/uaccess.h>
 
 //
 // Cross-platform functions
@@ -306,6 +307,34 @@ void *xlist_next(void *entry)
 void *xlist_prev(void *entry)
 {
     return (void *)((struct list_head *)entry)->prev;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : xcopy_from_user
+// Description  : Similar to the copy_from_user in ubuntu
+//
+// Inputs       : to - the target address (kernel space).
+//                from - the source address (user space).
+//                n - the lenght of content.
+// Outputs      : u32 - return 0 if success
+
+u32 xcopy_from_user(void *to, const void *from, u32 n){
+    return copy_from_user(to, (const void __user *) from, n);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : xcopy_to_user
+// Description  : Similar to the copy_to_user in ubuntu
+//
+// Inputs       : to - the source address (user space).
+//                from - the source address (kernel space).
+//                n - the lenght of content.
+// Outputs      : u32 - return 0 if success
+
+u32 xcopy_to_user(void *to, const void *from, u32 n){
+    return copy_to_user((void __user *) to, from, n);
 }
 
 //
