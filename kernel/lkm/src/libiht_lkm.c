@@ -7,7 +7,7 @@
 //                   specific.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 10, 2023
+//   Last Modified : Jan 22, 2023
 //
 
 #include "../include/libiht_lkm.h"
@@ -284,7 +284,6 @@ int __init libiht_lkm_init(void)
     xprintdbg(KERN_INFO "LIBIHT_LKM: Initilizing LBR...\n");
     lbr_init();
 
-    // TODO: integrate BTS
     // Init BTS
     xprintdbg(KERN_INFO "LIBIHT_LKM: Initilizing BTS...\n");
     bts_init();
@@ -307,7 +306,6 @@ void __exit libiht_lkm_exit(void)
 {
     xprintdbg(KERN_INFO "LIBIHT_LKM: Exiting...\n");
 
-    // TODO: integrate BTS
     // Exit BTS
     xprintdbg(KERN_INFO "LIBIHT_LKM: Exiting BTS...\n");
     bts_exit();

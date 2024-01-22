@@ -10,7 +10,7 @@
 //                   https://github.com/vusec/patharmor/blob/master/lkm/lbr.c
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 15, 2023
+//   Last Modified : Jan 22, 2023
 //
 
 // Include Files
@@ -295,7 +295,6 @@ s32 config_lbr(struct lbr_ioctl_request *request)
         return -1;
     }
 
-    // TODO
     if (state->config.pid == xgetcurrent_pid())
     {
         get_lbr(state);

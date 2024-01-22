@@ -6,7 +6,7 @@
 //                   information.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 15, 2023
+//   Last Modified : Jan 22, 2023
 //
 
 // Include Files
@@ -308,7 +308,6 @@ struct bts_state *create_bts_state(void)
     state = xmalloc(sizeof(struct bts_state));
     if (state == NULL)
         return NULL;
-    // TODO: check if this satisfy the page alignment requirement
     state->ds_area = xmalloc(sizeof(struct ds_area));
     if (state->ds_area == NULL)
     {

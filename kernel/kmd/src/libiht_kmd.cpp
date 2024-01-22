@@ -10,7 +10,7 @@
 //                   Reference: https://github.com/lyshark/WindowsKernelBook
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 11, 2023
+//   Last Modified : Jan 22, 2023
 //
 
 // Include Files
@@ -93,8 +93,7 @@ VOID create_proc_notify(PEPROCESS proc, HANDLE proc_id,
     {
         // Process is being created
         lbr_newproc_handler((u32)(UINT_PTR)create_info->ParentProcessId, (u32)proc_id);
-        // TODO: Integrate BTS
-        //bts_newproc_handler((u32)(UINT_PTR)create_info->ParentProcessId, (u32)proc_id);
+        bts_newproc_handler((u32)(UINT_PTR)create_info->ParentProcessId, (u32)proc_id);
     }
     else
     {
@@ -120,8 +119,7 @@ VOID create_proc_notify(PEPROCESS proc, HANDLE proc_id,
 void __fastcall cswitch_call_back(u32 new_proc, u32 old_proc)
 {
     lbr_cswitch_handler(old_proc, new_proc);
-    // TODO: Integrate BTS
-    //bts_cswitch_handler(old_proc, new_proc);
+    bts_cswitch_handler(old_proc, new_proc);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -359,9 +357,8 @@ NTSTATUS DriverEntry(PDRIVER_OBJECT driver_obj, PUNICODE_STRING reg_path)
     // Init LBR
     lbr_init();
 
-    // TODO: Integrate BTS
-    //// Init BTS
-    //bts_init();
+    // Init BTS
+    bts_init();
 
     xprintdbg("LIBIHT-KMD: Initialized\n");
     return STATUS_SUCCESS;
@@ -384,9 +381,8 @@ NTSTATUS DriverExit(PDRIVER_OBJECT driver_obj)
 
     xprintdbg("LIBIHT-KMD: Exiting...\n");
 
-    // TODO: Integrate BTS
-    //// Exit BTS
-    //bts_exit();
+    // Exit BTS
+    bts_exit();
 
     // Exit LBR
     lbr_exit();
