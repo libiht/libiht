@@ -113,6 +113,3 @@ struct xioctl_request{
 };
 
 #endif // _COMMONS_XIOCTL_H
-
-u32 xcopy_from_user(void *to, const void *from, u32 n);
-u32 xcopy_to_user(void *to,const void *from, u32 n);

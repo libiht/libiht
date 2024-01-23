@@ -25,7 +25,7 @@ struct lbr_ioctl_request enable_lbr(){
     usr_request.buffer->lbr_tos = 0;
     usr_request.buffer->entries = 0;
 
-    xprintdbg("LIBIHT-API: enable LBR for pid %d\n", usr_request.lbr_config.pid);
+    fprintf(stderr, "LIBIHT-API: enable LBR for pid %d\n", usr_request.lbr_config.pid);
 
     fd = open("/proc/" DEVICE_NAME, O_RDWR);
 
@@ -38,7 +38,7 @@ struct lbr_ioctl_request enable_lbr(){
 void disable_lbr(struct lbr_ioctl_request usr_request){
     send_request.cmd = LIBIHT_IOCTL_DISABLE_LBR;
     send_request.body.lbr = usr_request;
-    xprintdbg("LIBIHT-API: disable LBR for pid %d\n", usr_request.lbr_config.pid);
+    fprintf(stderr, "LIBIHT-API: disable LBR for pid %d\n", usr_request.lbr_config.pid);
     ioctl(fd, LIBIHT_LKM_IOCTL_BASE, &send_request);
     fd = 0;
 }
@@ -46,13 +46,13 @@ void disable_lbr(struct lbr_ioctl_request usr_request){
 void dump_lbr(struct lbr_ioctl_request usr_request){
     send_request.cmd = LIBIHT_IOCTL_DUMP_LBR;
     send_request.body.lbr = usr_request;
-    xprintdbg("LIBIHT-API: dump LBR for pid %d\n", usr_request.lbr_config.pid);
+    fprintf(stderr ,"LIBIHT-API: dump LBR for pid %d\n", usr_request.lbr_config.pid);
     ioctl(fd, LIBIHT_LKM_IOCTL_BASE, &send_request);
 }
 
 void select_lbr(struct lbr_ioctl_request usr_request){
     send_request.cmd = LIBIHT_IOCTL_SELECT_LBR;
     send_request.body.lbr = usr_request;
-    xprintdbg("LIBIHT-API: select LBR for pid %d\n", usr_request.lbr_config.pid);
+    fprintf(stderr, "LIBIHT-API: select LBR for pid %d\n", usr_request.lbr_config.pid);
     ioctl(fd, LIBIHT_LKM_IOCTL_BASE, &send_request);
 }
