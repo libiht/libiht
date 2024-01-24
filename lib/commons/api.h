@@ -1,5 +1,7 @@
 #include <unistd.h>
 
+#define MAX_LIST_LEN    0x20
+
 enum IOCTL{
     LIBIHT_IOCTL_BASE,
 
@@ -62,6 +64,6 @@ struct xioctl_request{
 };
 
 struct lbr_ioctl_request enable_lbr();
-void disalbe_lbr(struct lbr_ioctl_request usr_request);
+void disable_lbr(struct lbr_ioctl_request usr_request);
 void dump_lbr(struct lbr_ioctl_request usr_request);
 void select_lbr(struct lbr_ioctl_request usr_request);

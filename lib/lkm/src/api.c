@@ -23,7 +23,7 @@ struct lbr_ioctl_request enable_lbr(){
 
     usr_request.buffer = malloc(sizeof (struct lbr_data));
     usr_request.buffer->lbr_tos = 0;
-    usr_request.buffer->entries = 0;
+    usr_request.buffer->entries = malloc(sizeof (struct lbr_stack_entry) * MAX_LIST_LEN);
 
     fprintf(stderr, "LIBIHT-API: enable LBR for pid %d\n", usr_request.lbr_config.pid);
 
