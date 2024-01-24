@@ -6,7 +6,7 @@
 //                   information.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 15, 2023
+//   Last Modified : Jan 22, 2023
 //
 
 // Include Files
@@ -138,11 +138,19 @@ s32 enable_bts(struct bts_ioctl_request *request)
 
     // Setup fields for BTS debug store area
     state->ds_area->bts_buffer_base = (u64)xmalloc(state->config.bts_buffer_size);
-    state->ds_area->bts_index = 0;
+    state->ds_area->bts_index = state->ds_area->bts_buffer_base;
     state->ds_area->bts_absolute_maximum =
             state->ds_area->bts_buffer_base +
             state->config.bts_buffer_size + 1;
     // Not yet support state->ds_area->bts_interrupt_threshold
+
+    // Print BTS debug store area info
+    xprintdbg("LIBIHT-COM: BTS ds_area pointer: %llx, bts_buffer_base: %llx, "
+                "bts_index: %llx, bts_absolute_maximum: %llx.\n",
+                (u64)state->ds_area, state->ds_area->bts_buffer_base,
+                state->ds_area->bts_index,
+                state->ds_area->bts_absolute_maximum);
+
 
     insert_bts_state(state);
     // If the requesting process is the current process, trace it right away
@@ -171,6 +179,8 @@ s32 disable_bts(struct bts_ioctl_request *request)
         return -1;
     }
 
+    if (state->config.pid == xgetcurrent_pid())
+        get_bts(state);
     remove_bts_state(state);
     return 0;
 }
@@ -187,7 +197,8 @@ s32 dump_bts(struct bts_ioctl_request *request)
 {
     struct bts_state *state;
     struct bts_record *record;
-    u64 i, start, end;
+    u64 i;
+    char irql_flag[MAX_IRQL_LEN];
 
     state = find_bts_state(request->bts_config.pid);
     if (state == NULL)
@@ -199,14 +210,17 @@ s32 dump_bts(struct bts_ioctl_request *request)
 
     // Dump some BTS buffer records
     // TODO: fix this 32 later
-    start = state->ds_area->bts_index - 32;
-    end = state->ds_area->bts_index;
-    for (i = start; i < end; i++)
+    xacquire_lock(bts_state_lock, irql_flag);
+
+    for (i = 0; i < 32; i++)
     {
         record = (struct bts_record*)state->ds_area->bts_buffer_base + i;
+        xprintdbg("LIBIHT-COM: BTS record ptr: 0x%llx.\n", (u64)record);
         xprintdbg("LIBIHT-COM: BTS record %d: from %llx to %llx.\n",
                     i, record->from, record->to);
     }
+
+    xrelease_lock(bts_state_lock, irql_flag);
 
     // TODO: Dump data to user request pointer
 
@@ -258,6 +272,23 @@ s32 config_bts(struct bts_ioctl_request *request)
 
         put_bts(state);
     }
+    else
+    {
+        if (request->bts_config.bts_buffer_size != state->config.bts_buffer_size &&
+            request->bts_config.bts_buffer_size != 0)
+        {
+            state->config.bts_buffer_size = request->bts_config.bts_buffer_size;
+
+            // Reconfigure BTS debug store area
+            xfree((void *)state->ds_area->bts_buffer_base);
+            state->ds_area->bts_buffer_base = (u64)xmalloc(request->bts_config.bts_buffer_size);
+            state->ds_area->bts_index = 0;
+            state->ds_area->bts_absolute_maximum =
+                    state->ds_area->bts_buffer_base +
+                    request->bts_config.bts_buffer_size + 1;
+        }
+
+    }
 
     return 0;
 }
@@ -277,7 +308,6 @@ struct bts_state *create_bts_state(void)
     state = xmalloc(sizeof(struct bts_state));
     if (state == NULL)
         return NULL;
-    // TODO: check if this satisfy the page alignment requirement
     state->ds_area = xmalloc(sizeof(struct ds_area));
     if (state->ds_area == NULL)
     {
@@ -473,15 +503,15 @@ void bts_cswitch_handler(u32 prev_pid, u32 next_pid)
 
     if (prev_state)
     {
-        xprintdbg("LIBIHT-COM: BTS context switch from pid %d\n",
-            prev_state->config.pid);
+        xprintdbg("LIBIHT-COM: BTS context switch from pid %d on core %d\n",
+            prev_state->config.pid, xcoreid());
         get_bts(prev_state);
     }
 
     if (next_state)
     {
-        xprintdbg("LIBIHT-COM: BTS context switch to pid %d\n",
-                next_state->config.pid);
+        xprintdbg("LIBIHT-COM: BTS context switch to pid %d on core %d\n",
+                next_state->config.pid, xcoreid());
         put_bts(next_state);
     }
 }

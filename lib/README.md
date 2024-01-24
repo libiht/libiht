@@ -1,4 +1,4 @@
-# LIB
+# LIB (Userspace Library Components)
 
 The `lib` directory contains the userspace library component of LIBIHT. It provides a convenient interface for accessing and utilizing Intel hardware trace capabilities from userspace applications.
 
