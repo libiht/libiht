@@ -55,7 +55,7 @@ static const struct cpu_to_lbr cpu_lbr_maps[] = {
 
 void get_lbr(struct lbr_state *state)
 {
-    int i;
+    u64 i;
     char irql_flag[MAX_IRQL_LEN];
     u64 dbgctlmsr;
 
@@ -90,7 +90,7 @@ void get_lbr(struct lbr_state *state)
 
 void put_lbr(struct lbr_state *state)
 {
-    int i;
+    u64 i;
     char irql_flag[MAX_IRQL_LEN];
     u64 dbgctlmsr;
 
@@ -126,8 +126,7 @@ void put_lbr(struct lbr_state *state)
 
 void flush_lbr(void)
 {
-    int i;
-    u64 dbgctlmsr;
+    u64 i, dbgctlmsr;
     char irql_flag[MAX_IRQL_LEN];
 
     xlock_core(irql_flag);
@@ -229,7 +228,7 @@ s32 disable_lbr(struct lbr_ioctl_request *request)
 
 s32 dump_lbr(struct lbr_ioctl_request *request)
 {
-    int i;
+    u64 i, bytes_left;
     struct lbr_state* state;
     char irql_flag[MAX_IRQL_LEN];
 
@@ -267,7 +266,21 @@ s32 dump_lbr(struct lbr_ioctl_request *request)
 
     xprintdbg("LIBIHT-COM: LBR info for cpuid: %d\n", xcoreid());
 
-    // TODO: Dump data to user request pointer
+    // Dump data to user request pointer
+    request->buffer->lbr_tos = state->data->lbr_tos;
+    if (request->buffer->entries)
+    {
+        bytes_left = xcopy_to_user(request->buffer->entries,
+                                    state->data->entries,
+                                    lbr_capacity * sizeof(struct lbr_stack_entry));
+
+        if (bytes_left)
+        {
+            xprintdbg("LIBIHT-COM: Copy LBR data to user failed\n");
+            xrelease_lock(lbr_state_lock, irql_flag);
+            return -1;
+        }
+    }
 
     xrelease_lock(lbr_state_lock, irql_flag);
 
@@ -597,7 +610,7 @@ s32 lbr_check(void)
 {
     u32 cpuinfo[4] = { 0 };
     u32 family, model;
-    int i;
+    u64 i;
 
     xcpuid(1, &cpuinfo[0], &cpuinfo[1], &cpuinfo[2], &cpuinfo[3]);
 
