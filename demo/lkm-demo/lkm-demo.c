@@ -245,6 +245,9 @@ int main(int argc, char* argv[])
 
 #endif
 
+    free(input.body.lbr.buffer->entries);
+    free(input.body.lbr.buffer);
+
     printf("Finished!\n");
     close(fd);
     return 0;
