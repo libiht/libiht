@@ -10,7 +10,7 @@
 //                   https://github.com/vusec/patharmor/blob/master/lkm/lbr.c
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 22, 2023
+//   Last Modified : Jan 25, 2023
 //
 
 // Include Files
@@ -229,8 +229,10 @@ s32 disable_lbr(struct lbr_ioctl_request *request)
 s32 dump_lbr(struct lbr_ioctl_request *request)
 {
     u64 i, bytes_left;
+    // u64 i;
     struct lbr_state* state;
     char irql_flag[MAX_IRQL_LEN];
+    struct lbr_data req_buf;
 
     state = find_lbr_state(request->lbr_config.pid);
     if (state == NULL)
@@ -266,14 +268,37 @@ s32 dump_lbr(struct lbr_ioctl_request *request)
 
     xprintdbg("LIBIHT-COM: LBR info for cpuid: %d\n", xcoreid());
 
-    // Dump data to user request pointer
-    request->buffer->lbr_tos = state->data->lbr_tos;
-    if (request->buffer->entries)
+    if (request->buffer)
     {
-        bytes_left = xcopy_to_user(request->buffer->entries,
-                                    state->data->entries,
-                                    lbr_capacity * sizeof(struct lbr_stack_entry));
+        // Get a copy of data from userspace buffer
+        bytes_left = xcopy_from_user(&req_buf, request->buffer,
+                                        sizeof(struct lbr_data));
+        if (bytes_left)
+        {
+            xprintdbg("LIBIHT-COM: Copy LBR data from user failed\n");
+            xrelease_lock(lbr_state_lock, irql_flag);
+            return -1;
+        }
 
+        // Dump data to userspace entry ptr
+        req_buf.lbr_tos = state->data->lbr_tos;
+        if (req_buf.entries)
+        {
+            bytes_left = xcopy_to_user(req_buf.entries,
+                                        state->data->entries,
+                                        lbr_capacity * sizeof(struct lbr_stack_entry));
+
+            if (bytes_left)
+            {
+                xprintdbg("LIBIHT-COM: Copy LBR data to user failed\n");
+                xrelease_lock(lbr_state_lock, irql_flag);
+                return -1;
+            }
+        }
+
+        // Copy updated data back to userspace buffer
+        bytes_left = xcopy_to_user(request->buffer, &req_buf,
+                                    sizeof(struct lbr_data));
         if (bytes_left)
         {
             xprintdbg("LIBIHT-COM: Copy LBR data to user failed\n");
