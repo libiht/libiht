@@ -63,6 +63,8 @@ struct xioctl_request{
     }body;
 };
 
+// The above definitions are same as those in "types.h"
+
 struct lbr_ioctl_request enable_lbr();
 void disable_lbr(struct lbr_ioctl_request usr_request);
 void dump_lbr(struct lbr_ioctl_request usr_request);
