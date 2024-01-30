@@ -229,10 +229,9 @@ s32 disable_lbr(struct lbr_ioctl_request *request)
 s32 dump_lbr(struct lbr_ioctl_request *request)
 {
     u64 i, bytes_left;
-    // u64 i;
     struct lbr_state* state;
-    char irql_flag[MAX_IRQL_LEN];
     struct lbr_data req_buf;
+    char irql_flag[MAX_IRQL_LEN];
 
     state = find_lbr_state(request->lbr_config.pid);
     if (state == NULL)
@@ -268,6 +267,7 @@ s32 dump_lbr(struct lbr_ioctl_request *request)
 
     xprintdbg("LIBIHT-COM: LBR info for cpuid: %d\n", xcoreid());
 
+    // Dump the LBR data to userspace buffer
     if (request->buffer)
     {
         // Get a copy of data from userspace buffer
