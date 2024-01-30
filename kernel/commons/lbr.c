@@ -55,9 +55,9 @@ static const struct cpu_to_lbr cpu_lbr_maps[] = {
 
 void get_lbr(struct lbr_state *state)
 {
-    u64 i;
-    char irql_flag[MAX_IRQL_LEN];
+    u32 i;
     u64 dbgctlmsr;
+    char irql_flag[MAX_IRQL_LEN];
 
     // Disable LBR
     xrdmsr(MSR_IA32_DEBUGCTLMSR, &dbgctlmsr);
@@ -90,9 +90,9 @@ void get_lbr(struct lbr_state *state)
 
 void put_lbr(struct lbr_state *state)
 {
-    u64 i;
-    char irql_flag[MAX_IRQL_LEN];
+    u32 i;
     u64 dbgctlmsr;
+    char irql_flag[MAX_IRQL_LEN];
 
     // Write in LBR registers
     xacquire_lock(lbr_state_lock, irql_flag);
@@ -126,7 +126,8 @@ void put_lbr(struct lbr_state *state)
 
 void flush_lbr(void)
 {
-    u64 i, dbgctlmsr;
+    u32 i;
+    u64 dbgctlmsr;
     char irql_flag[MAX_IRQL_LEN];
 
     xlock_core(irql_flag);
