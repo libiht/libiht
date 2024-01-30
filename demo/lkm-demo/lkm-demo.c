@@ -8,7 +8,7 @@
 //                   cross recursive function call.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 15, 2023
+//   Last Modified : Jan 25, 2023
 //
 
 // Include Files
@@ -19,8 +19,8 @@
 #include <string.h>
 #include <sys/ioctl.h>
 
-// #define ENABLE_LBR
-#define ENABLE_BTS
+#define ENABLE_LBR
+// #define ENABLE_BTS
 
 // Device name
 #define DEVICE_NAME "libiht-info"
@@ -185,6 +185,9 @@ int main(int argc, char* argv[])
     }
 
     struct xioctl_request input;
+    memset(&input, 0, sizeof(input));
+    input.body.lbr.buffer = (struct lbr_data *)malloc(sizeof(struct lbr_data));
+    input.body.lbr.buffer->entries = (struct lbr_stack_entry *)malloc(sizeof(struct lbr_stack_entry) * 32);
 
 #ifdef ENABLE_LBR
 
@@ -202,6 +205,11 @@ int main(int argc, char* argv[])
     // Dump LBR
     input.cmd = LIBIHT_IOCTL_DUMP_LBR;
     ioctl(fd, LIBIHT_LKM_IOCTL_BASE, &input);
+    printf("LBR TOS: %llx\n", input.body.lbr.buffer->lbr_tos);
+    for (int i = 0; i < 32; i++)
+    {
+        printf("LBR[%d]: %llx -> %llx\n", i, input.body.lbr.buffer->entries[i].from, input.body.lbr.buffer->entries[i].to);
+    }
     sleep(1);
 
     // Disable LBR
@@ -236,6 +244,9 @@ int main(int argc, char* argv[])
     sleep(1);
 
 #endif
+
+    free(input.body.lbr.buffer->entries);
+    free(input.body.lbr.buffer);
 
     printf("Finished!\n");
     close(fd);

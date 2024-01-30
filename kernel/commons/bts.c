@@ -6,7 +6,7 @@
 //                   information.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 22, 2023
+//   Last Modified : Jan 29, 2023
 //
 
 // Include Files
@@ -195,9 +195,10 @@ s32 disable_bts(struct bts_ioctl_request *request)
 
 s32 dump_bts(struct bts_ioctl_request *request)
 {
+    u64 i, bytes_left;
     struct bts_state *state;
     struct bts_record *record;
-    u64 i;
+    struct bts_data req_buf;
     char irql_flag[MAX_IRQL_LEN];
 
     state = find_bts_state(request->bts_config.pid);
@@ -212,6 +213,9 @@ s32 dump_bts(struct bts_ioctl_request *request)
     // TODO: fix this 32 later
     xacquire_lock(bts_state_lock, irql_flag);
 
+    xprintdbg("LIBIHT-COM: BTS buffer base: 0x%llx, index: 0x%llx.\n",
+                state->ds_area->bts_buffer_base,
+                state->ds_area->bts_index);
     for (i = 0; i < 32; i++)
     {
         record = (struct bts_record*)state->ds_area->bts_buffer_base + i;
@@ -220,9 +224,52 @@ s32 dump_bts(struct bts_ioctl_request *request)
                     i, record->from, record->to);
     }
 
-    xrelease_lock(bts_state_lock, irql_flag);
+    // Dump the BTS data to userspace buffer
+    // TODO: Try to support mmap share between user and kernel space
+    if (request->buffer)
+    {
+        // Get a copy of data from userspace buffer
+        bytes_left = xcopy_from_user(&req_buf, request->buffer,
+                                    sizeof(struct bts_data));
+        if (bytes_left)
+        {
+            xprintdbg("LIBIHT-COM: Copy from user failed.\n");
+            xrelease_lock(bts_state_lock, irql_flag);
+            return -1;
+        }
 
-    // TODO: Dump data to user request pointer
+        // Dump data to userspace buffer ptr
+        // Not yet support state->ds_area->bts_interrupt_threshold
+        if (req_buf.bts_buffer_base)
+        {
+            bytes_left = xcopy_to_user(req_buf.bts_buffer_base,
+                                        (void *)state->ds_area->bts_buffer_base,
+                                        state->config.bts_buffer_size);
+            if (bytes_left)
+            {
+                xprintdbg("LIBIHT-COM: Copy to user failed.\n");
+                xrelease_lock(bts_state_lock, irql_flag);
+                return -1;
+            }
+
+            // Set the bts_index to the correct relative offset
+            req_buf.bts_index = state->ds_area->bts_index -
+                                state->ds_area->bts_buffer_base +
+                                req_buf.bts_buffer_base;
+        }
+
+        // Copy updated data back to userspace buffer
+        bytes_left = xcopy_to_user(request->buffer, &req_buf,
+                                    sizeof(struct bts_data));
+        if (bytes_left)
+        {
+            xprintdbg("LIBIHT-COM: Copy to user failed.\n");
+            xrelease_lock(bts_state_lock, irql_flag);
+            return -1;
+        }
+    }
+
+    xrelease_lock(bts_state_lock, irql_flag);
 
     return 0;
 }
