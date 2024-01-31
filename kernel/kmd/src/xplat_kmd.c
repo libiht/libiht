@@ -51,6 +51,41 @@ void xfree(void *ptr)
 
 ////////////////////////////////////////////////////////////////////////////////
 //
+// Function     : xcopy_from_user
+// Description  : Cross platform kernel copy from user function. Copy memory
+//                from user space to kernel space.
+//
+// Inputs       : dst - pointer to the destination memory.
+//                src - pointer to the source memory.
+//                cnt - size of the memory to be copied.
+// Outputs      : u64 - number of bytes not copied (0 on success).
+
+u64 xcopy_from_user(void *dst, const void *src, u64 cnt)
+{
+    // WOW, windows kernel can access user space memory directly
+	RtlCopyMemory(dst, src, cnt);
+    return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : xcopy_to_user
+// Description  : Cross platform kernel copy to user function. Copy memory from
+//                kernel space to user space.
+//
+// Inputs       : dst - pointer to the destination memory.
+//                src - pointer to the source memory.
+//                cnt - size of the memory to be copied.
+// Outputs      : u64 - number of bytes not copied (0 on success).
+
+u64 xcopy_to_user(void *dst, const void *src, u64 cnt)
+{
+	RtlCopyMemory(dst, src, cnt);
+    return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
 // Function     : xmemset
 // Description  : Cross platform kernel memset function. Set memory to a
 //                specific value.

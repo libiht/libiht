@@ -5,7 +5,7 @@
 //                   Linux kernel module.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 15, 2023
+//   Last Modified : Jan 24, 2023
 //
 
 #include "../../commons/xplat.h"
@@ -44,6 +44,38 @@ void *xmalloc(u64 size)
 void xfree(void *ptr)
 {
     kfree(ptr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : xcopy_from_user
+// Description  : Cross platform kernel copy from user function. Copy memory
+//                from user space to kernel space.
+//
+// Inputs       : dst - pointer to the destination memory.
+//                src - pointer to the source memory.
+//                cnt - size of the memory to be copied.
+// Outputs      : u64 - number of bytes not copied (0 on success).
+
+u64 xcopy_from_user(void *dst, void *src, u64 cnt)
+{
+    return copy_from_user(dst, src, cnt);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : xcopy_to_user
+// Description  : Cross platform kernel copy to user function. Copy memory
+//                from kernel space to user space.
+//
+// Inputs       : dst - pointer to the destination memory.
+//                src - pointer to the source memory.
+//                cnt - size of the memory to be copied.
+// Outputs      : u64 - number of bytes not copied (0 on success).
+
+u64 xcopy_to_user(void *dst, void *src, u64 cnt)
+{
+    return copy_to_user(dst, src, cnt);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

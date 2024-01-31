@@ -10,7 +10,7 @@
 //                   i.e. `xplat_kmd.c` and `xplat_lkm.c` for windows and linux.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 15, 2024
+//   Last Modified : Jan 24, 2024
 //
 
 #include "types.h"
@@ -31,17 +31,29 @@ extern "C" {
 //
 // Function Prototypes
 
+//
+// Memory management functions
+
 void *xmalloc(u64 size);
 // Cross platform kernel malloc function.
 
 void xfree(void *ptr);
 // Cross platform kernel free function.
 
+u64 xcopy_from_user(void *dst, void *src, u64 cnt);
+// Cross platform kernel copy from user function.
+
+u64 xcopy_to_user(void *dst, void *src, u64 cnt);
+// Cross platform kernel copy to user function.
+
 void *xmemset(void *ptr, s32 c, u64 cnt);
 // Cross platform kernel memset function.
 
 void *xmemcpy(void *dst, void *src, u64 cnt);
 // Cross platform kernel memcpy function.
+
+//
+// CPU core, hardware, register read/write functions
 
 void xlock_core(void *old_irql);
 // Cross platform lock core function.
@@ -67,6 +79,9 @@ void xcpuid(u32 func_id, u32 *eax, u32 *ebx, u32 *ecx, u32 *edx);
 void xon_each_cpu(void (*func)(void));
 // Cross platform on each cpu dispatch function.
 
+//
+// Lock functions
+
 void xinit_lock(void *lock);
 // Cross platform init lock function.
 
@@ -75,6 +90,9 @@ void xacquire_lock(void *lock, void *old_irql);
 
 void xrelease_lock(void *lock, void *new_irql);
 // Cross platform release lock function.
+
+//
+// List functions
 
 void xinit_list_head(void *list);
 // Cross platform init list head function.
@@ -90,6 +108,9 @@ void *xlist_next(void *entry);
 
 void *xlist_prev(void *entry);
 // Cross platform list prev function.
+
+//
+// Debug functions (will be moved to debug.h)
 
 void xprintdbg(const char *format, ...);
 // Cross platform print kernel debug message function.

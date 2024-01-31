@@ -31,7 +31,6 @@ extern "C" {
 #define SYM_DEVICE_NAME     L"\\DosDevices\\libiht-info"
 
 // I/O control codes
-// TODO: Is IOCTL macros really needed?
 #define LIBIHT_KMD_IOCTL_TYPE       0x8888
 #define LIBIHT_KMD_IOCTL_FUNC       0x888
 #define LIBIHT_KMD_IOCTL_BASE       CTL_CODE(LIBIHT_KMD_IOCTL_TYPE, LIBIHT_KMD_IOCTL_FUNC + 0, METHOD_BUFFERED, FILE_ANY_ACCESS)

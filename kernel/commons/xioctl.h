@@ -89,8 +89,7 @@ struct bts_config
 struct bts_data
 {
     struct bts_record *bts_buffer_base; // BTS buffer base
-    u64 bts_index;                      // BTS current index
-    u64 bts_absolute_maximum;           // BTS absolute maximum
+    struct bts_record *bts_index;       // BTS current index
     u64 bts_interrupt_threshold;        // BTS interrupt threshold
 };
 

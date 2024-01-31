@@ -30,7 +30,6 @@
 #define DEVICE_NAME "libiht-info"
 
 // I/O control macros
-// TODO: Is IOCTL macros really needed?
 #define LIBIHT_LKM_IOCTL_MAGIC 'l'
 #define LIBIHT_LKM_IOCTL_BASE       _IO(LIBIHT_LKM_IOCTL_MAGIC, 0)
 

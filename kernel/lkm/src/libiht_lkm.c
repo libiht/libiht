@@ -7,7 +7,7 @@
 //                   specific.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 10, 2023
+//   Last Modified : Jan 22, 2023
 //
 
 #include "../include/libiht_lkm.h"
@@ -103,8 +103,7 @@ void tp_sched_switch_handler(void *data, bool preempt,
                                     struct task_struct *next_task)
 {
     lbr_cswitch_handler(prev_task->pid, next_task->pid);
-    // TODO: integrate BTS
-    // bts_cswitch_handler(prev_task->pid, next_task->pid);
+    bts_cswitch_handler(prev_task->pid, next_task->pid);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -120,8 +119,7 @@ void tp_sched_switch_handler(void *data, bool preempt,
 void tp_new_task_handler(void *data, struct task_struct *task)
 {
     lbr_newproc_handler(task->real_parent->pid, task->pid);
-    // TODO: integrate BTS
-    // bts_newproc_handler(task->real_parent->pid, task->pid);
+    bts_newproc_handler(task->real_parent->pid, task->pid);
 }
 
 //
@@ -286,10 +284,9 @@ int __init libiht_lkm_init(void)
     xprintdbg(KERN_INFO "LIBIHT_LKM: Initilizing LBR...\n");
     lbr_init();
 
-    // TODO: integrate BTS
     // Init BTS
-    // xprintdbg(KERN_INFO "LIBIHT_LKM: Initilizing BTS...\n");
-    // bts_init();
+    xprintdbg(KERN_INFO "LIBIHT_LKM: Initilizing BTS...\n");
+    bts_init();
 
     xprintdbg(KERN_INFO "LIBIHT_LKM: Initilized\n");
     return 0;
@@ -309,10 +306,9 @@ void __exit libiht_lkm_exit(void)
 {
     xprintdbg(KERN_INFO "LIBIHT_LKM: Exiting...\n");
 
-    // TODO: integrate BTS
     // Exit BTS
-    // xprintdbg(KERN_INFO "LIBIHT_LKM: Exiting BTS...\n");
-    // bts_exit();
+    xprintdbg(KERN_INFO "LIBIHT_LKM: Exiting BTS...\n");
+    bts_exit();
 
     // Exit LBR
     xprintdbg(KERN_INFO "LIBIHT_LKM: Exiting LBR...\n");
