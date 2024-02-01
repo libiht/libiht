@@ -266,7 +266,12 @@ s32 dump_lbr(struct lbr_ioctl_request *request)
                     state->data->entries[i].to);
     }
 
-    xprintdbg("LIBIHT-COM: LBR info for cpuid: %d\n", xcoreid());
+    if(request -> buffer == NULL) {
+        xprintdbg("LIBIHT-COM: Given buffer is NULL\n");
+    }
+    else {
+        // xcopy_to_user(request -> buffer, state -> data, sizeof (struct lbr_state));
+    }
 
     // Dump the LBR data to userspace buffer
     if (request->buffer)

@@ -115,6 +115,12 @@ void *xlist_prev(void *entry);
 void xprintdbg(const char *format, ...);
 // Cross platform print kernel debug message function.
 
+u32 xcopy_from_user(void *to, const void *from, u32 n);
+// Copy content from user space to kernel space
+
+u32 xcopy_to_user(void *to,const void *from, u32 n);
+// Copy content from kernel space to user space
+
 #ifdef __cplusplus
 }
 #endif // __cplusplus
