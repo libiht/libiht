@@ -27,7 +27,7 @@ void func2()
 }
 
 int main(){
-    struct lbr_ioctl_request query = enable_lbr();
+    struct lbr_ioctl_request query = enable_lbr(0);
     printf("%d %llu\n",query.lbr_config.pid, query.lbr_config.lbr_select);
     func1();
     dump_lbr(query);

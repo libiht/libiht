@@ -13,10 +13,17 @@ int fd;
 
 struct xioctl_request send_request;
 
-struct lbr_ioctl_request enable_lbr(){
-    fprintf(stderr,"LIBIHT-API: starting enable LBR\n");
+struct lbr_ioctl_request enable_lbr(unsigned int pid){
     struct lbr_ioctl_request usr_request;
-    usr_request.lbr_config.pid = getpid();
+    if (pid == 0) {
+        usr_request.lbr_config.pid = getpid();
+    }
+    else {
+        usr_request.lbr_config.pid = pid;
+    }
+
+    fprintf(stderr,"LIBIHT-API: starting enable LBR on pid : %u\n", usr_request.lbr_config.pid);
+
     usr_request.lbr_config.lbr_select = 0;
 
     usr_request.buffer = NULL;
@@ -25,13 +32,19 @@ struct lbr_ioctl_request enable_lbr(){
     usr_request.buffer->lbr_tos = 0;
     usr_request.buffer->entries = malloc(sizeof (struct lbr_stack_entry) * MAX_LIST_LEN);
 
-    fprintf(stderr, "LIBIHT-API: enable LBR for pid %d\n", usr_request.lbr_config.pid);
-
     fd = open("/proc/" DEVICE_NAME, O_RDWR);
 
     send_request.cmd = LIBIHT_IOCTL_ENABLE_LBR;
     send_request.body.lbr = usr_request;
-    ioctl(fd, LIBIHT_LKM_IOCTL_BASE, &send_request);
+    int res = ioctl(fd, LIBIHT_LKM_IOCTL_BASE, &send_request);
+
+    if(res == 0) {
+        fprintf(stderr, "LIBIHT-API: enable LBR for pid %d\n", usr_request.lbr_config.pid);
+    }
+    else {
+        fprintf(stderr, "LIBIHT-API: failed to enable LBR for pid %d\n", usr_request.lbr_config.pid);
+    }
+
     return usr_request;
 }
 
