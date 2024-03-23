@@ -1,12 +1,18 @@
-# KMD (Kernel Mode Driver)
+# Build Instruction for KMD (Kernel Mode Driver)
 
-The `kmd` directory contains the Windows Kernel Mode Driver (KMD) component of LIBIHT. It provides functionality for retrieving raw hardware trace information from the Intel processors within the Windows kernel.
+The KMD(Kernel Mode Driver) component of LIBIHT provides functionality for retrieving raw hardware trace information from the Intel processors within the Windows kernel.
 
-## Building
+## Disclaimer
+
+Following this procedure will run some scripts, code, and command as system-level privileged user, and load a kernel module/driver. This is **inherently dangerous** and **should not** be done on a production system or any system that contains sensitive data. We **highly recommend** you to prepare a seperate machine for LIBIHT.
+
+By proceeding, you acknowledge that you are doing so at your own risk. The authors of this document and the LIBIHT project are not responsible for any damage or loss of data that may occur as a result of following these instructions.
+
+## Build
 
 If you wish to build the KMD component of LIBIHT yourself, you will need to install the [Windows Driver Kit (WDK)](https://docs.microsoft.com/en-us/windows-hardware/drivers/download-the-wdk) and [Visual Studio](https://visualstudio.microsoft.com/downloads/). Once installed, you can build the KMD component of LIBIHT using the provided Visual Studio solution file (`kmd.sln`).
 
-Navigate to the `kmd` directory and run the following command to build the KMD component of LIBIHT:
+Navigate to the `kernel/kmd` directory and run the following command to build the KMD component of LIBIHT:
 
 ```powershell
 msbuild /p:Configuration=Debug /p:Platform=x64 .\kmd.sln
@@ -26,24 +32,9 @@ Once the driver is loaded, you can use the IOCTL to interact with Windows file d
 
 Please refer to the article on [loading a Windows kernel driver](https://www.ired.team/miscellaneous-reversing-forensics/windows-kernel-internals/loading-a-windows-kernel-driver-osr-driver-loader-debugging-with-source-code) for more detailed instructions on loading the KMD component of LIBIHT.
 
-## Driver APIs
+## Kernel Debugging
 
-IOCTLs are used to communicate with the KMD component of LIBIHT. Request format as follows:
-
-```c
-struct ioctl_request
-{
-    u64 lbr_select; // LBR selection bit
-    u32 pid;        // Process ID
-};
-```
-
-The KMD component of LIBIHT provides the following IOCTLs for user space components to access the raw hardware trace information:
-
-- `LIBIHT_KMD_IOC_ENABLE_TRACE` - Enable hardware trace capabilities for the assigned process id (PID) and all its child processes.
-- `LIBIHT_KMD_IOC_DISABLE_TRACE` - Disable hardware trace capabilities for the assigned process id (PID) and all its child processes.
-- `LIBIHT_KMD_IOC_DUMP_LBR` - Dump the Last Branch Record (LBR) stack information for the assigned process id (PID).
-- `LIBIHT_KMD_IOC_SELECT_LBR` - Update the Last Branch Record (LBR) selection bits for the assigned process id (PID).
+Luckily, Microsoft provides a powerful feature to do remote kernel debug on Windows. Please refer to the Microsoft's documentation on [set up KDNET network kernel debugging manually](https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/setting-up-a-network-debugging-connection) for more detailed instructions on setting up KDNET network kernel debugging.
 
 ## Useful Links
 
