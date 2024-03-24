@@ -1,4 +1,4 @@
-LIB_NAME = liblbr_api.so
+LIB_NAME = lib_api.so
 SRC_FILES = api.c
 CFLAGS = -fPIC
 

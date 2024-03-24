@@ -50,6 +50,12 @@ struct bts_record{
     unsigned long long misc;
 };
 
+struct bts_data{
+    struct bts_record *bts_buffer_base;
+    struct bts_record *bts_index;
+    unsigned long long bts_interrupt_threshold;
+};
+
 struct bts_ioctl_request{
     struct bts_config bts_config;
     struct bts_data *buffer;
@@ -69,3 +75,8 @@ struct lbr_ioctl_request enable_lbr();
 void disable_lbr(struct lbr_ioctl_request usr_request);
 void dump_lbr(struct lbr_ioctl_request usr_request);
 void select_lbr(struct lbr_ioctl_request usr_request);
+
+struct bts_ioctl_request enable_bts(unsigned int pid);
+void disable_bts(struct bts_ioctl_request usr_request);
+void dump_bts(struct bts_ioctl_request usr_request);
+void config_bts(struct bts_ioctl_request usr_request);
