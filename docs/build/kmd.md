@@ -10,7 +10,7 @@ By proceeding, you acknowledge that you are doing so at your own risk. The autho
 
 ## Build
 
-If you wish to build the KMD component of LIBIHT yourself, you will need to install the [Windows Driver Kit (WDK)](https://docs.microsoft.com/en-us/windows-hardware/drivers/download-the-wdk) and [Visual Studio](https://visualstudio.microsoft.com/downloads/). Once installed, you can build the KMD component of LIBIHT using the provided Visual Studio solution file (`kmd.sln`).
+If you wish to build the KMD component of LIBIHT yourself, you will need to install the [Software Development Kit (SDK)](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/) and [Windows Driver Kit (WDK)](https://docs.microsoft.com/en-us/windows-hardware/drivers/download-the-wdk) and [Visual Studio](https://visualstudio.microsoft.com/downloads/). (Typically SDK will come with the Visual Studio, but it is recommended to install the latest SDK and WDK). Once installed, you can build the KMD component of LIBIHT using the provided Visual Studio solution file (`kmd.sln`).
 
 Navigate to the `kernel/kmd` directory and run the following command to build the KMD component of LIBIHT:
 
