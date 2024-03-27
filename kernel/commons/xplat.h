@@ -10,7 +10,7 @@
 //                   i.e. `xplat_kmd.c` and `xplat_lkm.c` for windows and linux.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 24, 2024
+//   Last Modified : Mar 27, 2024
 //
 
 #include "types.h"
@@ -24,9 +24,9 @@ extern "C" {
 //
 // Library constants
 
-#define MAX_IRQL_LEN    0x10
-#define MAX_LOCK_LEN    0x20
-#define MAX_LIST_LEN    0x20
+#define MAX_IRQL_LEN    0x10    // Maximum length of OS irql struct
+#define MAX_LOCK_LEN    0x20    // Maximum length of OS lock struct
+#define MAX_LIST_LEN    0x20    // Maximum length of OS list struct
 
 //
 // Function Prototypes
