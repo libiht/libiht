@@ -333,7 +333,7 @@ void xlist_del(void* entry)
 
 void* xlist_next(void* entry)
 {
-    return (void*)((PLIST_ENTRY)entry)->Flink;
+    return (void *)((PLIST_ENTRY)entry)->Flink;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -347,7 +347,7 @@ void* xlist_next(void* entry)
 
 void* xlist_prev(void* entry)
 {
-    return (void*)((PLIST_ENTRY)entry)->Blink;
+    return (void *)((PLIST_ENTRY)entry)->Blink;
 }
 
 //

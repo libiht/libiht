@@ -6,7 +6,7 @@
 //                   information.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 29, 2023
+//   Last Modified : Mar 27, 2023
 //
 
 // Include Files
@@ -385,7 +385,7 @@ struct bts_state *find_bts_state(u32 pid)
     // offsetof(st, m) macro implementation of stddef.h
     offset = (u64)(&((struct bts_state *)0)->list);
     curr_list = xlist_next(bts_state_head);
-    while (curr_list != bts_state_head)
+    while (curr_list != NULL && curr_list != bts_state_head)
     {
         curr_state = (struct bts_state *)((u64)curr_list - offset);
         curr_list = xlist_next(curr_list);
@@ -468,7 +468,7 @@ void free_bts_state_list(void)
     // offsetof(st, m) macro implementation of stddef.h
     offset = (u64)(&((struct bts_state *)0)->list);
     curr_list = xlist_next(bts_state_head);
-    while (curr_list != bts_state_head)
+    while (curr_list != NULL && curr_list != bts_state_head)
     {
         curr_state = (struct bts_state *)((u64)curr_list - offset);
         curr_list = xlist_next(curr_list);

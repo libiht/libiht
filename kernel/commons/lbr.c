@@ -10,7 +10,7 @@
 //                   https://github.com/vusec/patharmor/blob/master/lkm/lbr.c
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 25, 2023
+//   Last Modified : Mar 27, 2023
 //
 
 // Include Files
@@ -414,7 +414,7 @@ struct lbr_state* find_lbr_state(u32 pid)
     // offsetof(st, m) macro implementation of stddef.h
     offset = (u64)(&((struct lbr_state *)0)->list);
     curr_list = xlist_next(lbr_state_head);
-    while (curr_list != lbr_state_head)
+    while (curr_list != NULL && curr_list != lbr_state_head)
     {
         curr_state = (struct lbr_state *)((u64)curr_list - offset);
         curr_list = xlist_next(curr_list);
@@ -497,7 +497,7 @@ void free_lbr_state_list(void)
     // offsetof(st, m) macro implementation of stddef.h
     offset = (u64)(&((struct lbr_state *)0)->list);
     curr_list = xlist_next(lbr_state_head);
-    while (curr_list != lbr_state_head)
+    while (curr_list != NULL && curr_list != lbr_state_head)
     {
         curr_state = (struct lbr_state *)((u64)curr_list - offset);
         curr_list = xlist_next(curr_list);
