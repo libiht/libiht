@@ -2,7 +2,7 @@
 
 LIBIHT (Intel Hardware Trace Library) is a cross platform library framework for managing (i.e., retrieving, analyzing, and visualizing) hardware trace information from Intel processors and helping reverse engineers and security researchers to understand the control flow behavior of the target program. We assume users have a basic understanding of operating systems, computer architecture, and Intel hardware trace capabilities.
 
-Modern Intel CPUs have introduced a suite of hardware features, such as Last Branch Record (LBR), Branch Trace Store (BTS), and Intel Processor Trace (Intel PT), which promise to deliver detailed program tracing information with minimal overhead. LIBIHT bridge the gap between low-level hardware trace capabilities and high-level user space applications by offering both kernel and user interfaces that hide all the complexity of hardware-assisted tracing and a user-friendly approach to interacting with Intel CPU hardware trace features.
+Modern Intel CPUs have introduced a suite of hardware features, such as Last Branch Record (LBR) and Branch Trace Store (BTS), which promise to deliver detailed program tracing information with minimal overhead. LIBIHT bridge the gap between low-level hardware trace capabilities and high-level user space applications by offering both kernel and user interfaces that hide all the complexity of hardware-assisted tracing and a user-friendly approach to interacting with Intel CPU hardware trace features.
 
 It is proudly brought to you by **[Tencent Security Xuanwu Lab](https://xlab.tencent.com/en/)** and its long-term talent cultivation program **Tencent Spark Talent Program**.
 
@@ -10,7 +10,7 @@ It is proudly brought to you by **[Tencent Security Xuanwu Lab](https://xlab.ten
 
 The LIBIHT library consists of two main components: kernel space components and user space components.
 
-The kernel space components are responsible for retrieving raw hardware trace information from the Intel processors.
+The kernel space components are responsible for retrieving raw hardware trace information from the Intel processors and process granular trace control operations, such as enabling/disabling hardware trace capabilities, configuring hardware trace parameters.
 
 The user space components are responsible for providing a set of APIs for user space applications to access the raw hardware trace information, control the hardware trace capabilities of the Intel processors, and help with basic analyze of the raw hardware trace information.
 
@@ -24,11 +24,11 @@ The user space components are implemented as a shared library on Linux and a dyn
 
 ## Build
 
-Depending on the operating systems, detailed instructions are provided in [`build`](./docs/build/).
+Depending on the operating systems and components, detailed instructions are provided in [`build`](./docs/build/).
 
-## API Usage
+## Usage
 
-Depending on the operating systems, detailed instructions are provided in [`api`](./docs/api/).
+Depending on the operating systems and components, detailed instructions are provided in [`usage`](./docs/usage/).
 
 ## Contributing
 

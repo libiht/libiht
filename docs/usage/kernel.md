@@ -1,10 +1,46 @@
-# Kernel Module/Driver API Usage
+# Kernel Module/Driver Usage
 
-User space applications can interact with the kernel space components through the provided IOCTL APIs. The specific IOCTL payloads and their corresponding operations are defined in the [`kernel/commons/xioctl.h`](../../kernel/commons/xioctl.h) header file. The following sections provide an overview of the IOCTL operations and their usage.
+This document provides an overview of the IOCTL operations and their usage in the kernel module/driver.
 
-Kernel module/driver wrap the IOCTL request for different hardware trace capabilities into a single generic IOCTL request. 
+For detailed information about Intel LBR or BTS, please refer to the respective chapter in Volume 3 of the Intel Software Developer's Manual at http://www.intel.com/sdm.
 
-## IOCTL Request Command Code
+## Introduction
+
+The libiht kernel module/driver provides a set of simple IOCTL operations to interact with the hardware trace capabilities of Intel processors. The IOCTL operations are used to enable/disable, configure, and retrieve the raw hardware trace information from the Last Branch Record (LBR) and Branch Trace Store (BTS) features. The IOCTL operations are organized as follows:
+
+- *Enable trace capabilities* \- Enable the hardware trace capabilities with a specified config (if none, use the default config) for specified process ID and its future children.
+- *Disable trace capabilities* \- Disable the hardware trace capabilities for the specified process ID.
+- *Config trace information* \- Configure the hardware trace preference (e.g., trace filter, buffer size, etc.) for the specified process ID.
+- *Dump trace information* \- Dump the most recent raw hardware trace information for the specified process ID.
+
+For cross-platform compatibility, the IOCTL operations are defined in a generic format and implemented in the kernel module/driver. The user can use one IOCTL request structure to interact all the hardware trace capabilities across different platforms.
+
+## Enable Trace Capabilities
+
+By default, after loading the kernel module/driver, the hardware trace capabilities are disabled and all trace related registers are flushed. The kernel module/driver will expose a process or character device interface to user space applications. To enable the hardware trace capabilities, the user needs to send an IOCTL request with the command code `LIBIHT_IOCTL_ENABLE_LBR` or `LIBIHT_IOCTL_ENABLE_BTS` to the kernel module/driver. The kernel module/driver will enable the hardware trace capabilities with default configuration for the specified process ID and its future children.
+
+It gives the user the flexibility to start tracing the target process only when needed. They can enable the trace as shown below:
+
+```c
+struct xioctl_request request;
+int fd;
+
+// Open the process or character device
+fd = open("/proc/libiht-info", O_RDWR);
+
+// Setup the buffers for storing the trace information
+memset(&request, 0, sizeof(request));
+request.body.<feature>.buffer  = malloc(<size may varies>);
+
+// Enable the trace capabilities
+request.cmd = <feature code>;
+```
+
+TODO
+
+## Appendix
+
+### IOCTL Request Command Code
 
 The IOCTL request command code is defined as follows:
 
@@ -16,7 +52,7 @@ enum IOCTL {
     LIBIHT_IOCTL_ENABLE_LBR,
     LIBIHT_IOCTL_DISABLE_LBR,
     LIBIHT_IOCTL_DUMP_LBR,
-    LIBIHT_IOCTL_SELECT_LBR,
+    LIBIHT_IOCTL_CONFIG_LBR,
     LIBIHT_IOCTL_LBR_END,       // End of LBR
 
     // BTS
@@ -32,7 +68,7 @@ enum IOCTL {
 - `LIBIHT_IOCTL_ENABLE_LBR`: Enable the Last Branch Record (LBR) hardware trace capability
 - `LIBIHT_IOCTL_DISABLE_LBR`: Disable the Last Branch Record (LBR) hardware trace capability
 - `LIBIHT_IOCTL_DUMP_LBR`: Dump the Last Branch Record (LBR) hardware trace information
-- `LIBIHT_IOCTL_SELECT_LBR`: Select the Last Branch Record (LBR) hardware trace information
+- `LIBIHT_IOCTL_CONFIG_LBR`: Config the Last Branch Record (LBR) hardware trace information
 - `LIBIHT_IOCTL_LBR_END`: End of Last Branch Record (LBR) hardware trace commands
 - `LIBIHT_IOCTL_ENABLE_BTS`: Enable the Branch Trace Store (BTS) hardware trace capability
 - `LIBIHT_IOCTL_DISABLE_BTS`: Disable the Branch Trace Store (BTS) hardware trace capability
@@ -40,7 +76,7 @@ enum IOCTL {
 - `LIBIHT_IOCTL_CONFIG_BTS`: Configure the Branch Trace Store (BTS) hardware trace capability
 - `LIBIHT_IOCTL_BTS_END`: End of Branch Trace Store (BTS) hardware trace commands
 
-## Generic IOCTL Request Format
+### Generic IOCTL Request Format
 
 The generic IOCTL request format is defined as follows:
 
@@ -57,7 +93,7 @@ struct xioctl_request{
 - `cmd`: The IOCTL command code.
 - `body`: The body of the IOCTL request, which contains the specific hardware trace capability request.
 
-### LBR IOCTL Request
+#### LBR IOCTL Request
 
 The LBR IOCTL request is defined as follows:
 
@@ -110,7 +146,7 @@ struct lbr_stack_entry
 - `from`: The value of the `MSR_LBR_NHM_FROM` register.
 - `to`: The value of the `MSR_LBR_NHM_TO` register.
 
-### BTS IOCTL Request
+#### BTS IOCTL Request
 
 The BTS IOCTL request is defined as follows:
 
