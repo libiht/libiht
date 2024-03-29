@@ -2,9 +2,11 @@
 
 User space applications can interact with the kernel space components through the provided user space APIs. The specific user space APIs and their corresponding operations are defined in the [`api.h`](../../lib/commons/api.h) header file. The following sections provide an overview of the user space APIs and their usage.
 
-TODO: Currently, the user space APIs are just wrappers of the kernel space IOCTLs. We will provide more high-level APIs in the future.
+TODO: Currently, the user space APIs are just wrappers of the kernel space IOCTLs. You may refer to the kernel document for details. We will provide more high-level APIs in the future.
 
-## User Space API Functions
+## Appendix
+
+### User Space API Functions
 
 The user space API functions are defined as follows:
 
