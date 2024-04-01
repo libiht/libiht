@@ -1,11 +1,12 @@
-# 启用测试签名模式
+# Enable Test Signing Mode
 bcdedit /set testsigning on
 
-# 启用调试模式
+# Enable Debug Mode
 bcdedit -debug on
 
-# 启用启动调试功能
+# Enable Boot Debugging
 bcdedit /bootdebug on
 
-# 设置调试设置为网络调试，请将 xxxxx 部分更改为你的机器的 IP 和端口，KEY 可以设置也可以不设置
+# Set debug settings to network debugging, please change the xxxxx parts to the IP and port of your machine, KEY can be set or left unset
 bcdedit /dbgsettings NET HOSTIP:192.168.xx.xx PORT:xxxxx KEY:xxxxx
+
