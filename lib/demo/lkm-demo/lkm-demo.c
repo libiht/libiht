@@ -44,7 +44,7 @@ int main(){
     printf("%d %llu %llu\n",bts_query.bts_config.pid, bts_query.bts_config.bts_config, bts_query.bts_config.bts_buffer_size);
     func1();
     dump_bts(bts_query);
-    int bts_tos = 32;
+    int bts_tos = 1024;
     printf("%d\n", bts_tos);
     for (int i = 0; i < bts_tos; i ++) {
         printf ("0x%llx 0x%llx %llu\n", bts_query.buffer -> bts_buffer_base[i].from, bts_query.buffer -> bts_buffer_base[i].to, bts_query.buffer -> bts_buffer_base[i].misc);

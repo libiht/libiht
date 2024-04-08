@@ -1,6 +1,7 @@
 #include <unistd.h>
 
 #define MAX_LIST_LEN    0x20
+#define MAX_BUFFER_LEN  0x200
 
 enum IOCTL{
     LIBIHT_IOCTL_BASE,

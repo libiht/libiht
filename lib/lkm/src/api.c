@@ -54,6 +54,7 @@ void disable_lbr(struct lbr_ioctl_request usr_request) {
     fprintf(stderr, "LIBIHT-API: disable LBR for pid %u\n", usr_request.lbr_config.pid);
     ioctl(lbr_fd, LIBIHT_LKM_IOCTL_BASE, &lbr_send_request);
     lbr_fd = 0;
+    free (usr_request.buffer);
 }
 
 void dump_lbr(struct lbr_ioctl_request usr_request) {
@@ -86,10 +87,10 @@ struct bts_ioctl_request enable_bts(unsigned int pid) {
     fprintf(stderr,"LIBIHT-API: starting enable BTS on pid : %u\n", usr_request.bts_config.pid);
 
     usr_request.bts_config.bts_config = 0;
-    usr_request.bts_config.bts_buffer_size = 0;
+    usr_request.bts_config.bts_buffer_size = MAX_BUFFER_LEN * sizeof (struct bts_record);
     usr_request.buffer = malloc(sizeof (struct bts_data));
-    usr_request.buffer -> bts_buffer_base = malloc (sizeof (struct bts_record) * MAX_LIST_LEN);
-    usr_request.buffer -> bts_index = malloc (sizeof (struct bts_record) * MAX_LIST_LEN);
+    usr_request.buffer -> bts_buffer_base = malloc (sizeof (struct bts_record) * MAX_BUFFER_LEN);
+    usr_request.buffer -> bts_index = malloc (sizeof (struct bts_record) * MAX_BUFFER_LEN);
 
     bts_fd = open("/proc/" DEVICE_NAME, O_RDWR);
 
@@ -113,6 +114,7 @@ void disable_bts(struct bts_ioctl_request usr_request) {
     fprintf(stderr,"LIBIHT-API: disable BTS for pid : %u\n", usr_request.bts_config.pid);
     ioctl(bts_fd, LIBIHT_LKM_IOCTL_BASE, &bts_send_request);
     bts_fd = 0;
+    free (usr_request.buffer);
 }
 
 void dump_bts(struct bts_ioctl_request usr_request) {
