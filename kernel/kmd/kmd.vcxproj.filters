@@ -94,5 +94,8 @@
     <ClInclude Include="..\commons\bts.h">
       <Filter>commons</Filter>
     </ClInclude>
+    <ClInclude Include="..\commons\xioctl.h">
+      <Filter>commons</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
