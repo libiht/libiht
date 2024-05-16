@@ -88,6 +88,7 @@
     <ClCompile>
       <DisableSpecificWarnings>4748;4200;4152;6387;%(DisableSpecificWarnings)</DisableSpecificWarnings>
       <BufferSecurityCheck>false</BufferSecurityCheck>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
