@@ -8,7 +8,7 @@
 //                   libiht. 
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 11, 2023
+//   Last Modified : May 15, 2023
 //
 
 // Includes Files
@@ -38,12 +38,7 @@ extern "C" {
 //
 // Type definitions
 
-// IOCTL request structure
-struct ioctl_request
-{
-    u64 lbr_select; // LBR selection bit
-    u32 pid;        // Process ID
-};
+// Nothing here
 
 //
 // Function Prototypes

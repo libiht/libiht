@@ -129,6 +129,7 @@
     <ClInclude Include="..\commons\debug.h" />
     <ClInclude Include="..\commons\lbr.h" />
     <ClInclude Include="..\commons\types.h" />
+    <ClInclude Include="..\commons\xioctl.h" />
     <ClInclude Include="..\commons\xplat.h" />
     <ClInclude Include="include\headers_kmd.h" />
     <ClInclude Include="include\libiht_kmd.h" />

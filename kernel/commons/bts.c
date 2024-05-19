@@ -6,7 +6,7 @@
 //                   information.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Mar 27, 2023
+//   Last Modified : May 25, 2023
 //
 
 // Include Files
@@ -32,14 +32,19 @@ char bts_state_head[MAX_LIST_LEN];
 void get_bts(struct bts_state *state)
 {
     u64 dbgctlmsr;
+    char irql_flag[MAX_IRQL_LEN];
 
     // Disable BTS
+    xacquire_lock(bts_state_lock, irql_flag);
+
     xrdmsr(MSR_IA32_DEBUGCTLMSR, &dbgctlmsr);
     dbgctlmsr &= ~state->config.bts_config;
     xwrmsr(MSR_IA32_DEBUGCTLMSR, dbgctlmsr);
 
     // Reset BTS debug store buffer pointer
     xwrmsr(MSR_IA32_DS_AREA, NULL);
+
+    xrelease_lock(bts_state_lock, irql_flag);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -54,14 +59,19 @@ void get_bts(struct bts_state *state)
 void put_bts(struct bts_state *state)
 {
     u64 dbgctlmsr;
+    char irql_flag[MAX_IRQL_LEN];
 
     // Setup BTS debug store buffer pointer
+    xacquire_lock(bts_state_lock, irql_flag);
+
     xwrmsr(MSR_IA32_DS_AREA, (u64)state->ds_area);
 
     // Enable BTS
     xrdmsr(MSR_IA32_DEBUGCTLMSR, &dbgctlmsr);
     dbgctlmsr |= state->config.bts_config;
     xwrmsr(MSR_IA32_DEBUGCTLMSR, dbgctlmsr);
+
+    xrelease_lock(bts_state_lock, irql_flag);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -311,7 +321,7 @@ s32 config_bts(struct bts_ioctl_request *request)
             // Reconfigure BTS debug store area
             xfree((void *)state->ds_area->bts_buffer_base);
             state->ds_area->bts_buffer_base = (u64)xmalloc(request->bts_config.bts_buffer_size);
-            state->ds_area->bts_index = 0;
+            state->ds_area->bts_index = state->ds_area->bts_buffer_base;
             state->ds_area->bts_absolute_maximum =
                     state->ds_area->bts_buffer_base +
                     request->bts_config.bts_buffer_size + 1;

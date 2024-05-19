@@ -8,7 +8,7 @@
 //                   feature IOCTL definitions for the library.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 15, 2023
+//   Last Modified : May 25, 2023
 //
 
 //
@@ -24,7 +24,7 @@ enum IOCTL {
     LIBIHT_IOCTL_ENABLE_LBR,
     LIBIHT_IOCTL_DISABLE_LBR,
     LIBIHT_IOCTL_DUMP_LBR,
-    LIBIHT_IOCTL_SELECT_LBR,
+    LIBIHT_IOCTL_CONFIG_LBR,
     LIBIHT_IOCTL_LBR_END,       // End of LBR
 
     // BTS

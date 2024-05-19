@@ -8,7 +8,7 @@
 //                   cross recursive function call.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 25, 2023
+//   Last Modified : May 25, 2023
 //
 
 // Include Files
@@ -39,7 +39,7 @@ enum IOCTL {
     LIBIHT_IOCTL_ENABLE_LBR,
     LIBIHT_IOCTL_DISABLE_LBR,
     LIBIHT_IOCTL_DUMP_LBR,
-    LIBIHT_IOCTL_SELECT_LBR,
+    LIBIHT_IOCTL_CONFIG_LBR,
     LIBIHT_IOCTL_LBR_END,       // End of LBR
 
     // BTS
@@ -186,10 +186,11 @@ int main(int argc, char* argv[])
 
     struct xioctl_request input;
     memset(&input, 0, sizeof(input));
-    input.body.lbr.buffer = (struct lbr_data *)malloc(sizeof(struct lbr_data));
-    input.body.lbr.buffer->entries = (struct lbr_stack_entry *)malloc(sizeof(struct lbr_stack_entry) * 32);
 
 #ifdef ENABLE_LBR
+    // Setup LBR buffer
+    input.body.lbr.buffer = (struct lbr_data *)malloc(sizeof(struct lbr_data));
+    input.body.lbr.buffer->entries = (struct lbr_stack_entry *)malloc(sizeof(struct lbr_stack_entry) * 32);
 
     // Enable LBR
     input.body.lbr.lbr_config.lbr_select = 0;
@@ -217,6 +218,8 @@ int main(int argc, char* argv[])
     ioctl(fd, LIBIHT_LKM_IOCTL_BASE, &input);
     sleep(1);
 
+    free(input.body.lbr.buffer->entries);
+    free(input.body.lbr.buffer);
 #endif
 
 #ifdef ENABLE_BTS
@@ -224,7 +227,7 @@ int main(int argc, char* argv[])
     // Enable BTS
     input.body.bts.bts_config.bts_buffer_size = 0;
     input.body.bts.bts_config.bts_config = 0;
-    input.body.lbr.lbr_config.pid = pid;
+    input.body.bts.bts_config.pid = pid;
 
     input.cmd = LIBIHT_IOCTL_ENABLE_BTS;
     ioctl(fd, LIBIHT_LKM_IOCTL_BASE, &input);
@@ -242,11 +245,7 @@ int main(int argc, char* argv[])
     input.cmd = LIBIHT_IOCTL_DISABLE_BTS;
     ioctl(fd, LIBIHT_LKM_IOCTL_BASE, &input);
     sleep(1);
-
 #endif
-
-    free(input.body.lbr.buffer->entries);
-    free(input.body.lbr.buffer);
 
     printf("Finished!\n");
     close(fd);
