@@ -16,8 +16,8 @@
 #include <Windows.h>
 #include <winioctl.h>
 
-//#define ENABLE_LBR
 #define ENABLE_LBR
+//#define ENABLE_BTS
 
 /*
  * I/O Device name
