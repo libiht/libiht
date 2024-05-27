@@ -543,6 +543,11 @@ s32 lbr_ioctl_handler(struct xioctl_request *request)
                         request->body.lbr.lbr_config.pid);
             ret = dump_lbr(&request->body.lbr);
             break;
+        case LIBIHT_IOCTL_CONFIG_LBR:
+            xprintdbg("LIBIHT-COM: Config LBR for pid %d\n",
+                        request->body.lbr.lbr_config.pid);
+            ret = config_lbr(&request->body.lbr);
+            break;
         default:
             xprintdbg("LIBIHT-COM: Invalid LBR ioctl command\n");
             ret = -1;
