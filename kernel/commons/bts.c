@@ -243,7 +243,7 @@ s32 dump_bts(struct bts_ioctl_request *request)
                                     sizeof(struct bts_data));
         if (bytes_left)
         {
-            xprintdbg("LIBIHT-COM: Copy from user failed.\n");
+            xprintdbg("LIBIHT-COM: Copy BTS data from user failed.\n");
             xrelease_lock(bts_state_lock, irql_flag);
             return -1;
         }
