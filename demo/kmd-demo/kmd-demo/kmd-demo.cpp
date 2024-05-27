@@ -8,7 +8,7 @@
 //                   cross recursive function call.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : May 25, 2023
+//   Last Modified : May 27, 2023
 //
 
 // Include Files
@@ -17,13 +17,13 @@
 #include <winioctl.h>
 
 #define ENABLE_LBR
-//#define ENABLE_BTS
+// #define ENABLE_BTS
 
 /*
  * I/O Device name
  */
-#define DEVICE_NAME			L"\\Device\\libiht-info"
-#define SYM_DEVICE_NAME		L"\\DosDevices\\libiht-info"
+#define DEVICE_NAME         L"\\Device\\libiht-info"
+#define SYM_DEVICE_NAME     L"\\DosDevices\\libiht-info"
 
  /*
   * I/O control table
@@ -98,18 +98,17 @@ struct bts_record
 struct bts_config
 {
     unsigned int pid;                        // Process ID
-    unsigned long long bts_config;                 // MSR_IA32_DEBUGCTLMSR
-    unsigned long long bts_buffer_size;            // BTS buffer size
+    unsigned long long bts_config;           // MSR_IA32_DEBUGCTLMSR
+    unsigned long long bts_buffer_size;      // BTS buffer size
 };
 
 // Define BTS data
 // TODO: pay attention when using this struct in dump bts
 struct bts_data
 {
-    struct bts_record* bts_buffer_base; // BTS buffer base
-    unsigned long long bts_index;                      // BTS current index
-    unsigned long long bts_absolute_maximum;           // BTS absolute maximum
-    unsigned long long bts_interrupt_threshold;        // BTS interrupt threshold
+    struct bts_record* bts_buffer_base;         // BTS buffer base
+    struct bts_record* bts_index;               // BTS current index
+    unsigned long long bts_interrupt_threshold; // BTS interrupt threshold
 };
 
 // Define the bts IOCTL structure
@@ -157,10 +156,10 @@ void func2()
 
 void print_usage()
 {
-	printf("Usage: kmd-demo.exe [pid] [count]\n");
+    printf("Usage: kmd-demo.exe [pid] [count]\n");
     printf("pid: the pid of the process want to trace, trace it self if it is 0\n");
-	printf("count: the number of recursive function call\n");
-	printf("Example: kmd-demo.exe 0 10\n");
+    printf("count: the number of recursive function call\n");
+    printf("Example: kmd-demo.exe 0 10\n");
     fflush(stdout);
     exit(-1);
 }
@@ -196,6 +195,9 @@ int main(int argc, char* argv[])
     // Setup LBR buffer
     input.body.lbr.buffer = (struct lbr_data*)malloc(sizeof(struct lbr_data));
     input.body.lbr.buffer->entries = (struct lbr_stack_entry*)malloc(32 * sizeof(struct lbr_stack_entry));
+    printf("LBR buffer: %p\n", input.body.lbr.buffer);
+    printf("LBR entries: %p\n", input.body.lbr.buffer->entries);
+    memset(input.body.lbr.buffer->entries, -1, 32 * sizeof(struct lbr_stack_entry));
 
     // Enable LBR
     input.body.lbr.lbr_config.lbr_select = 0;
@@ -211,20 +213,33 @@ int main(int argc, char* argv[])
     // Dump LBR
     input.cmd = LIBIHT_IOCTL_DUMP_LBR;
     DeviceIoControl(hDevice, LIBIHT_KMD_IOCTL_BASE, &input, sizeof(input), NULL, 0, NULL, NULL);
-    printf("LBR TOS: %llx\n", input.body.lbr.buffer->lbr_tos);
-    for (int i = 0; i < 32; i++)
-    {
-        printf("LBR[%d]: %llx -> %llx\n", i, input.body.lbr.buffer->entries[i].from, input.body.lbr.buffer->entries[i].to);
-    }
     Sleep(1000);
 
     // Disable LBR
     input.cmd = LIBIHT_IOCTL_DISABLE_LBR;
     DeviceIoControl(hDevice, LIBIHT_KMD_IOCTL_BASE, &input, sizeof(input), NULL, 0, NULL, NULL);
     Sleep(1000);
+
+    // Print LBR buffer
+    printf("LBR TOS: %llx\n", input.body.lbr.buffer->lbr_tos);
+    for (int i = 0; i < 32; i++)
+    {
+        printf("LBR[%d]: %llx -> %llx\n", i, input.body.lbr.buffer->entries[i].from, input.body.lbr.buffer->entries[i].to);
+    }
+
+    // Free LBR buffer
+    free(input.body.lbr.buffer->entries);
+    free(input.body.lbr.buffer);
 #endif // ENABLE_LBR
 
 #ifdef ENABLE_BTS
+    // Setup BTS buffer
+    input.body.bts.buffer = (struct bts_data*)malloc(sizeof(struct bts_data));
+    input.body.bts.buffer->bts_buffer_base = (struct bts_record*)malloc(1024 * sizeof(struct bts_record));
+    printf("BTS buffer: %p\n", input.body.bts.buffer);
+    printf("BTS buffer base: %p\n", input.body.bts.buffer->bts_buffer_base);
+    memset(input.body.bts.buffer->bts_buffer_base, -1, 1024 * sizeof(struct bts_record));
+
     // Enable BTS
     input.body.bts.bts_config.bts_buffer_size = 0;
     input.body.bts.bts_config.bts_config = 0;
@@ -246,9 +261,24 @@ int main(int argc, char* argv[])
     input.cmd = LIBIHT_IOCTL_DISABLE_BTS;
     DeviceIoControl(hDevice, LIBIHT_KMD_IOCTL_BASE, &input, sizeof(input), NULL, 0, NULL, NULL);
     Sleep(1000);
+
+    // Print BTS buffer
+    int position = (input.body.bts.buffer->bts_index - input.body.bts.buffer->bts_buffer_base);
+    printf("BTS Information:\n");
+    printf("BTS Buffer Base: %p\n", input.body.bts.buffer->bts_buffer_base);
+    printf("BTS Index: %p\n", input.body.bts.buffer->bts_index);
+    printf("BTS Index (position in array): %d\n", position);
+    for (int i = 0; i < 1024; i++)
+    {
+        printf("BTS[%d]: %llx -> %llx\n", i, input.body.bts.buffer->bts_buffer_base[i].from, input.body.bts.buffer->bts_buffer_base[i].to);
+    }
+
+    // Free BTS buffer
+    free(input.body.bts.buffer->bts_buffer_base);
+    free(input.body.bts.buffer);
 #endif // ENABLE_BTS
 
-    printf("Finished!\n");
+    printf("Close device!\n");
     CloseHandle(hDevice);
     return 0;
 }
