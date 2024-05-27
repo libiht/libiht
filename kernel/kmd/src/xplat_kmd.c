@@ -5,7 +5,7 @@
 //                   kernel-mode driver.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 2, 2024
+//   Last Modified : May 27, 2024
 //
 
 #include "../../commons/xplat.h"
@@ -55,15 +55,20 @@ void xfree(void *ptr)
 // Description  : Cross platform kernel copy from user function. Copy memory
 //                from user space to kernel space.
 //
-// Inputs       : dst - pointer to the destination memory.
-//                src - pointer to the source memory.
+// Inputs       : dst - pointer to the destination memory (kernel space).
+//                src - pointer to the source memory (user space).
 //                cnt - size of the memory to be copied.
 // Outputs      : u64 - number of bytes not copied (0 on success).
 
-u64 xcopy_from_user(void *dst, const void *src, u64 cnt)
+u64 xcopy_from_user(void *dst, void *src, u64 cnt)
 {
-    // WOW, windows kernel can access user space memory directly
-	RtlCopyMemory(dst, src, cnt);
+    // Probe and copy the memory
+    __try {
+        ProbeForRead(src, cnt, 1);
+        RtlCopyMemory(dst, src, cnt);
+    } __except(EXCEPTION_EXECUTE_HANDLER) {
+        return (u64)-1;
+    }
     return 0;
 }
 
@@ -73,14 +78,31 @@ u64 xcopy_from_user(void *dst, const void *src, u64 cnt)
 // Description  : Cross platform kernel copy to user function. Copy memory from
 //                kernel space to user space.
 //
-// Inputs       : dst - pointer to the destination memory.
-//                src - pointer to the source memory.
+// Inputs       : dst - pointer to the destination memory (user space).
+//                src - pointer to the source memory (kernel space).
 //                cnt - size of the memory to be copied.
 // Outputs      : u64 - number of bytes not copied (0 on success).
 
-u64 xcopy_to_user(void *dst, const void *src, u64 cnt)
+u64 xcopy_to_user(void *dst, void *src, u64 cnt)
 {
-	RtlCopyMemory(dst, src, cnt);
+    // Allocate and build the MDL object
+    PMDL mdl = IoAllocateMdl(dst, (u32)cnt, FALSE, FALSE, NULL);
+    if (mdl == NULL) {
+        return (u64)-1;
+    }
+    //MmBuildMdlForNonPagedPool(mdl);
+
+    // Probe and lock the pages
+    __try {
+        MmProbeAndLockPages(mdl, UserMode, IoWriteAccess);
+        RtlCopyMemory(MmGetSystemAddressForMdlSafe(mdl, NormalPagePriority), src, cnt);
+        MmUnlockPages(mdl);
+    }
+    __except (EXCEPTION_EXECUTE_HANDLER) {
+        IoFreeMdl(mdl);
+        return (u64)-1;
+    }
+    IoFreeMdl(mdl);
     return 0;
 }
 
