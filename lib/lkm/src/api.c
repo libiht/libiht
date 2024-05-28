@@ -1,4 +1,5 @@
 #include "../../commons/api.h"
+#include "../include/lkm.h"
 #include <sys/ioctl.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -30,7 +31,7 @@ struct lbr_ioctl_request enable_lbr(unsigned int pid) {
 
     usr_request.buffer = malloc(sizeof(struct lbr_data));
     usr_request.buffer->lbr_tos = 0;
-    usr_request.buffer->entries = malloc(sizeof(struct lbr_stack_entry) * MAX_LIST_LEN);
+    usr_request.buffer->entries = malloc(sizeof(struct lbr_stack_entry) * MAX_LBR_LIST_LEN);
 
     lbr_fd = open("/proc/" DEVICE_NAME, O_RDWR);
 
@@ -88,8 +89,8 @@ struct bts_ioctl_request enable_bts(unsigned int pid) {
     usr_request.bts_config.bts_config = 0;
     usr_request.bts_config.bts_buffer_size = 0;
     usr_request.buffer = malloc(sizeof(struct bts_data));
-    usr_request.buffer->bts_buffer_base = malloc(sizeof(struct bts_record) * MAX_LIST_LEN);
-    usr_request.buffer->bts_index = malloc(sizeof(struct bts_record) * MAX_LIST_LEN);
+    usr_request.buffer->bts_buffer_base = malloc(sizeof(struct bts_record) * MAX_BTS_LIST_LEN);
+    usr_request.buffer->bts_index = malloc(sizeof(struct bts_record) * MAX_BTS_LIST_LEN);
 
     bts_fd = open("/proc/" DEVICE_NAME, O_RDWR);
 

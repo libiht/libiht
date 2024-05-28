@@ -2,6 +2,9 @@
 #include "../../kmd/kmd/kmd.h"
 #include <stdio.h>
 
+#define ENABLE_LBR
+// #define ENABLE_BTS
+
 int cnt = 10;
 
 void func1(void);
@@ -28,7 +31,8 @@ void func2()
 }
 
 int main() {
-    /*struct lbr_ioctl_request lbr_query = enable_lbr(0);
+#ifdef ENABLE_LBR
+    struct lbr_ioctl_request lbr_query = enable_lbr(0);
     cnt = 10;
     printf("%u %llu\n", lbr_query.lbr_config.pid, lbr_query.lbr_config.lbr_select);
     func1();
@@ -38,8 +42,10 @@ int main() {
         printf("0x%llx 0x%llx; ", lbr_query.buffer->entries[i].from, lbr_query.buffer->entries[i].to);
     }
     printf("\n");
-    disable_lbr(lbr_query);*/
+    disable_lbr(lbr_query);
+#endif
 
+#ifdef ENABLE_BTS
     struct bts_ioctl_request bts_query = enable_bts(0);
     cnt = 10;
     printf("%d %llu %llu\n", bts_query.bts_config.pid, bts_query.bts_config.bts_config, bts_query.bts_config.bts_buffer_size);
@@ -52,5 +58,6 @@ int main() {
     }
     printf("\n");
     disable_bts(bts_query);
+#endif
     return 0;
 }

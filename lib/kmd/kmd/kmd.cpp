@@ -31,7 +31,7 @@ struct lbr_ioctl_request enable_lbr(unsigned int pid) {
 
     usr_request.buffer = (struct lbr_data*)malloc(sizeof(struct lbr_data));
     usr_request.buffer->lbr_tos = 0;
-    usr_request.buffer->entries = (struct lbr_stack_entry*)malloc(sizeof(struct lbr_stack_entry) * MAX_LIST_LEN);
+    usr_request.buffer->entries = (struct lbr_stack_entry*)malloc(sizeof(struct lbr_stack_entry) * MAX_LBR_LIST_LEN);
 
     lbr_hDevice = CreateFileA("\\\\.\\libiht-info", GENERIC_READ |
         GENERIC_WRITE, 0,
@@ -95,8 +95,8 @@ struct bts_ioctl_request enable_bts(unsigned int pid) {
     usr_request.bts_config.bts_config = 0;
     usr_request.bts_config.bts_buffer_size = 0;
     usr_request.buffer = (struct bts_data*)malloc(sizeof(struct bts_data));
-    usr_request.buffer->bts_buffer_base = (struct bts_record*)malloc(sizeof(struct bts_record) * MAX_LIST_LEN);
-    usr_request.buffer->bts_index = (struct bts_record*)malloc(sizeof(struct bts_record) * MAX_LIST_LEN);
+    usr_request.buffer->bts_buffer_base = (struct bts_record*)malloc(sizeof(struct bts_record) * MAX_BTS_LIST_LEN);
+    usr_request.buffer->bts_index = (struct bts_record*)malloc(sizeof(struct bts_record) * MAX_BTS_LIST_LEN);
 
     bts_hDevice = CreateFileA("\\\\.\\libiht-info", GENERIC_READ |
         GENERIC_WRITE, 0,
