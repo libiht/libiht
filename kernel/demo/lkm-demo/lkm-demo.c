@@ -1,37 +1,34 @@
-﻿////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 //
-//  File           : demo/kmd-demo/kmd-demo/kmd-demo.cpp
-//  Description    : This is the main program for the kmd-demo program. It will
-//                   open the helper device and send the ioctl request to the
-//                   helper device. The kernel driver will trace the process 
+//  File           : demo/lkm-demo/lkm-demo.c
+//  Description    : This is the main program for the lkm-demo program. It will
+//                   open the helper process and send the ioctl request to the
+//                   helper processs. The kernel module will trace the process 
 //                   and dump the LBR to show the call stack information of the
 //                   cross recursive function call.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : May 25, 2023
+//   Last Modified : May 27, 2023
 //
 
 // Include Files
-#include <iostream>
-#include <Windows.h>
-#include <winioctl.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/ioctl.h>
 
 #define ENABLE_LBR
-//#define ENABLE_BTS
+// #define ENABLE_BTS
 
-/*
- * I/O Device name
- */
-#define DEVICE_NAME			L"\\Device\\libiht-info"
-#define SYM_DEVICE_NAME		L"\\DosDevices\\libiht-info"
+// Device name
+#define DEVICE_NAME "libiht-info"
 
- /*
-  * I/O control table
-  */
-#define KMD_IOCTL_TYPE 0x8888
-#define KMD_IOCTL_FUNC 0x888
-
-#define LIBIHT_KMD_IOCTL_BASE       CTL_CODE(KMD_IOCTL_TYPE, KMD_IOCTL_FUNC + 0, METHOD_BUFFERED, FILE_ANY_ACCESS)
+// I/O control macros
+// TODO: Is IOCTL macros really needed?
+#define LIBIHT_LKM_IOCTL_MAGIC 'l'
+#define LIBIHT_LKM_IOCTL_BASE       _IO(LIBIHT_LKM_IOCTL_MAGIC, 0)
 
 //
 // Library constants
@@ -74,13 +71,13 @@ struct lbr_config
 struct lbr_data
 {
     unsigned long long lbr_tos;                      // MSR_LBR_TOS
-    struct lbr_stack_entry* entries;  // LBR stack entries
+    struct lbr_stack_entry *entries;  // LBR stack entries
 };
 
 // Define the lbr IOCTL structure
-struct lbr_ioctl_request {
+struct lbr_ioctl_request{
     struct lbr_config lbr_config;
-    struct lbr_data* buffer;
+    struct lbr_data *buffer;
 };
 
 //
@@ -106,23 +103,23 @@ struct bts_config
 // TODO: pay attention when using this struct in dump bts
 struct bts_data
 {
-    struct bts_record* bts_buffer_base; // BTS buffer base
+    struct bts_record *bts_buffer_base; // BTS buffer base
     unsigned long long bts_index;                      // BTS current index
     unsigned long long bts_absolute_maximum;           // BTS absolute maximum
     unsigned long long bts_interrupt_threshold;        // BTS interrupt threshold
 };
 
 // Define the bts IOCTL structure
-struct bts_ioctl_request {
+struct bts_ioctl_request{
     struct bts_config bts_config;
-    struct bts_data* buffer;
+    struct bts_data *buffer;
 };
 
 //
 // xIOCTL Type definitions
 
 // Define the xIOCTL structure
-struct xioctl_request {
+struct xioctl_request{
     enum IOCTL cmd;
     union {
         struct lbr_ioctl_request lbr;
@@ -157,10 +154,10 @@ void func2()
 
 void print_usage()
 {
-	printf("Usage: kmd-demo.exe [pid] [count]\n");
+    printf("Usage: lkm-demo [pid] [count]\n");
     printf("pid: the pid of the process want to trace, trace it self if it is 0\n");
-	printf("count: the number of recursive function call\n");
-	printf("Example: kmd-demo.exe 0 10\n");
+    printf("count: the number of recursive function call\n");
+    printf("Example: lkm-demo 0 10\n");
     fflush(stdout);
     exit(-1);
 }
@@ -172,20 +169,18 @@ int main(int argc, char* argv[])
 
     int pid = atoi(argv[1]);
     if (pid == 0)
-        pid = GetCurrentProcessId();
+        pid = getpid();
     cnt = atoi(argv[2]);
-    printf("func1's ptr: 0x%p\nfunc2's ptr: 0x%p\n", &func1, &func2);
+    printf("pid: %d, count: %d\n", pid, cnt);
+    printf("func1's ptr: %p\nfunc2's ptr: %p\n", &func1, &func2);
     fflush(stdout);
-    Sleep(1000);
+    sleep(1);
 
-    HANDLE hDevice = CreateFileA("\\\\.\\libiht-info", GENERIC_READ |
-        GENERIC_WRITE, 0,
-        NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    int fd = open("/proc/" DEVICE_NAME, O_RDWR);
 
-    if (hDevice == INVALID_HANDLE_VALUE)
+    if (fd < 0)
     {
         printf("Failed to open device!\n");
-        CloseHandle(hDevice);
         return 0;
     }
 
@@ -194,61 +189,90 @@ int main(int argc, char* argv[])
 
 #ifdef ENABLE_LBR
     // Setup LBR buffer
-    input.body.lbr.buffer = (struct lbr_data*)malloc(sizeof(struct lbr_data));
-    input.body.lbr.buffer->entries = (struct lbr_stack_entry*)malloc(32 * sizeof(struct lbr_stack_entry));
+    input.body.lbr.buffer = (struct lbr_data *)malloc(sizeof(struct lbr_data));
+    input.body.lbr.buffer->entries = (struct lbr_stack_entry *)malloc(sizeof(struct lbr_stack_entry) * 32);
+    printf("LBR buffer: %p\n", input.body.lbr.buffer);
+    printf("LBR entries: %p\n", input.body.lbr.buffer->entries);
+    memset(input.body.lbr.buffer->entries, -1, sizeof(struct lbr_stack_entry) * 32);
 
     // Enable LBR
     input.body.lbr.lbr_config.lbr_select = 0;
     input.body.lbr.lbr_config.pid = pid;
 
     input.cmd = LIBIHT_IOCTL_ENABLE_LBR;
-    DeviceIoControl(hDevice, LIBIHT_KMD_IOCTL_BASE, &input, sizeof(input), NULL, 0, NULL, NULL);
-    Sleep(1000);
+    ioctl(fd, LIBIHT_LKM_IOCTL_BASE, &input);
+    sleep(1);
 
     // Simulate critical logic
     func1();
 
     // Dump LBR
     input.cmd = LIBIHT_IOCTL_DUMP_LBR;
-    DeviceIoControl(hDevice, LIBIHT_KMD_IOCTL_BASE, &input, sizeof(input), NULL, 0, NULL, NULL);
+    ioctl(fd, LIBIHT_LKM_IOCTL_BASE, &input);
+    sleep(1);
+
+    // Disable LBR
+    input.cmd = LIBIHT_IOCTL_DISABLE_LBR;
+    ioctl(fd, LIBIHT_LKM_IOCTL_BASE, &input);
+    sleep(1);
+
+    // Print LBR buffer
     printf("LBR TOS: %llx\n", input.body.lbr.buffer->lbr_tos);
     for (int i = 0; i < 32; i++)
     {
         printf("LBR[%d]: %llx -> %llx\n", i, input.body.lbr.buffer->entries[i].from, input.body.lbr.buffer->entries[i].to);
     }
-    Sleep(1000);
 
-    // Disable LBR
-    input.cmd = LIBIHT_IOCTL_DISABLE_LBR;
-    DeviceIoControl(hDevice, LIBIHT_KMD_IOCTL_BASE, &input, sizeof(input), NULL, 0, NULL, NULL);
-    Sleep(1000);
-#endif // ENABLE_LBR
+    // Print LBR buffer
+    free(input.body.lbr.buffer->entries);
+    free(input.body.lbr.buffer);
+#endif
 
 #ifdef ENABLE_BTS
+    // Setup BTS buffer
+    input.body.bts.buffer = (struct bts_data *)malloc(sizeof(struct bts_data));
+    input.body.bts.buffer->bts_buffer_base = (struct bts_record *)malloc(sizeof(struct bts_record) * 1024);
+    printf("BTS buffer: %p\n", input.body.bts.buffer);
+    printf("BTS buffer base: %p\n", input.body.bts.buffer->bts_buffer_base);
+    memset(input.body.bts.buffer->bts_buffer_base, -1, sizeof(struct bts_record) * 1024);
+
     // Enable BTS
     input.body.bts.bts_config.bts_buffer_size = 0;
     input.body.bts.bts_config.bts_config = 0;
     input.body.bts.bts_config.pid = pid;
 
     input.cmd = LIBIHT_IOCTL_ENABLE_BTS;
-    DeviceIoControl(hDevice, LIBIHT_KMD_IOCTL_BASE, &input, sizeof(input), NULL, 0, NULL, NULL);
-    Sleep(1000);
+    ioctl(fd, LIBIHT_LKM_IOCTL_BASE, &input);
+    sleep(1);
 
     // Simulate critical logic
     func1();
 
     // Dump BTS
     input.cmd = LIBIHT_IOCTL_DUMP_BTS;
-    DeviceIoControl(hDevice, LIBIHT_KMD_IOCTL_BASE, &input, sizeof(input), NULL, 0, NULL, NULL);
-    Sleep(1000);
+    ioctl(fd, LIBIHT_LKM_IOCTL_BASE, &input);
+    sleep(1);
 
     // Disable BTS
     input.cmd = LIBIHT_IOCTL_DISABLE_BTS;
-    DeviceIoControl(hDevice, LIBIHT_KMD_IOCTL_BASE, &input, sizeof(input), NULL, 0, NULL, NULL);
-    Sleep(1000);
-#endif // ENABLE_BTS
+    ioctl(fd, LIBIHT_LKM_IOCTL_BASE, &input);
+    sleep(1);
 
-    printf("Finished!\n");
-    CloseHandle(hDevice);
+    // Print BTS buffer
+    printf("BTS Information:\n");
+    printf("BTS Buffer Base: %p\n", input.body.bts.buffer->bts_buffer_base);
+    printf("BTS Index: %p\n", input.body.bts.buffer->bts_index);
+    for (int i = 0; i < 1024; i++)
+    {
+        printf("BTS[%d]: %llx -> %llx\n", i, input.body.bts.buffer->bts_buffer_base[i].from, input.body.bts.buffer->bts_buffer_base[i].to);
+    }
+
+    // Free BTS buffer
+    free(input.body.bts.buffer->bts_buffer_base);
+    free(input.body.bts.buffer);
+#endif
+
+    printf("Close device!\n");
+    close(fd);
     return 0;
 }

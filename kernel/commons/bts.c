@@ -6,7 +6,7 @@
 //                   information.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : May 25, 2023
+//   Last Modified : May 27, 2023
 //
 
 // Include Files
@@ -205,7 +205,7 @@ s32 disable_bts(struct bts_ioctl_request *request)
 
 s32 dump_bts(struct bts_ioctl_request *request)
 {
-    u64 i, bytes_left;
+    u64 i, bytes_left, bts_offset;
     struct bts_state *state;
     struct bts_record *record;
     struct bts_data req_buf;
@@ -220,13 +220,16 @@ s32 dump_bts(struct bts_ioctl_request *request)
     }
 
     // Dump some BTS buffer records
-    // TODO: fix this 32 later
     xacquire_lock(bts_state_lock, irql_flag);
 
-    xprintdbg("LIBIHT-COM: BTS buffer base: 0x%llx, index: 0x%llx.\n",
+    bts_offset = (state->ds_area->bts_index -
+                    state->ds_area->bts_buffer_base) /
+                    sizeof(struct bts_record);
+    xprintdbg("LIBIHT-COM: BTS buffer base: 0x%llx, index: 0x%llx. offset: 0x%llx\n",
                 state->ds_area->bts_buffer_base,
-                state->ds_area->bts_index);
-    for (i = 0; i < 32; i++)
+                state->ds_area->bts_index,
+                bts_offset);
+    for (i = 0; i < state->config.bts_buffer_size / sizeof(struct bts_record); i++)
     {
         record = (struct bts_record*)state->ds_area->bts_buffer_base + i;
         xprintdbg("LIBIHT-COM: BTS record ptr: 0x%llx.\n", (u64)record);
@@ -235,7 +238,7 @@ s32 dump_bts(struct bts_ioctl_request *request)
     }
 
     // Dump the BTS data to userspace buffer
-    // TODO: Try to support mmap share between user and kernel space
+    // TODO: Try best to support mmap share between user and kernel space
     if (request->buffer)
     {
         // Get a copy of data from userspace buffer
@@ -243,13 +246,14 @@ s32 dump_bts(struct bts_ioctl_request *request)
                                     sizeof(struct bts_data));
         if (bytes_left)
         {
-            xprintdbg("LIBIHT-COM: Copy from user failed.\n");
+            xprintdbg("LIBIHT-COM: Copy BTS data from user failed.\n");
             xrelease_lock(bts_state_lock, irql_flag);
             return -1;
         }
 
         // Dump data to userspace buffer ptr
         // Not yet support state->ds_area->bts_interrupt_threshold
+        req_buf.bts_index = req_buf.bts_buffer_base + bts_offset;
         if (req_buf.bts_buffer_base)
         {
             bytes_left = xcopy_to_user(req_buf.bts_buffer_base,
@@ -261,11 +265,6 @@ s32 dump_bts(struct bts_ioctl_request *request)
                 xrelease_lock(bts_state_lock, irql_flag);
                 return -1;
             }
-
-            // Set the bts_index to the correct relative offset
-            req_buf.bts_index = state->ds_area->bts_index -
-                                state->ds_area->bts_buffer_base +
-                                req_buf.bts_buffer_base;
         }
 
         // Copy updated data back to userspace buffer
