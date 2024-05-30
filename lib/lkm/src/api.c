@@ -64,7 +64,7 @@ void dump_lbr(struct lbr_ioctl_request usr_request) {
     ioctl(lbr_fd, LIBIHT_LKM_IOCTL_BASE, &lbr_send_request);
 }
 
-void select_lbr(struct lbr_ioctl_request usr_request) {
+void config_lbr(struct lbr_ioctl_request usr_request) {
     lbr_send_request.cmd = LIBIHT_IOCTL_SELECT_LBR;
     lbr_send_request.body.lbr = usr_request;
     fprintf(stderr, "LIBIHT-API: select LBR for pid %u\n", usr_request.lbr_config.pid);
