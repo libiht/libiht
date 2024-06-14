@@ -1,7 +1,7 @@
 #ifndef LIBIHT_API_H
 #define LIBIHT_API_H
-unsigned MAX_LBR_LIST_LEN  = 0x20
-unsigned MAX_BTS_LIST_LEN  = 0x200
+unsigned int MAX_LBR_LIST_LEN = 0x20;
+unsigned int MAX_BTS_LIST_LEN = 0x200;
 
 enum IOCTL {
     LIBIHT_IOCTL_BASE,
