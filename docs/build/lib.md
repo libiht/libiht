@@ -9,3 +9,11 @@ To build the userspace library, use the provided Makefile located in the `lib` d
 ## TODO: Windows Build
 
 To build the userspace library on Windows, you will need to install the [Software Development Kit (SDK)](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/) and [Visual Studio](https://visualstudio.microsoft.com/downloads/). Once installed, you can build the userspace library using the provided Visual Studio solution file (`libiht.sln`).
+
+Navigate to the `lib/kmd` directory and run the following command to build the KMD component of LIBIHT:
+
+```powershell
+msbuild /p:Configuration=Debug /p:Platform=x64 .\kmd.sln
+```
+
+# 
