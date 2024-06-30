@@ -1,14 +1,14 @@
-# LIBIHT (Intel Hardware Trace Library)
+# LibIHT (Intel Hardware Trace Library)
 
-LIBIHT (Intel Hardware Trace Library) is a cross platform library framework for managing (i.e., retrieving, analyzing, and visualizing) hardware trace information from Intel processors and helping reverse engineers and security researchers to understand the control flow behavior of the target program. We assume users have a basic understanding of operating systems, computer architecture, and Intel hardware trace capabilities.
+LibIHT (Intel Hardware Trace Library) is a cross platform library framework for managing (i.e., retrieving, analyzing, and visualizing) hardware trace information from Intel processors and helping reverse engineers and security researchers to understand the control flow behavior of the target program. We assume users have a basic understanding of operating systems, computer architecture, and Intel hardware trace capabilities.
 
-Modern Intel CPUs have introduced a suite of hardware features, such as Last Branch Record (LBR) and Branch Trace Store (BTS), which promise to deliver detailed program tracing information with minimal overhead. LIBIHT bridge the gap between low-level hardware trace capabilities and high-level user space applications by offering both kernel and user interfaces that hide all the complexity of hardware-assisted tracing and a user-friendly approach to interacting with Intel CPU hardware trace features.
+Modern Intel CPUs have introduced a suite of hardware features, such as Last Branch Record (LBR) and Branch Trace Store (BTS), which promise to deliver detailed program tracing information with minimal overhead. LibIHT bridge the gap between low-level hardware trace capabilities and high-level user space applications by offering both kernel and user interfaces that hide all the complexity of hardware-assisted tracing and a user-friendly approach to interacting with Intel CPU hardware trace features.
 
 It is proudly brought to you by **[Tencent Security Xuanwu Lab](https://xlab.tencent.com/en/)** and its long-term talent cultivation program **Tencent Spark Talent Program**.
 
-## LIBIHT Components
+## LibIHT Components
 
-The LIBIHT library consists of two main components: kernel space components and user space components.
+The LibIHT library consists of two main components: kernel space components and user space components.
 
 The kernel space components are responsible for retrieving raw hardware trace information from the Intel processors and process granular trace control operations, such as enabling/disabling hardware trace capabilities, configuring hardware trace parameters.
 
@@ -32,7 +32,7 @@ Depending on the operating systems and components, detailed instructions are pro
 
 ## Contributing
 
-We welcome contributions to the LIBIHT project. Here's how you can help:
+We welcome contributions to the LibIHT project. Here's how you can help:
 
 - **Reporting issues:** If you find any problems or have suggestions about the library, please create an issue on GitHub. Be sure to include as much detail as possible so we can understand and reproduce the problem.
 
@@ -40,7 +40,7 @@ We welcome contributions to the LIBIHT project. Here's how you can help:
 
 - **Testing on different platforms:** The library supports Windows 10 and above, and Linux kernel version 5.0 and above. If you have access to other platforms or versions, your help in testing the library would be very valuable.
 
-Thank you for considering contributing to LIBIHT!
+Thank you for considering contributing to LibIHT!
 
 ## FAQ
 
@@ -54,4 +54,4 @@ A: The library supports Intel processors with hardware trace (Intel Processor Tr
 
 **Q: Is there any documentation available for the APIs?**
 
-A: Yes, you can find the API documentation are specified in [api](./docs/api/) directory.
+A: Yes, you can find the API documentation are specified in [usage](./docs/usage/) directory.
