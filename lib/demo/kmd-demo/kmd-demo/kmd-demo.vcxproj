@@ -110,7 +110,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>C:\projects\libiht\lib\kmd\kmd\x64\$(IntDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\kmd\kmd\x64\$(IntDir)</AdditionalLibraryDirectories>
       <AdditionalDependencies>"C:\projects\libiht\lib\kmd\kmd\x64\Debug\kmd.lib";%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>

@@ -114,15 +114,16 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\kmd</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\projects\libiht\lib\kmd\kmd;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalLibraryDirectories>..\kmd\x64\$(IntDir)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\kmd\x64\Debug</AdditionalLibraryDirectories>
       <ModuleDefinitionFile>Source.def</ModuleDefinitionFile>
+      <AdditionalDependencies>..\kmd\x64\Debug\kmd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
