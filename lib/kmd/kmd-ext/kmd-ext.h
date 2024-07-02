@@ -1,7 +1,7 @@
 #pragma once
 #include <windows.h>
 #include <dbgeng.h>
-//#include <wdbgexts.h>
+#include <wdbgexts.h>
 #include <iostream>
 #include <stdio.h>
 

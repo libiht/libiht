@@ -2,6 +2,8 @@
 #include "kmd-ext.h"
 #include "kmd.h"
 
+WINDBG_EXTENSION_APIS ExtensionApis;
+
 extern "C" HRESULT CALLBACK
 DebugExtensionInitiaize(PULONG Version, PULONG Flags) {
 	*Version = DEBUG_EXTENSION_VERSION(EXT_MAJOR_VER, EXT_MINOR_VER);
@@ -41,7 +43,7 @@ EnableLBR(unsigned int pid = 0) {
 	}
 	lbr_enable = 1;
 	lbr_req = enable_lbr(pid);
-	fprintf(stderr, "LIBIHT-WINDBG: enable lbr for pid : %d\n", lbr_req.lbr_config.pid);
+	dprintf("LIBIHT-WINDBG: enable lbr for pid : %d\n", lbr_req.lbr_config.pid);
 	return lbr_req;
 }
 
@@ -52,7 +54,7 @@ DisableLBR() {
 	}
 	lbr_enable = 0;
 	disable_lbr(lbr_req);
-	fprintf(stderr, "LIBIHT-WINDBG: disable lbr for pid : %d\n", lbr_req.lbr_config.pid);
+	dprintf("LIBIHT-WINDBG: disable lbr for pid : %d\n", lbr_req.lbr_config.pid);
 }
 
 extern "C" void CALLBACK
@@ -60,12 +62,12 @@ DumpLBR() {
 	if (lbr_enable == 0) {
 		return;
 	}
-	fprintf(stderr, "LIBIHT-WINDBG: dump lbr for pid : %d\n", lbr_req.lbr_config.pid);
+	dprintf("LIBIHT-WINDBG: dump lbr for pid : %d\n", lbr_req.lbr_config.pid);
 	dump_lbr(lbr_req);
 	unsigned long long lbr_tos = lbr_req.buffer->lbr_tos;
 	for (int i = 0; i < (int)lbr_tos; i++) {
-		fprintf(stderr, "MSR_LBR_NHM_FROM[ %d ]: %llx\n", i, lbr_req.buffer->entries[i].from);
-		fprintf(stderr, "MSR_LBR_NHM_FROM[ %d ]: %llx\n", i, lbr_req.buffer->entries[i].to);
+		dprintf("MSR_LBR_NHM_FROM[ %d ]: %llx\n", i, lbr_req.buffer->entries[i].from);
+		dprintf("MSR_LBR_NHM_FROM[ %d ]: %llx\n", i, lbr_req.buffer->entries[i].to);
 	}
 }
 
@@ -76,7 +78,7 @@ EnableBTS(unsigned int pid = 0) {
 	}
 	bts_enable = 1;
 	bts_req = enable_bts(pid);
-	fprintf(stderr, "LIBIHT-WINDBG: enable bts for pid : %d\n", bts_req.bts_config.pid);
+	dprintf("LIBIHT-WINDBG: enable bts for pid : %d\n", bts_req.bts_config.pid);
 	return bts_req;
 }
 
@@ -87,7 +89,7 @@ DisableBTS() {
 	}
 	bts_enable = 0;
 	disable_bts(bts_req);
-	fprintf(stderr, "LIBIHT-WINDBG: disable bts for pid : %d\n", bts_req.bts_config.pid);
+	dprintf("LIBIHT-WINDBG: disable bts for pid : %d\n", bts_req.bts_config.pid);
 }
 
 extern "C" void CALLBACK
@@ -95,12 +97,12 @@ DumpBTS() {
 	if (bts_enable == 0) {
 		return;
 	}
-	fprintf(stderr, "LIBIHT-WINDBG: dump lbr for pid : %d\n", bts_req.bts_config.pid);
+	dprintf("LIBIHT-WINDBG: dump lbr for pid : %d\n", bts_req.bts_config.pid);
 	dump_bts(bts_req);
 	int bts_tos = 32;
-	fprintf(stderr, "%d\n", bts_tos);
+	dprintf("%d\n", bts_tos);
 	for (int i = 0; i < bts_tos; i++) {
-		fprintf(stderr, "0x%llx 0x%llx %llu\n", bts_req.buffer->bts_buffer_base[i].from, bts_req.buffer->bts_buffer_base[i].to, bts_req.buffer->bts_buffer_base[i].misc);
+		dprintf("0x%llx 0x%llx %llu\n", bts_req.buffer->bts_buffer_base[i].from, bts_req.buffer->bts_buffer_base[i].to, bts_req.buffer->bts_buffer_base[i].misc);
 	}
-	fprintf(stderr, "\n");
+	dprintf("\n");
 }
