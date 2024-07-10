@@ -1,0 +1,7 @@
+EXPORTS
+	EnableLBR
+	DumpLBR
+	DisableLBR
+	EnableBTS
+	DumpBTS
+	DisableBTS

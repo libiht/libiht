@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34728.123
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "kmd-demo", "kmd-demo\kmd-demo.vcxproj", "{956A5241-C397-4C19-AB24-FA7145818386}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Debug|x86 = Debug|x86
+		Release|x64 = Release|x64
+		Release|x86 = Release|x86
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{956A5241-C397-4C19-AB24-FA7145818386}.Debug|x64.ActiveCfg = Debug|x64
+		{956A5241-C397-4C19-AB24-FA7145818386}.Debug|x64.Build.0 = Debug|x64
+		{956A5241-C397-4C19-AB24-FA7145818386}.Debug|x86.ActiveCfg = Debug|Win32
+		{956A5241-C397-4C19-AB24-FA7145818386}.Debug|x86.Build.0 = Debug|Win32
+		{956A5241-C397-4C19-AB24-FA7145818386}.Release|x64.ActiveCfg = Release|x64
+		{956A5241-C397-4C19-AB24-FA7145818386}.Release|x64.Build.0 = Release|x64
+		{956A5241-C397-4C19-AB24-FA7145818386}.Release|x86.ActiveCfg = Release|Win32
+		{956A5241-C397-4C19-AB24-FA7145818386}.Release|x86.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {081ABA99-D735-4019-821B-59C2165A04BA}
+	EndGlobalSection
+EndGlobal
