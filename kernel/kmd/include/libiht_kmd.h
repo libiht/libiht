@@ -3,12 +3,12 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-//  File           : kmd/include/libiht_kmd.h
+//  File           : kernel/kmd/include/libiht_kmd.h
 //  Description    : This is the header file for the kernel mode driver of 
 //                   libiht. 
 //
 //   Author        : Thomason Zhao
-//   Last Modified : May 15, 2023
+//   Last Modified : July 10, 2024
 //
 
 // Includes Files

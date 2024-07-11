@@ -3,12 +3,12 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-//  File           : kmd/include/header_kmd.h
+//  File           : kernel/kmd/include/header_kmd.h
 //  Description    : This is the header file for the kernel-mode driver. It
 //                   contains all the necessary header files for the driver.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Nov 26, 2023
+//   Last Modified : July 10, 2024
 //
 
 // Include Files

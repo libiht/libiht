@@ -3,14 +3,14 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-//  File           : commons/xplat.h
+//  File           : kernel/commons/xplat.h
 //  Description    : This is the header file for the cross platform functions
 //                   used for libiht library. Details of the functions are
 //                   implemented in the corresponding platform specific files.
 //                   i.e. `xplat_kmd.c` and `xplat_lkm.c` for windows and linux.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Mar 27, 2024
+//   Last Modified : July 10, 2024
 //
 
 #include "types.h"

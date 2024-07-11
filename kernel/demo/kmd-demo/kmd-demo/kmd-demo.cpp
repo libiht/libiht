@@ -1,6 +1,6 @@
 ﻿////////////////////////////////////////////////////////////////////////////////
 //
-//  File           : demo/kmd-demo/kmd-demo/kmd-demo.cpp
+//  File           : kernel/demo/kmd-demo/kmd-demo/kmd-demo.cpp
 //  Description    : This is the main program for the kmd-demo program. It will
 //                   open the helper device and send the ioctl request to the
 //                   helper device. The kernel driver will trace the process 
@@ -8,7 +8,7 @@
 //                   cross recursive function call.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : May 27, 2023
+//   Last Modified : July 10, 2024
 //
 
 // Include Files
@@ -32,6 +32,8 @@
 #define KMD_IOCTL_FUNC 0x888
 
 #define LIBIHT_KMD_IOCTL_BASE       CTL_CODE(KMD_IOCTL_TYPE, KMD_IOCTL_FUNC + 0, METHOD_BUFFERED, FILE_ANY_ACCESS)
+
+// Redefine/Copy the structs for IOCTL
 
 //
 // Library constants

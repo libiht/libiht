@@ -3,12 +3,12 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-//  File           : lkm/include/headers_lkm.h
+//  File           : kernel/lkm/include/headers_lkm.h
 //  Description    : This is the header file for the kernel-mode driver. It
 //                   contains all the necessary header files for the driver.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Dec 03, 2023
+//   Last Modified : July 10, 2024
 //
 
 // Include Files

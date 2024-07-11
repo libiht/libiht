@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-//  File           : demo/lkm-demo/lkm-demo.c
+//  File           : kernel/demo/lkm-demo/lkm-demo.c
 //  Description    : This is the main program for the lkm-demo program. It will
 //                   open the helper process and send the ioctl request to the
 //                   helper processs. The kernel module will trace the process 
@@ -8,7 +8,7 @@
 //                   cross recursive function call.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : May 27, 2023
+//   Last Modified : July 10, 2024
 //
 
 // Include Files
@@ -22,11 +22,13 @@
 #define ENABLE_LBR
 // #define ENABLE_BTS
 
+// Redefine/Copy the structs for IOCTL
+
 // Device name
 #define DEVICE_NAME "libiht-info"
 
 // I/O control macros
-// TODO: Is IOCTL macros really needed?
+// TODO: Is IOCTL macros really needed? seems xioctl_request handles it
 #define LIBIHT_LKM_IOCTL_MAGIC 'l'
 #define LIBIHT_LKM_IOCTL_BASE       _IO(LIBIHT_LKM_IOCTL_MAGIC, 0)
 

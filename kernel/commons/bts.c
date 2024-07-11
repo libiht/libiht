@@ -1,12 +1,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-//  File           : commons/bts.c
+//  File           : kernel/commons/bts.c
 //  Description    : This is the implementation of the BTS feature for the
 //                   libiht library. See associated documentation for more
 //                   information.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : May 27, 2023
+//   Last Modified : July 10, 2024
 //
 
 // Include Files

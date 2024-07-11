@@ -3,14 +3,14 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-//  File           : commons/bts.h
+//  File           : kernel/commons/bts.h
 //  Description    : This is the header file for the BTS (Branch Trace Store)
 //                   module, which is used to capture the branch trace records
 //                   of a given process. Some of the macros and constants are
 //                   adapted from the Linux kernel source code.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 15, 2023
+//   Last Modified : July 10, 2024
 //
 
 // Include Files

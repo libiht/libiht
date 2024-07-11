@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-//  File           : lkm/src/xplat_lkm.c
+//  File           : kernel/lkm/src/xplat_lkm.c
 //  Description    : This is the cross-platform compatibility layer for the
 //                   Linux kernel module.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 24, 2023
+//   Last Modified : July 10, 2024
 //
 
 #include "../../commons/xplat.h"

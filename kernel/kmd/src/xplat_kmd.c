@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-//  File           : kmd/src/xplat_kmd.c
+//  File           : kernel/kmd/src/xplat_kmd.c
 //  Description    : This is the cross-platform compatibility layer for the
 //                   kernel-mode driver.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : May 27, 2024
+//   Last Modified : July 10, 2024
 //
 
 #include "../../commons/xplat.h"

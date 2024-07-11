@@ -1,6 +1,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-//  File           : commons/lbr.c
+//  File           : kernel/commons/lbr.c
 //  Description    : This is the implementation of the LBR feature for the
 //                   libiht library. See associated documentation for more
 //                   information. The implementation is largely based on the
@@ -10,7 +10,7 @@
 //                   https://github.com/vusec/patharmor/blob/master/lkm/lbr.c
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Mar 27, 2023
+//   Last Modified : July 10, 2024
 //
 
 // Include Files

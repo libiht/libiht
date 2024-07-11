@@ -3,13 +3,13 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-//  File           : commons/types.h
+//  File           : kernel/commons/types.h
 //  Description    : This is the header file for the common types for the 
 //                   libiht library.  
 //                   
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Nov 25, 2023
+//   Last Modified : July 10, 2024
 //
 
 // cpp cross compile handler

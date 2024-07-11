@@ -1,13 +1,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 //
-//  File           : lkm/src/libiht_lkm.c
+//  File           : kernel/lkm/src/libiht_lkm.c
 //  Description    : This is the main implementation for the Linux kernel module
 //                   of libiht. This module is used to capture the last branch
 //                   records of a given process. This file is very platform
 //                   specific.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 22, 2023
+//   Last Modified : July 10, 2024
 //
 
 #include "../include/libiht_lkm.h"

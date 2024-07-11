@@ -3,12 +3,12 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-//  File           : lkm/include/libiht_lkm.h
+//  File           : kernel/lkm/include/libiht_lkm.h
 //  Description    : This is the header file for the Linux kernel module of
 //                   libiht.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 10, 2023
+//   Last Modified : July 10, 2024
 
 //
 // Include Files

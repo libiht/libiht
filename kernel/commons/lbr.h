@@ -3,13 +3,13 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-//  File           : commons/lbr.h
+//  File           : kernel/commons/lbr.h
 //  Description    : This is the header file for the LBR (Last Branch Record)
 //                   module, which is used to capture the last branch records
 //                   of a given process.
 //
 //   Author        : Thomason Zhao
-//   Last Modified : Jan 15, 2023
+//   Last Modified : July 10, 2024
 //
 
 // Include Files
