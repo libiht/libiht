@@ -57,13 +57,13 @@ my_lib = ctypes.CDLL(lib_path)
 enable_lbr = my_lib.enable_lbr
 disable_lbr = my_lib.disable_lbr
 dump_lbr = my_lib.dump_lbr
-select_lbr = my_lib.select_lbr
+config_lbr = my_lib.config_lbr
 
 enable_lbr.restype = Clbr_ioctl_request
 enable_lbr.argtypes = [ctypes.c_uint]
 disable_lbr.argtypes = [Clbr_ioctl_request]
 dump_lbr.argtypes = [Clbr_ioctl_request]
-select_lbr.argtypes = [Clbr_ioctl_request]
+config_lbr.argtypes = [Clbr_ioctl_request]
 
 lbr_req = None
 lbr_enable = False
@@ -88,7 +88,7 @@ class EnableLBR(gdb.Command):
         super(EnableLBR, self).__init__("enable_lbr", gdb.COMMAND_USER)
 
     def invoke(self, args, from_tty):
-        global lbr_req
+        global lbr_req, lbr_enable
         process_pid = get_gdb_pid()
         lbr_req = enable_lbr(process_pid)
         lbr_enable = True
@@ -99,7 +99,7 @@ class DisableLBR(gdb.Command):
         super(DisableLBR, self).__init__("disable_lbr", gdb.COMMAND_USER)
 
     def invoke(self, args, from_tty):
-        global lbr_req
+        global lbr_req, lbr_enable
         disable_lbr(lbr_req)
         lbr_enable = False
         print("LIBIHT-GDB: disable lbr for pid :", lbr_req.lbr_config.pid)
@@ -114,13 +114,21 @@ class DumpLBR(gdb.Command):
         dump_lbr(lbr_req)
         lbr_tos = lbr_req.buffer.contents.lbr_tos
         data_pointer = ctypes.cast(lbr_req.buffer.contents.entries, ctypes.POINTER(Clbr_stack_entry))
+
         lbr_content = []
-        for i in range(0, lbr_tos):
+        for i in range(lbr_tos + 1, 32):
             lbr_content.append(LBRContent(data_pointer[i].from_, data_pointer[i].to))
+        for i in range(lbr_tos + 1):
+            lbr_content.append(LBRContent(data_pointer[i].from_, data_pointer[i].to))
+
+        # Print the LBR content from the oldest to the newest 
+        # PS: (not the order in the LBR stack)
         print(lbr_tos)
-        for i in range(0, lbr_tos):
-            print("MSR_LBR_NHM_FROM[", i, "]: ", get_function_name(hex(lbr_content[i].from_)))
-            print("MSR_LBR_NHM_TO  [", i, "]: ", get_function_name(hex(lbr_content[i].to)))
+        lbr_content = lbr_content[::-1]
+        for i in reversed(range(len(lbr_content))):
+            print("Last [", i, "] branch record:")
+            print("\t From: ", get_function_name(hex(lbr_content[i].from_)))
+            print("\t To  : ", get_function_name(hex(lbr_content[i].to)))
         return lbr_content
 
 EnableLBR()
