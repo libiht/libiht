@@ -23,9 +23,32 @@
 #define LIBIHT_LKM_IOCTL_MAGIC 'l'
 #define LIBIHT_LKM_IOCTL_BASE       _IO(LIBIHT_LKM_IOCTL_MAGIC, 0)
 
+//
+// Global Variables
+
 int lbr_fd;
+// File descriptor for opened LBR
 
 struct xioctl_request lbr_send_request;
+// Request for sending to LBR
+
+int bts_fd;
+// File descriptor for opened BTS
+
+struct xioctl_request bts_send_request;
+// Request for sending to BTS
+
+
+//
+// LBR management functions
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : enable_lbr
+// Description  : Enable LBR for a given process ID
+//
+// Inputs       : unsigned int pid : the process ID
+// Outputs      : struct lbr_ioctl_request : the request for LBR
 
 struct lbr_ioctl_request enable_lbr(unsigned int pid) {
     struct lbr_ioctl_request usr_request;
@@ -62,31 +85,62 @@ struct lbr_ioctl_request enable_lbr(unsigned int pid) {
     return usr_request;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : disable_lbr
+// Description  : Disable LBR for a user request
+//
+// Inputs       : struct lbr_ioctl_request usr_request : the request for LBR
+// Outputs      : void
+
 void disable_lbr(struct lbr_ioctl_request usr_request) {
     lbr_send_request.cmd = LIBIHT_IOCTL_DISABLE_LBR;
     lbr_send_request.body.lbr = usr_request;
-    fprintf(stderr, "LIBIHT-API: disable LBR for pid %u\n", usr_request.lbr_config.pid);
     ioctl(lbr_fd, LIBIHT_LKM_IOCTL_BASE, &lbr_send_request);
+    fprintf(stderr, "LIBIHT-API: disable LBR for pid %u\n", usr_request.lbr_config.pid);
     lbr_fd = 0;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : dump_lbr
+// Description  : Dump LBR for a user request
+//
+// Inputs       : struct lbr_ioctl_request usr_request : the request for LBR
+// Outputs      : void
 
 void dump_lbr(struct lbr_ioctl_request usr_request) {
     lbr_send_request.cmd = LIBIHT_IOCTL_DUMP_LBR;
     lbr_send_request.body.lbr = usr_request;
-    fprintf(stderr, "LIBIHT-API: dump LBR for pid %u\n", usr_request.lbr_config.pid);
     ioctl(lbr_fd, LIBIHT_LKM_IOCTL_BASE, &lbr_send_request);
+    fprintf(stderr, "LIBIHT-API: dump LBR for pid %u\n", usr_request.lbr_config.pid);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : config_lbr
+// Description  : Configure LBR for a user request
+//
+// Inputs       : struct lbr_ioctl_request usr_request : the request for LBR
+// Outputs      : void
 
 void config_lbr(struct lbr_ioctl_request usr_request) {
     lbr_send_request.cmd = LIBIHT_IOCTL_CONFIG_LBR;
     lbr_send_request.body.lbr = usr_request;
-    fprintf(stderr, "LIBIHT-API: select LBR for pid %u\n", usr_request.lbr_config.pid);
     ioctl(lbr_fd, LIBIHT_LKM_IOCTL_BASE, &lbr_send_request);
+    fprintf(stderr, "LIBIHT-API: config LBR for pid %u\n", usr_request.lbr_config.pid);
 }
 
-int bts_fd;
+//
+// BTS management functions
 
-struct xioctl_request bts_send_request;
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : enable_bts
+// Description  : Enable BTS for a given process ID
+//
+// Inputs       : unsigned int pid : the process ID
+// Outputs      : struct bts_ioctl_request : the request for BTS
 
 struct bts_ioctl_request enable_bts(unsigned int pid) {
     struct bts_ioctl_request usr_request;
@@ -121,24 +175,48 @@ struct bts_ioctl_request enable_bts(unsigned int pid) {
     return usr_request;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : disable_bts
+// Description  : Disable BTS for a user request
+//
+// Inputs       : struct bts_ioctl_request usr_request : the request for BTS
+// Outputs      : void
+
 void disable_bts(struct bts_ioctl_request usr_request) {
     bts_send_request.cmd = LIBIHT_IOCTL_DISABLE_BTS;
     bts_send_request.body.bts = usr_request;
-    fprintf(stderr, "LIBIHT-API: disable BTS for pid : %u\n", usr_request.bts_config.pid);
     ioctl(bts_fd, LIBIHT_LKM_IOCTL_BASE, &bts_send_request);
+    fprintf(stderr, "LIBIHT-API: disable BTS for pid : %u\n", usr_request.bts_config.pid);
     bts_fd = 0;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : dump_bts
+// Description  : Dump BTS for a user request
+//
+// Inputs       : struct bts_ioctl_request usr_request : the request for BTS
+// Outputs      : void
 
 void dump_bts(struct bts_ioctl_request usr_request) {
     bts_send_request.cmd = LIBIHT_IOCTL_DUMP_BTS;
     bts_send_request.body.bts = usr_request;
-    fprintf(stderr, "LIBIHT-API: dump BTS for pid : %u\n", usr_request.bts_config.pid);
     ioctl(bts_fd, LIBIHT_LKM_IOCTL_BASE, &bts_send_request);
+    fprintf(stderr, "LIBIHT-API: dump BTS for pid : %u\n", usr_request.bts_config.pid);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : config_bts
+// Description  : Configure BTS for a user request
+//
+// Inputs       : struct bts_ioctl_request usr_request : the request for BTS
+// Outputs      : void
 
 void config_bts(struct bts_ioctl_request usr_request) {
     bts_send_request.cmd = LIBIHT_IOCTL_CONFIG_BTS;
     bts_send_request.body.bts = usr_request;
-    fprintf(stderr, "LIBIHT-API: config BTS for pid : %u\n", usr_request.bts_config.pid);
     ioctl(bts_fd, LIBIHT_LKM_IOCTL_BASE, &bts_send_request);
+    fprintf(stderr, "LIBIHT-API: config BTS for pid : %u\n", usr_request.bts_config.pid);
 }
