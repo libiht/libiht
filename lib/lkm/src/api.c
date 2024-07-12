@@ -1,9 +1,22 @@
+////////////////////////////////////////////////////////////////////////////////
+//
+//  File           : lib/lkm/src/api.c
+//  Description    : This is the source code for the Linux kernel module (LKM)
+//                   APIs. It contains the implementation of the APIs.
+//
+//   Author        : Di Wu, Thomason Zhao
+//   Last Modified : July 10, 2024
+//
+
+// TODO: Refactor the code, current design is bad architected :(
+
 #include "../../commons/api.h"
 #include "../include/lkm.h"
 #include <sys/ioctl.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <fcntl.h>
+#include <unistd.h>
 
 #define DEVICE_NAME "libiht-info"
 
@@ -65,7 +78,7 @@ void dump_lbr(struct lbr_ioctl_request usr_request) {
 }
 
 void config_lbr(struct lbr_ioctl_request usr_request) {
-    lbr_send_request.cmd = LIBIHT_IOCTL_SELECT_LBR;
+    lbr_send_request.cmd = LIBIHT_IOCTL_CONFIG_LBR;
     lbr_send_request.body.lbr = usr_request;
     fprintf(stderr, "LIBIHT-API: select LBR for pid %u\n", usr_request.lbr_config.pid);
     ioctl(lbr_fd, LIBIHT_LKM_IOCTL_BASE, &lbr_send_request);

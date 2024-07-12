@@ -1,7 +1,29 @@
 #ifndef LIBIHT_API_H
 #define LIBIHT_API_H
+
+////////////////////////////////////////////////////////////////////////////////
+//
+//  File           : lib/commons/api.h
+//  Description    : This is the header file for user-space library APIs. It
+//                   contains all the necessary header files for the library.
+//
+//   Author        : Di Wu, Thomason Zhao
+//   Last Modified : July 10, 2024
+//
+
+//
+// Global variables
+
 unsigned int MAX_LBR_LIST_LEN = 0x20;
+// The default maximum number of LBR entries is 32
+// (may vary in different hardware)
+
 unsigned int MAX_BTS_LIST_LEN = 0x400;
+// The default maximum number of BTS entries is 1024
+// (may vary by the user request)
+
+//
+// Library constants (copied from kernel/commons/xioctl.h)
 
 enum IOCTL {
     LIBIHT_IOCTL_BASE,
@@ -71,4 +93,4 @@ struct xioctl_request {
 };
 
 // The above definitions are same as those in "types.h"
-#endif
+#endif // LIBIHT_API_H

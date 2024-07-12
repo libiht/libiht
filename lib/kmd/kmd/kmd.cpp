@@ -1,3 +1,13 @@
+////////////////////////////////////////////////////////////////////////////////
+//
+//  File           : lib/kmd/kmd/kmd.cpp
+//  Description    : This is the source file for the kernel module driver (KMD)
+//                   APIs. It contains the implementation of the APIs.
+//
+//   Author        : Di Wu, Thomason Zhao
+//   Last Modified : July 10, 2024
+//
+
 #include "pch.h" // use stdafx.h in Visual Studio 2017 and earlier
 #include <stdio.h>
 #include <stdlib.h>

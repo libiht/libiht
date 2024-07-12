@@ -1,4 +1,14 @@
-﻿#include "../../commons/api.h"
+﻿////////////////////////////////////////////////////////////////////////////////
+//
+//  File           : lib/demo/kmd-demo/kmd-demo/kmd-demo.cpp
+//  Description    : This is a simple demo for how to use LIBIHT KMD APIs to
+//                   enable LBR and dump LBR for a user-space application.
+//
+//   Author        : Di Wu, Thomason Zhao
+//   Last Modified : July 10, 2024
+//
+
+#include "../../commons/api.h"
 #include "../../kmd/kmd/kmd.h"
 #include <stdio.h>
 

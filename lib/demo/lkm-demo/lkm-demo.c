@@ -1,4 +1,15 @@
+////////////////////////////////////////////////////////////////////////////////
+//
+//  File           : lib/demo/lkm-demo/lkm-demo.c
+//  Description    : This is a simple demo for how to use LIBIHT LKM APIs to
+//                   enable LBR and dump LBR for a user-space application.
+//
+//   Author        : Di Wu, Thomason Zhao
+//   Last Modified : July 10, 2024
+//
+
 #include "../../commons/api.h"
+#include "../../lkm/include/lkm.h"
 #include <stdio.h>
 
 int cnt = 10;
