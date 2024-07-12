@@ -175,7 +175,7 @@ int main(int argc, char* argv[])
     if (pid == 0)
         pid = GetCurrentProcessId();
     cnt = atoi(argv[2]);
-    printf("func1's ptr: 0x%p\nfunc2's ptr: 0x%p\n", &func1, &func2);
+    printf("func1's ptr: %p\nfunc2's ptr: %p\n", &func1, &func2);
     fflush(stdout);
     Sleep(1000);
 
@@ -223,10 +223,10 @@ int main(int argc, char* argv[])
     Sleep(1000);
 
     // Print LBR buffer
-    printf("LBR TOS: %llx\n", input.body.lbr.buffer->lbr_tos);
+    printf("LBR TOS: %lld\n", input.body.lbr.buffer->lbr_tos);
     for (int i = 0; i < 32; i++)
     {
-        printf("LBR[%d]: %llx -> %llx\n", i, input.body.lbr.buffer->entries[i].from, input.body.lbr.buffer->entries[i].to);
+        printf("LBR[%d]: 0x%llx -> 0x%llx\n", i, input.body.lbr.buffer->entries[i].from, input.body.lbr.buffer->entries[i].to);
     }
 
     // Free LBR buffer
@@ -272,7 +272,7 @@ int main(int argc, char* argv[])
     printf("BTS Index (position in array): %d\n", position);
     for (int i = 0; i < 1024; i++)
     {
-        printf("BTS[%d]: %llx -> %llx\n", i, input.body.bts.buffer->bts_buffer_base[i].from, input.body.bts.buffer->bts_buffer_base[i].to);
+        printf("BTS[%d]: 0x%llx -> 0x%llx\n", i, input.body.bts.buffer->bts_buffer_base[i].from, input.body.bts.buffer->bts_buffer_base[i].to);
     }
 
     // Free BTS buffer

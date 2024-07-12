@@ -219,10 +219,10 @@ int main(int argc, char* argv[])
     sleep(1);
 
     // Print LBR buffer
-    printf("LBR TOS: %llx\n", input.body.lbr.buffer->lbr_tos);
+    printf("LBR TOS: %lld\n", input.body.lbr.buffer->lbr_tos);
     for (int i = 0; i < 32; i++)
     {
-        printf("LBR[%d]: %llx -> %llx\n", i, input.body.lbr.buffer->entries[i].from, input.body.lbr.buffer->entries[i].to);
+        printf("LBR[%d]: 0x%llx -> 0x%llx\n", i, input.body.lbr.buffer->entries[i].from, input.body.lbr.buffer->entries[i].to);
     }
 
     // Print LBR buffer
@@ -266,7 +266,7 @@ int main(int argc, char* argv[])
     printf("BTS Index: %p\n", input.body.bts.buffer->bts_index);
     for (int i = 0; i < 1024; i++)
     {
-        printf("BTS[%d]: %llx -> %llx\n", i, input.body.bts.buffer->bts_buffer_base[i].from, input.body.bts.buffer->bts_buffer_base[i].to);
+        printf("BTS[%d]: 0x%llx -> 0x%llx\n", i, input.body.bts.buffer->bts_buffer_base[i].from, input.body.bts.buffer->bts_buffer_base[i].to);
     }
 
     // Free BTS buffer

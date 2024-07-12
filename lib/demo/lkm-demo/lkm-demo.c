@@ -11,6 +11,8 @@
 #include "../../commons/api.h"
 #include "../../lkm/include/lkm.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 int cnt = 10;
 
@@ -37,17 +39,47 @@ void func2()
     }
 }
 
-int main(){
+void print_usage()
+{
+    printf("Usage: lkm-demo [pid] [count]\n");
+    printf("pid: the pid of the process want to trace, trace it self if it is 0\n");
+    printf("count: the number of recursive function call\n");
+    printf("Example: lkm-demo 0 10\n");
+    fflush(stdout);
+    exit(-1);
+}
+
+int main(int argc, char* argv[]){
+    if (argc != 3)
+        print_usage();
+
+    int pid = atoi(argv[1]);
+    if (pid == 0)
+        pid = getpid();
+    cnt = atoi(argv[2]);
+    printf("pid: %d, count: %d\n", pid, cnt);
+    printf("func1's ptr: %p\nfunc2's ptr: %p\n", &func1, &func2);
+    fflush(stdout);
+    sleep(1);
+
+    // Enable LBR
     struct lbr_ioctl_request query = enable_lbr(0);
-    printf("%d %llu\n",query.lbr_config.pid, query.lbr_config.lbr_select);
+
+    // Simulate critical logic
     func1();
+
+    // Dump LBR
     dump_lbr(query);
-    printf("%llu\n",query.buffer->lbr_tos);
-    for (int i = 0; i < query.buffer->lbr_tos; i++) {
-        printf("0x%llx 0x%llx; ", query.buffer->entries[i].from, query.buffer->entries[i].to);
-    }
-    printf("\n");
+
+    // Disable LBR
     disable_lbr(query);
+
+    // Print LBR buffer
+    printf("LBR TOS: %lld\n", query.buffer->lbr_tos);
+    for (int i = 0; i < 32; i++)
+    {
+        printf("LBR[%d]: 0x%llx -> 0x%llx\n", i, query.buffer->entries[i].from, query.buffer->entries[i].to);
+    }
 
     return 0;
 }
