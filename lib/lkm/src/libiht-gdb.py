@@ -101,9 +101,9 @@ class LBRContent:
 
 class BTSContent:
     def __init__(self, from_, to, misc):
-        from_ = from_
-        to = to
-        misc = misc
+        self.from_ = from_
+        self.to = to
+        self.misc = misc
 
 # import the dynamic link
 
@@ -231,17 +231,21 @@ class DumpBTS(gdb.Command):
         global bts_req
         print("LIBIHT-GDB: dump bts for pid :", bts_req.bts_config.pid)
         dump_bts(bts_req)
-        data_pointer = ctypes.cast(bts_req.buffer.bts_buffer_base, ctypes.POINTER(Cbts_record))
+        data_pointer = ctypes.cast(bts_req.bts_data.contents.bts_buffer_base, ctypes.POINTER(Cbts_record))
 
         bts_content = []
         for i in range(1024):
-            bts_content.append(BTSContent(data_pointer[i].from_, data_pointer[i].to, data_pointer[i].misc))
+            if data_pointer[i].from_ !=0 or data_pointer[i].to != 0:
+                bts_content.append(BTSContent(data_pointer[i].from_, data_pointer[i].to, data_pointer[i].misc))
 
+        bts_tos=len(bts_content)
+        print (bts_tos)
         print ("BTS Information:")
-        for i in reversed(range(len(bts_content))):
+        for i in range(bts_tos):
             print("Last [", i, "] branch record:")
             print("\t From: ", get_function_name(hex(bts_content[i].from_)))
             print("\t To  : ", get_function_name(hex(bts_content[i].to)))
+            print("\t Misc: ", hex(bts_content[i].misc))
         return bts_content
 
 
