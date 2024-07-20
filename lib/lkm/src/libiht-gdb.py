@@ -1,3 +1,14 @@
+##############################################################################
+#
+#  File           : lib/lkm/src/libiht-gdb.py
+#  Description    : This is the source code for the GDB Plugin.
+#                   It contains the implementation of the Plugin.
+#
+#   Author        : Di Wu, Thomason Zhao
+#   Last Modified : July 16, 2024
+#
+
+
 import os
 import gdb
 import ctypes
@@ -40,11 +51,59 @@ class Clbr_ioctl_request(ctypes.Structure):
         self.lbr_config = lbr_config
         self.buffer = buffer
 
+class Cbts_config(ctypes.Structure):
+    _fields_ = [
+        ('pid', ctypes.c_uint),
+        ('bts_config', ctypes.c_ulonglong),
+        ('bts_buffer_size', ctypes.c_ulonglong)
+    ]
+    def __init__(self, pid, bts_config, bts_buffer):
+        self.pid = pid
+        self.bts_config = bts_config
+        self.bts_buffer = bts_buffer
+
+class Cbts_record(ctypes.Structure):
+    _fields_ = [
+        ('from_', ctypes.c_ulonglong),
+        ('to', ctypes.c_ulonglong),
+        ('misc', ctypes.c_ulonglong)
+    ]
+    def __init__(self, from_, to, misc):
+        self.from_ = from_
+        self.to = to
+        self.misc = misc
+
+class Cbts_data(ctypes.Structure):
+    _fields_ = [
+        ('bts_buffer_base', ctypes.POINTER(Cbts_record)),
+        ('bts_index', ctypes.POINTER(Cbts_record)),
+        ('bts_interrupt_threshold', ctypes.c_ulonglong)
+    ]
+    def __init__(self, bts_buffer_base, bts_index, bts_interrupt_threshold):
+        self.bts_buffer_base = bts_buffer_base
+        self.bts_index = bts_index
+        self.bts_interrupt_threshold = bts_interrupt_threshold
+
+class Cbts_ioctl_request(ctypes.Structure):
+    _fields_ = [
+        ('bts_config', Cbts_config),
+        ('bts_data', ctypes.POINTER(Cbts_data))
+    ]
+    def __init__(self, bts_config, bts_data):
+        self.bts_config = bts_config
+        self.bts_data = bts_data
+
 # declare the return value
 class LBRContent:
     def __init__(self, from_, to):
         self.from_ = from_
         self.to = to
+
+class BTSContent:
+    def __init__(self, from_, to, misc):
+        self.from_ = from_
+        self.to = to
+        self.misc = misc
 
 # import the dynamic link
 
@@ -58,15 +117,27 @@ enable_lbr = my_lib.enable_lbr
 disable_lbr = my_lib.disable_lbr
 dump_lbr = my_lib.dump_lbr
 config_lbr = my_lib.config_lbr
+enable_bts = my_lib.enable_bts
+disable_bts = my_lib.disable_bts
+dump_bts = my_lib.dump_bts
+config_bts = my_lib.config_bts
 
 enable_lbr.restype = Clbr_ioctl_request
+enable_bts.restype = Cbts_ioctl_request
+
 enable_lbr.argtypes = [ctypes.c_uint]
 disable_lbr.argtypes = [Clbr_ioctl_request]
 dump_lbr.argtypes = [Clbr_ioctl_request]
 config_lbr.argtypes = [Clbr_ioctl_request]
+enable_bts.argtypes = [ctypes.c_uint]
+disable_bts.argtypes = [Cbts_ioctl_request]
+dump_bts.argtypes = [Cbts_ioctl_request]
+config_bts.argtypes = [Cbts_ioctl_request]
 
 lbr_req = None
 lbr_enable = False
+bts_req = None
+bts_enable = False
 
 def get_function_name(address):
     symbol_output = gdb.execute("info symbol " + str(address), to_string=True)
@@ -131,6 +202,57 @@ class DumpLBR(gdb.Command):
             print("\t To  : ", get_function_name(hex(lbr_content[i].to)))
         return lbr_content
 
+class EnableBTS(gdb.Command):
+    def __init__(self):
+        super(EnableBTS, self).__init__("enable_bts", gdb.COMMAND_USER)
+
+    def invoke(self, args, from_tty):
+        global bts_req, bts_enable
+        process_pid = get_gdb_pid()
+        bts_req = enable_bts(process_pid)
+        bts_enable = True
+        print("LIBIHT-GDB: enable bts for pid :", bts_req.bts_config.pid)
+
+class DisableBTS(gdb.Command):
+    def __init__(self):
+        super(DisableBTS, self).__init__("disable_bts", gdb.COMMAND_USER)
+
+    def invoke(self, args, from_tty):
+        global bts_req, bts_enable
+        disable_bts(bts_req)
+        bts_enable = False
+        print("LIBIHT-GDB: disable bts for pid :", bts_req.bts_config.pid)
+
+class DumpBTS(gdb.Command):
+    def __init__(self):
+        super(DumpBTS, self).__init__("dump_bts", gdb.COMMAND_USER)
+    
+    def invoke(self, args, from_tty):
+        global bts_req
+        print("LIBIHT-GDB: dump bts for pid :", bts_req.bts_config.pid)
+        dump_bts(bts_req)
+        data_pointer = ctypes.cast(bts_req.bts_data.contents.bts_buffer_base, ctypes.POINTER(Cbts_record))
+
+        bts_content = []
+        for i in range(1024):
+            if data_pointer[i].from_ !=0 or data_pointer[i].to != 0:
+                bts_content.append(BTSContent(data_pointer[i].from_, data_pointer[i].to, data_pointer[i].misc))
+
+        bts_tos=len(bts_content)
+        print (bts_tos)
+        print ("BTS Information:")
+        for i in range(bts_tos):
+            print("Last [", i, "] branch record:")
+            print("\t From: ", get_function_name(hex(bts_content[i].from_)))
+            print("\t To  : ", get_function_name(hex(bts_content[i].to)))
+            print("\t Misc: ", hex(bts_content[i].misc))
+        return bts_content
+
+
+
 EnableLBR()
 DisableLBR()
 DumpLBR()
+EnableBTS()
+DisableBTS()
+DumpBTS()
