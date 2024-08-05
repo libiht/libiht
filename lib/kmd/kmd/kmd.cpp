@@ -5,7 +5,7 @@
 //                   APIs. It contains the implementation of the APIs.
 //
 //   Author        : Di Wu, Thomason Zhao
-//   Last Modified : July 10, 2024
+//   Last Modified : July 21, 2024
 //
 
 #include "pch.h" // use stdafx.h in Visual Studio 2017 and earlier
@@ -27,6 +27,13 @@ HANDLE lbr_hDevice;
 
 struct xioctl_request lbr_send_request;
 
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : enable_lbr
+// Description  : Enable the LBR feature for the requested process id.
+//
+// Inputs       : pid - the process identifier
+// Outputs      : struct lbr_ioctl_request - the LBR configuration request 
 struct lbr_ioctl_request enable_lbr(unsigned int pid) {
     struct lbr_ioctl_request usr_request;
     if (pid == 0) {
@@ -66,6 +73,13 @@ struct lbr_ioctl_request enable_lbr(unsigned int pid) {
     return usr_request;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : disable_lbr
+// Description  : Disable the LBR feature for the specified process.
+//
+// Inputs       : usr_request - the LBR configuration request structure
+// Outputs      : None
 void disable_lbr(struct lbr_ioctl_request usr_request) {
     lbr_send_request.cmd = LIBIHT_IOCTL_DISABLE_LBR;
     lbr_send_request.body.lbr = usr_request;
@@ -74,6 +88,13 @@ void disable_lbr(struct lbr_ioctl_request usr_request) {
     CloseHandle(lbr_hDevice);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : dump_lbr
+// Description  : Dump the Last Branch Recording (LBR) for the specified process.
+//
+// Inputs       : usr_request - the LBR configuration request structure
+// Outputs      : None
 void dump_lbr(struct lbr_ioctl_request usr_request) {
     lbr_send_request.cmd = LIBIHT_IOCTL_DUMP_LBR;
     lbr_send_request.body.lbr = usr_request;
@@ -81,6 +102,14 @@ void dump_lbr(struct lbr_ioctl_request usr_request) {
     DeviceIoControl(lbr_hDevice, LIBIHT_KMD_IOCTL_BASE, &lbr_send_request, sizeof(lbr_send_request), NULL, 0, NULL, NULL);
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : config_lbr
+// Description  : Configure the LBR for the specified process.
+//
+// Inputs       : usr_request - the LBR configuration request structure
+// Outputs      : None
 void config_lbr(struct lbr_ioctl_request usr_request) {
     lbr_send_request.cmd = LIBIHT_IOCTL_CONFIG_LBR;
     lbr_send_request.body.lbr = usr_request;
@@ -91,6 +120,14 @@ void config_lbr(struct lbr_ioctl_request usr_request) {
 HANDLE bts_hDevice;
 struct xioctl_request bts_send_request;
 
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : enable_bts
+// Description  : Enable the Branch Trace Store (BTS) for the specified process.
+//
+// Inputs       : pid - the process identifier
+// Outputs      : struct bts_ioctl_request - the BTS configuration request structure
 struct bts_ioctl_request enable_bts(unsigned int pid) {
     struct bts_ioctl_request usr_request;
     if (pid == 0) {
@@ -131,6 +168,14 @@ struct bts_ioctl_request enable_bts(unsigned int pid) {
     return usr_request;
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : disable_bts
+// Description  : Disable the Branch Trace Store (BTS) for the specified process.
+//
+// Inputs       : usr_request - the BTS configuration request structure
+// Outputs      : None
 void disable_bts(struct bts_ioctl_request usr_request) {
     bts_send_request.cmd = LIBIHT_IOCTL_DISABLE_BTS;
     bts_send_request.body.bts = usr_request;
@@ -139,6 +184,14 @@ void disable_bts(struct bts_ioctl_request usr_request) {
     CloseHandle(bts_hDevice);
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : dump_bts
+// Description  : Dump the Branch Trace Store (BTS) for the specified process.
+//
+// Inputs       : usr_request - the BTS configuration request structure
+// Outputs      : None
 void dump_bts(struct bts_ioctl_request usr_request) {
     bts_send_request.cmd = LIBIHT_IOCTL_DUMP_BTS;
     bts_send_request.body.bts = usr_request;
@@ -146,6 +199,14 @@ void dump_bts(struct bts_ioctl_request usr_request) {
     DeviceIoControl(bts_hDevice, LIBIHT_KMD_IOCTL_BASE, &bts_send_request, sizeof(bts_send_request), NULL, 0, NULL, NULL);
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+//
+// Function     : config_bts
+// Description  : Configure the Branch Trace Store (BTS) for the specified process.
+//
+// Inputs       : usr_request - the BTS configuration request structure
+// Outputs      : None
 void config_bts(struct bts_ioctl_request usr_request) {
     bts_send_request.cmd = LIBIHT_IOCTL_CONFIG_BTS;
     bts_send_request.body.bts = usr_request;
