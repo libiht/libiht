@@ -1,10 +1,18 @@
 # LibIHT (Intel Hardware Trace Library)
 
+<p align="center">
+   <img src="https://i.imgur.com/PbQXUEL.png" style="width: 50%;" alt="LibIHT Logo"/>
+</p>
+
 LibIHT (Intel Hardware Trace Library) is a cross platform library framework for managing (i.e., retrieving, analyzing, and visualizing) hardware trace information from Intel processors and helping reverse engineers and security researchers to understand the control flow behavior of the target program. We assume users have a basic understanding of operating systems, computer architecture, and Intel hardware trace capabilities.
 
 Modern Intel CPUs have introduced a suite of hardware features, such as Last Branch Record (LBR) and Branch Trace Store (BTS), which promise to deliver detailed program tracing information with minimal overhead. LibIHT bridge the gap between low-level hardware trace capabilities and high-level user space applications by offering both kernel and user interfaces that hide all the complexity of hardware-assisted tracing and a user-friendly approach to interacting with Intel CPU hardware trace features.
 
 It is proudly brought to you by **[Tencent Security Xuanwu Lab](https://xlab.tencent.com/en/)** and its long-term talent cultivation program **Tencent Spark Talent Program**.
+
+It has been selected by the following security conferences:
+
+- **Black Hat USA 2024**: [LIBIHT: A Cross-Platform Library for Accessing Intel Hardware Trace Features](https://www.blackhat.com/us-24/arsenal/schedule/#libiht-a-cross-platform-library-for-accessing-intel-hardware-trace-features-38754)
 
 ## LibIHT Components
 
