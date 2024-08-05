@@ -46,11 +46,11 @@ Thank you for considering contributing to LibIHT!
 
 **Q: What versions of Windows and Linux are supported?**
 
-A: The library supports Windows 10 and above, and Linux kernel version 5.0 and above.
+A: The library is currently been tested on Windows 10 21H1 debug version, and Linux kernel version 5.15.* with Ubuntu 22.04.
 
 **Q: What Intel processors are supported?**
 
-A: The library supports Intel processors with hardware trace (Intel Processor Trace, Last Branch Record, Brach Trace Store, etc.) capabilities. Please refer to [Intel Software Developer Manual](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html) for more information. Typically, morden Intel processors (e.g., Intel Core, Intel Xeon, etc.) are supported.
+A: The library supports any Intel processors with hardware trace (Intel Processor Trace, Last Branch Record, Brach Trace Store, etc.) capabilities. Please refer to [Intel Software Developer Manual](https://www.intel.com/content/www/us/en/developer/articles/technical/intel-sdm.html) for more information. Typically, morden Intel processors (e.g., Intel Core, Intel Xeon, etc.) are supported.
 
 **Q: Is there any documentation available for the APIs?**
 

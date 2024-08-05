@@ -8,7 +8,7 @@ You may also refer to the kernel document for details. We will be providing more
 
 ## Installation
 
-To use the LIB on Linux, please include the `lib/include/api.h` and `lib/lkm/include/lkm.h` header files in your code, and compile your code together with `liblbr_api.so`.
+To use the user library on Linux, please include the `lib/include/api.h` and `lib/lkm/include/lkm.h` header files in your code, and compile your code together with `liblbr_api.so`.
 
 On Windows, copy the `x64/Release` directory to your code directory. In your code, include the `lib/include/api.h` and `lib/kmd/kmd.h` header files. Copy the files from `lib/kmd/x64/Release` to your code directory and link against `kmd.dll`.
 
