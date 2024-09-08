@@ -12,7 +12,7 @@ It is proudly brought to you by **[Tencent Security Xuanwu Lab](https://xlab.ten
 
 It has been selected by the following security conferences:
 
-- **Black Hat USA 2024**: [LIBIHT: A Cross-Platform Library for Accessing Intel Hardware Trace Features](https://www.blackhat.com/us-24/arsenal/schedule/#libiht-a-cross-platform-library-for-accessing-intel-hardware-trace-features-38754)
+- **Black Hat USA 2024**: [LIBIHT: A Cross-Platform Library for Accessing Intel Hardware Trace Features](https://www.blackhat.com/us-24/arsenal/schedule/#libiht-a-cross-platform-library-for-accessing-intel-hardware-trace-features-38754), [Video](https://www.youtube.com/watch?v=4FodtsPNABc), [Slides](https://github.com/ThomasonZhao/Slides/blob/main/BHUS24-Arsenal-Zhao-LibIHT.pdf)
 
 ## LibIHT Components
 
