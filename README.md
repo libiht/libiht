@@ -69,3 +69,19 @@ A: The library supports any Intel processors with hardware trace (Intel Processo
 **Q: Is there any documentation available for the APIs?**
 
 A: Yes, you can find the API documentation are specified in [usage](./docs/usage/) directory.
+
+## Citation
+
+We have systematically evaluated LibIHT in academic publication. If you have used LibIHT or its sub-components in your research, please cite the following paper describing it:
+
+```bibtex
+@inproceedings{zhaoLibIHTHardwareBasedApproach2025,
+title = {LibIHT: A Hardware-Based Approach to Efficient and Evasion-Resistant Dynamic Binary Analysis},
+author = {Changyu Zhao and Yohan Beugin and Jean-Charles Noirot Ferrand and Quinn Burke and Guancheng Li and Patrick McDaniel},
+month = oct,
+year = {2025},
+booktitle = {Proceedings of the 1st Workshop on Software Understanding and Reverse Engineering (SURE 2025)},
+doi = {10.1145/3733822.3764670},
+}
+```
+
